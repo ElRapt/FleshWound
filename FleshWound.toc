@@ -1,0 +1,7 @@
+## Interface: 110000   # WoW version number (use latest)
+## Title: My Health UI Addon
+## Notes: Adds a custom health UI for roleplay purposes
+## Author: ElRapt
+
+FleshWound.lua
+FleshWound.xml

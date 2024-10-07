@@ -2,13 +2,17 @@
 local frame = CreateFrame("Frame", "MyHealthUIFrame", UIParent)
 frame:SetSize(200, 50)  -- Width, Height
 frame:SetPoint("CENTER", UIParent, "CENTER")  -- Position in the center of the screen
-frame:SetBackdrop({
-    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", -- Background texture
-    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", -- Border texture
-    edgeSize = 16,
-    insets = { left = 4, right = 4, top = 4, bottom = 4 }
-})
-frame:SetBackdropColor(0, 0, 0, 1)  -- Black background
+
+-- Add a background texture (as SetBackdrop is deprecated)
+local bgTexture = frame:CreateTexture(nil, "BACKGROUND")
+bgTexture:SetAllPoints()
+bgTexture:SetColorTexture(0, 0, 0, 0.7)  -- Set background color (black with transparency)
+
+-- Add a border manually
+local borderTexture = frame:CreateTexture(nil, "BORDER")
+borderTexture:SetAllPoints()
+borderTexture:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Border")
+
 frame:Hide()  -- Start with the frame hidden
 
 -- Create the title for the frame
@@ -37,8 +41,9 @@ local function UpdateHealth(newValue)
 end
 
 -- Slash command to toggle the UI
-SLASH_MYADDON1 = "/healthui"  -- Define the slash command /healthui
+SLASH_MYADDON1 = "/fleshwound"  -- Define the slash command /fleshwound
 SlashCmdList["MYADDON"] = function(msg)
+    print("Slash command triggered")  -- Debug print to check if the command is triggered
     if frame:IsShown() then
         frame:Hide()  -- Hide the frame if it's currently shown
     else
@@ -46,7 +51,7 @@ SlashCmdList["MYADDON"] = function(msg)
     end
 end
 
--- Test: Change health dynamically after 3 seconds
+-- Test: Change health dynamically after 3 seconds (example for testing purposes)
 C_Timer.After(3, function()
     UpdateHealth(50)  -- Set health to 50 after 3 seconds
 end)

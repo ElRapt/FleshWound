@@ -1,0 +1,16 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+  <!-- Define the main frame -->
+  <Frame name="MyHealthUIFrame" parent="UIParent" enableMouse="true" movable="true" toplevel="true">
+    <Size>
+      <AbsDimension x="200" y="50"/>
+    </Size>
+    <Anchors>
+      <Anchor point="CENTER" relativeTo="UIParent"/>
+    </Anchors>
+    <Scripts>
+      <OnLoad>
+        self:Hide(); -- Hide the frame initially
+      </OnLoad>
+    </Scripts>
+  </Frame>
+</Ui>

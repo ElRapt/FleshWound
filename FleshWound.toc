@@ -1,5 +1,5 @@
-## Interface: 110000   # WoW version number (use latest)
-## Title: My Health UI Addon
+## Interface: 110002   # WoW version number (use latest)
+## Title: Flesh Wound
 ## Notes: Adds a custom health UI for roleplay purposes
 ## Author: ElRapt
 

@@ -1,16 +1,50 @@
-<Ui xmlns="http://www.blizzard.com/wow/ui/">
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <!-- Define the main frame -->
-  <Frame name="MyHealthUIFrame" parent="UIParent" enableMouse="true" movable="true" toplevel="true">
-    <Size>
-      <AbsDimension x="200" y="50"/>
-    </Size>
+  <Frame name="FleshWoundFrame" parent="UIParent" enableMouse="true" movable="true"
+         toplevel="true" frameStrata="MEDIUM" hidden="true" inherits="BackdropTemplate">
+    <Size x="400" y="600"/>
     <Anchors>
-      <Anchor point="CENTER" relativeTo="UIParent"/>
+      <Anchor point="CENTER"/>
     </Anchors>
     <Scripts>
-      <OnLoad>
-        self:Hide(); -- Hide the frame initially
-      </OnLoad>
+      <OnLoad function="FleshWound_OnLoad"/>
+      <OnDragStart function="FleshWoundFrame_OnDragStart"/>
+      <OnDragStop function="FleshWoundFrame_OnDragStop"/>
     </Scripts>
+    <!-- Close Button -->
+    <Frames>
+      <Button name="$parentCloseButton" parentKey="CloseButton" inherits="UIPanelCloseButton">
+        <Anchors>
+          <Anchor point="TOPRIGHT" relativePoint="TOPRIGHT" x="-5" y="-5"/>
+        </Anchors>
+      </Button>
+      <!-- Health Bar -->
+      <StatusBar name="$parentHealthBar" parentKey="HealthBar" orientation="VERTICAL" inherits="TextStatusBar">
+        <Size x="20" y="400"/>
+        <Anchors>
+          <Anchor point="LEFT" relativePoint="LEFT" x="10" y="0"/>
+        </Anchors>
+        <!-- Health Text -->
+        <Layers>
+          <Layer level="OVERLAY">
+            <FontString name="$parentText" parentKey="Text" inherits="GameFontNormal" setAllPoints="true" justifyH="CENTER" justifyV="MIDDLE"/>
+          </Layer>
+        </Layers>
+      </StatusBar>
+    </Frames>
+    <!-- Layers -->
+    <Layers>
+      <!-- Background Layer -->
+      <Layer level="BACKGROUND">
+        <!-- Body Image -->
+        <Texture name="$parentBodyImage" parentKey="BodyImage">
+          <Size x="300" y="500"/>
+          <Anchors>
+            <Anchor point="CENTER" relativePoint="CENTER" x="30" y="0"/>
+          </Anchors>
+          <Texture file="Interface\AddOns\FleshWound\Textures\body.png"/>
+        </Texture>
+      </Layer>
+    </Layers>
   </Frame>
 </Ui>

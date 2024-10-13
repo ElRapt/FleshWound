@@ -12,6 +12,9 @@ function FleshWound_OnLoad(self)
     self:SetClampedToScreen(true)
     self:RegisterForDrag("LeftButton")
 
+    -- Set the frame size slightly larger than the body image
+    self:SetSize(320, 540)  -- Increased width and height by 20 pixels each
+
     -- Set the backdrop
     self:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -24,8 +27,8 @@ function FleshWound_OnLoad(self)
 
     -- Create the body image
     self.BodyImage = self:CreateTexture(nil, "BACKGROUND")
-    self.BodyImage:SetSize(300, 500)
-    self.BodyImage:SetPoint("CENTER")
+    self.BodyImage:SetSize(300, 500)  -- Original image size
+    self.BodyImage:SetPoint("CENTER")  -- Center the image within the frame
     self.BodyImage:SetTexture("Interface\\AddOns\\FleshWound\\Textures\\body_image.tga")
 
     -- Create clickable regions on the body
@@ -60,52 +63,44 @@ end
 function CreateBodyRegions(self)
     self.BodyRegions = {}
 
-    -- Define regions (example: head, torso, left arm, right arm, left leg, right leg, left hand, right hand, left foot, right foot)
+    -- Define regions
     local regions = {
-        {name = "Head", x = 127, y = 420, width = 50, height = 75},
+        {name = "Head", x = 130, y = 420, width = 50, height = 75},
         {name = "Torso", x = 130, y = 275, width = 50, height = 120},
-        {name = "LeftArm", x = 70, y = 300, width = 50, height = 120},
-        {name = "RightArm", x = 185, y = 300, width = 50, height = 120},
-        {name = "LeftHand", x = 40, y = 180, width = 50, height = 100},
-        {name = "RightHand", x = 215, y = 180, width = 50, height = 100},
-        {name = "LeftLeg", x = 100, y = 50, width = 50, height = 130},
-        {name = "RightLeg", x = 155, y = 50, width = 50, height = 130},
-        {name = "LeftFoot", x = 105, y = 0, width = 50, height = 50},
-        {name = "RightFoot", x = 150, y = 0, width = 50, height = 50},
+        {name = "Left Arm", x = 75, y = 300, width = 50, height = 120},
+        {name = "Right Arm", x = 185, y = 300, width = 50, height = 120},
+        {name = "Left Hand", x = 40, y = 180, width = 50, height = 100},
+        {name = "Right Hand", x = 215, y = 180, width = 50, height = 100},
+        {name = "Left Leg", x = 100, y = 50, width = 50, height = 130},
+        {name = "Right Leg", x = 155, y = 50, width = 50, height = 130},
+        {name = "Left Foot", x = 110, y = 0, width = 50, height = 50},
+        {name = "Right Foot", x = 150, y = 0, width = 50, height = 50},
     }
 
     for _, region in ipairs(regions) do
         local btn = CreateFrame("Button", nil, self)
         btn:SetSize(region.width, region.height)
+
+        -- Position the button relative to the BodyImage
         btn:SetPoint("BOTTOMLEFT", self.BodyImage, "BOTTOMLEFT", region.x, region.y)
+
         btn:SetScript("OnClick", function()
             OpenWoundDialog(region.name, btn)
         end)
-        btn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight")
-        local texture = btn:CreateTexture(nil, "BACKGROUND")
-        texture:SetAllPoints()
-        local colors = {
-            {1, 0, 0, 0.3},  -- Red
-            {0, 1, 0, 0.3},  -- Green
-            {0, 0, 1, 0.3},  -- Blue
-            {1, 1, 0, 0.3},  -- Yellow
-            {1, 0, 1, 0.3},  -- Magenta
-            {0, 1, 1, 0.3},  -- Cyan
-            {1, 0.5, 0, 0.3},  -- Orange
-            {0.5, 0, 0.5, 0.3},  -- Purple
-            {0.5, 0.5, 0.5, 0.3},  -- Gray
-            {0, 0, 0, 0.3}  -- Black
-        }
-        local color = colors[_ % #colors + 1]
-        texture:SetColorTexture(unpack(color))
-        btn:SetAlpha(1)
-        self.BodyRegions[region.name] = btn
 
-        -- Create a green dot for debugging the center of the clickable region
-        local debugDot = self:CreateTexture(nil, "OVERLAY")
+        -- Set a highlight texture to indicate when the region is hovered over
+        btn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight")
+
+        -- Remove the colored overlay
+        -- No colored texture is created here
+
+        -- Keep the green dot for debugging the center of the clickable region
+        local debugDot = btn:CreateTexture(nil, "OVERLAY")
         debugDot:SetSize(10, 10)
         debugDot:SetPoint("CENTER", btn, "CENTER")
         debugDot:SetColorTexture(0, 1, 0, 1)  -- Green color
+
+        self.BodyRegions[region.name] = btn
     end
 end
 
@@ -113,7 +108,7 @@ end
 function OpenWoundDialog(regionName, button)
     if not FleshWoundDialog then
         local dialog = CreateFrame("Frame", "FleshWoundDialog", UIParent, "BackdropTemplate")
-        dialog:SetSize(300, 300)
+        dialog:SetSize(300, 200)
         dialog:SetPoint("CENTER")
         dialog:SetBackdrop({
             bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -229,3 +224,14 @@ end
 
 -- Call the function to set up the options panel
 FleshWound_AddonOptions()
+
+-- Create the main frame for the addon
+local FleshWoundFrame = CreateFrame("Frame", "FleshWoundFrame", UIParent, "BackdropTemplate")
+FleshWoundFrame:SetPoint("CENTER")
+FleshWoundFrame:EnableMouse(true)
+FleshWoundFrame:SetMovable(true)
+FleshWoundFrame:SetScript("OnMouseDown", FleshWoundFrame_OnDragStart)
+FleshWoundFrame:SetScript("OnMouseUp", FleshWoundFrame_OnDragStop)
+
+-- Initialize the frame
+FleshWound_OnLoad(FleshWoundFrame)

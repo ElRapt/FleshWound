@@ -7,8 +7,6 @@ local woundData = {}
 -- Function to handle the frame's OnLoad event
 function FleshWound_OnLoad(self)
     self:RegisterEvent("ADDON_LOADED")
-    self:RegisterEvent("UNIT_HEALTH")
-    self:RegisterEvent("UNIT_MAXHEALTH")
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
     self:SetScript("OnEvent", FleshWound_OnEvent)
     self:SetClampedToScreen(true)
@@ -24,16 +22,11 @@ function FleshWound_OnLoad(self)
         insets = { left = 11, right = 12, top = 12, bottom = 11 }
     })
 
-    -- Set the health bar texture and color
-    if self.HealthBar then
-        self.HealthBar:SetStatusBarTexture("Interface\\TARGETINGFRAME\\UI-StatusBar")
-        self.HealthBar:SetStatusBarColor(1, 0, 0)  -- Red color
-        self.HealthBar:SetOrientation("VERTICAL")
-        self.HealthBar:SetMinMaxValues(0, UnitHealthMax("player"))
-        self.HealthBar:SetValue(UnitHealth("player"))
-    else
-        print("Error: HealthBar not found.")
-    end
+    -- Create the body image
+    self.BodyImage = self:CreateTexture(nil, "BACKGROUND")
+    self.BodyImage:SetSize(300, 500)
+    self.BodyImage:SetPoint("CENTER")
+    self.BodyImage:SetTexture("Interface\\AddOns\\FleshWound\\Textures\\body_image.tga")
 
     -- Create clickable regions on the body
     CreateBodyRegions(self)
@@ -43,27 +36,8 @@ end
 function FleshWound_OnEvent(self, event, arg1, ...)
     if event == "ADDON_LOADED" and arg1 == "FleshWound" then
         ShowWelcomeMessage()
-    elseif (event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH") and arg1 == "player" then
-        UpdateHealth(self)
     elseif event == "PLAYER_ENTERING_WORLD" then
-        UpdateHealth(self)
-    end
-end
-
--- Function to update health
-function UpdateHealth(self)
-    local health = UnitHealth("player")
-    local maxHealth = UnitHealthMax("player")
-    if self.HealthBar then
-        self.HealthBar:SetMinMaxValues(0, maxHealth)
-        self.HealthBar:SetValue(health)
-        if self.HealthBar.Text then
-            self.HealthBar.Text:SetText(health .. " / " .. maxHealth)
-        else
-            print("Error: HealthBar.Text not found.")
-        end
-    else
-        print("Error: HealthBar not found.")
+        -- Additional actions when entering the world
     end
 end
 
@@ -86,14 +60,18 @@ end
 function CreateBodyRegions(self)
     self.BodyRegions = {}
 
-    -- Define regions (example: head, torso, left arm, right arm, left leg, right leg)
+    -- Define regions (example: head, torso, left arm, right arm, left leg, right leg, left hand, right hand, left foot, right foot)
     local regions = {
-        {name = "Head", x = 100, y = 400, width = 100, height = 100},
-        {name = "Torso", x = 100, y = 250, width = 100, height = 150},
-        {name = "LeftArm", x = 50, y = 250, width = 50, height = 150},
-        {name = "RightArm", x = 200, y = 250, width = 50, height = 150},
-        {name = "LeftLeg", x = 100, y = 50, width = 50, height = 200},
-        {name = "RightLeg", x = 150, y = 50, width = 50, height = 200},
+        {name = "Head", x = 127, y = 420, width = 50, height = 75},
+        {name = "Torso", x = 130, y = 275, width = 50, height = 120},
+        {name = "LeftArm", x = 70, y = 300, width = 50, height = 120},
+        {name = "RightArm", x = 185, y = 300, width = 50, height = 120},
+        {name = "LeftHand", x = 40, y = 180, width = 50, height = 100},
+        {name = "RightHand", x = 215, y = 180, width = 50, height = 100},
+        {name = "LeftLeg", x = 100, y = 50, width = 50, height = 130},
+        {name = "RightLeg", x = 155, y = 50, width = 50, height = 130},
+        {name = "LeftFoot", x = 105, y = 0, width = 50, height = 50},
+        {name = "RightFoot", x = 150, y = 0, width = 50, height = 50},
     }
 
     for _, region in ipairs(regions) do
@@ -104,8 +82,30 @@ function CreateBodyRegions(self)
             OpenWoundDialog(region.name, btn)
         end)
         btn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight")
-        btn:SetAlpha(0)  -- Make the button invisible
+        local texture = btn:CreateTexture(nil, "BACKGROUND")
+        texture:SetAllPoints()
+        local colors = {
+            {1, 0, 0, 0.3},  -- Red
+            {0, 1, 0, 0.3},  -- Green
+            {0, 0, 1, 0.3},  -- Blue
+            {1, 1, 0, 0.3},  -- Yellow
+            {1, 0, 1, 0.3},  -- Magenta
+            {0, 1, 1, 0.3},  -- Cyan
+            {1, 0.5, 0, 0.3},  -- Orange
+            {0.5, 0, 0.5, 0.3},  -- Purple
+            {0.5, 0.5, 0.5, 0.3},  -- Gray
+            {0, 0, 0, 0.3}  -- Black
+        }
+        local color = colors[_ % #colors + 1]
+        texture:SetColorTexture(unpack(color))
+        btn:SetAlpha(1)
         self.BodyRegions[region.name] = btn
+
+        -- Create a green dot for debugging the center of the clickable region
+        local debugDot = self:CreateTexture(nil, "OVERLAY")
+        debugDot:SetSize(10, 10)
+        debugDot:SetPoint("CENTER", btn, "CENTER")
+        debugDot:SetColorTexture(0, 1, 0, 1)  -- Green color
     end
 end
 
@@ -113,7 +113,7 @@ end
 function OpenWoundDialog(regionName, button)
     if not FleshWoundDialog then
         local dialog = CreateFrame("Frame", "FleshWoundDialog", UIParent, "BackdropTemplate")
-        dialog:SetSize(300, 200)
+        dialog:SetSize(300, 300)
         dialog:SetPoint("CENTER")
         dialog:SetBackdrop({
             bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -135,26 +135,6 @@ function OpenWoundDialog(regionName, button)
         dialog.EditBox:SetPoint("TOP", dialog.Title, "BOTTOM", 0, -20)
         dialog.EditBox:SetAutoFocus(false)
         dialog.EditBox:SetMaxLetters(200)
-
-        dialog.ColorPicker = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-        dialog.ColorPicker:SetSize(80, 22)
-        dialog.ColorPicker:SetPoint("TOP", dialog.EditBox, "BOTTOM", 0, -10)
-        dialog.ColorPicker:SetText("Set Color")
-        dialog.ColorPicker:SetScript("OnClick", function()
-            ColorPickerFrame:SetColorRGB(1, 0, 0)
-            ColorPickerFrame.hasOpacity = false
-            ColorPickerFrame.previousValues = {1, 0, 0}
-            ColorPickerFrame.func = function()
-                local r, g, b = ColorPickerFrame:GetColorRGB()
-                button:SetBackdropColor(r, g, b, 0.5)
-                button:SetAlpha(0.5)
-                -- Save the color
-                woundData[regionName] = woundData[regionName] or {}
-                woundData[regionName].color = {r, g, b}
-            end
-            ColorPickerFrame:Hide() -- Need to run the OnShow handler.
-            ColorPickerFrame:Show()
-        end)
 
         dialog.SaveButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
         dialog.SaveButton:SetSize(80, 22)
@@ -195,7 +175,6 @@ local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("FleshWound", {
                 FleshWoundFrame:Hide()
             else
                 FleshWoundFrame:Show()
-                UpdateHealth(FleshWoundFrame)
             end
         end
     end,

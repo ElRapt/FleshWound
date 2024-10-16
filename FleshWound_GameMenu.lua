@@ -2,7 +2,21 @@
 -- Handles adding the addon button to the Game Menu
 
 local addonName, addonTable = ...
-local FleshWoundFrame = addonTable.FleshWoundFrame
+
+-- Function to toggle the FleshWoundFrame
+local function ToggleFleshWoundFrame()
+    local FleshWoundFrame = addonTable.FleshWoundFrame
+    if not FleshWoundFrame then
+        print("FleshWoundFrame is not yet initialized.")
+        return
+    end
+
+    if FleshWoundFrame:IsShown() then
+        FleshWoundFrame:Hide()
+    else
+        FleshWoundFrame:Show()
+    end
+end
 
 -- Create minimap button using LibDataBroker and LibDBIcon
 local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("FleshWound", {
@@ -11,11 +25,7 @@ local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("FleshWound", {
     icon = "Interface\\Icons\\INV_Misc_Bandage_01",
     OnClick = function(_, button)
         if button == "LeftButton" then
-            if FleshWoundFrame:IsShown() then
-                FleshWoundFrame:Hide()
-            else
-                FleshWoundFrame:Show()
-            end
+            ToggleFleshWoundFrame()
         end
     end,
     OnTooltipShow = function(tooltip)
@@ -42,11 +52,7 @@ local function AddFleshWoundToGameMenu()
     -- Set the click handler
     btn:SetScript("OnClick", function()
         HideUIPanel(GameMenuFrame)
-        if FleshWoundFrame:IsShown() then
-            FleshWoundFrame:Hide()
-        else
-            FleshWoundFrame:Show()
-        end
+        ToggleFleshWoundFrame()
     end)
 
     -- Adjust the positions of other buttons when GameMenuFrame is shown

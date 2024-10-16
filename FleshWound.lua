@@ -17,11 +17,16 @@ local function OnEvent(self, event, ...)
             addonTable.woundData = FleshWoundData
 
             -- Initialize the main frame
-            FleshWoundFrame = CreateFrame("Frame", "FleshWoundFrame", UIParent, "BackdropTemplate")
+            local FleshWoundFrame = CreateFrame("Frame", "FleshWoundFrame", UIParent, "BackdropTemplate")
             FleshWoundFrame:SetPoint("CENTER")
+            addonTable.FleshWoundFrame = FleshWoundFrame  -- Store in addonTable
 
-            -- Call the OnLoad function, passing in FleshWoundFrame
-            FleshWound_OnLoad(FleshWoundFrame)
+            -- Call the OnLoad function from FleshWound_GUI.lua
+            if FleshWound_OnLoad then
+                FleshWound_OnLoad(FleshWoundFrame)
+            else
+                print("FleshWound_OnLoad function not found in FleshWound_GUI.lua")
+            end
 
             -- Unregister the event after it's handled
             self:UnregisterEvent("ADDON_LOADED")

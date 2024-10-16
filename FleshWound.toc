@@ -3,9 +3,14 @@
 ## Notes: Adds a custom health UI for roleplay purposes
 ## Author: ElRapt
 ## Version: 1.0.0
+## SavedVariables: FleshWoundData
 
 Libs\LibStub\LibStub.lua
 Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
 Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
 
 FleshWound.lua
+FleshWound_Data.lua
+FleshWound_GUI.lua
+FleshWound_Utils.lua
+FleshWound_GameMenu.lua

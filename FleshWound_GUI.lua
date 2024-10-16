@@ -1,12 +1,16 @@
 -- FleshWound_GUI.lua
--- Contains all GUI-related functions with redesigned note window
+-- Contains all GUI-related functions with data persistence and corrected region handling
 
 local addonName, addonTable = ...
-local woundData = addonTable.woundData
-local FleshWoundFrame = addonTable.FleshWoundFrame
+local woundData
+local FleshWoundFrame
 
 -- Function to handle the frame's OnLoad event
 function FleshWound_OnLoad(self)
+    -- Now that the frame is loaded, we can initialize woundData and FleshWoundFrame
+    woundData = addonTable.woundData
+    FleshWoundFrame = self
+
     -- Set the frame size slightly larger than the body image
     self:SetSize(320, 540)
 
@@ -19,6 +23,13 @@ function FleshWound_OnLoad(self)
         edgeSize = 32,
         insets = { left = 11, right = 12, top = 12, bottom = 11 }
     })
+
+    -- Make the frame draggable
+    self:EnableMouse(true)
+    self:SetMovable(true)
+    self:RegisterForDrag("LeftButton")
+    self:SetScript("OnDragStart", FleshWoundFrame_OnDragStart)
+    self:SetScript("OnDragStop", FleshWoundFrame_OnDragStop)
 
     -- Create the body image
     self.BodyImage = self:CreateTexture(nil, "BACKGROUND")
@@ -68,24 +79,25 @@ function CreateBodyRegions(self)
         btn:SetPoint("BOTTOMLEFT", self.BodyImage, "BOTTOMLEFT", region.x, region.y)
 
         btn:SetScript("OnClick", function()
-            OpenWoundDialog(region.name, btn)
+            OpenWoundDialog(region.name)
         end)
 
         -- Set a highlight texture to indicate when the region is hovered over
         btn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight")
 
-        -- Keep the green dot for debugging the center of the clickable region
-        local debugDot = btn:CreateTexture(nil, "OVERLAY")
-        debugDot:SetSize(10, 10)
-        debugDot:SetPoint("CENTER", btn, "CENTER")
-        debugDot:SetColorTexture(0, 1, 0, 1)
+        -- Add the region marker
+        local regionMarker = btn:CreateTexture(nil, "OVERLAY")
+        regionMarker:SetSize(10, 10)
+        regionMarker:SetPoint("CENTER", btn, "CENTER")
+        regionMarker:SetColorTexture(0, 1, 0, 1) -- Green color
+        btn.regionMarker = regionMarker
 
         self.BodyRegions[region.name] = btn
     end
 end
 
 -- Redesigned function to open the wound dialog
-function OpenWoundDialog(regionName, button)
+function OpenWoundDialog(regionName)
     if not FleshWoundDialog then
         local dialog = CreateFrame("Frame", "FleshWoundDialog", UIParent, "BackdropTemplate")
         dialog:SetPoint("CENTER")
@@ -120,7 +132,6 @@ function OpenWoundDialog(regionName, button)
 
         dialog.Title = dialog:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
         dialog.Title:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -15)
-        dialog.Title:SetText("Wound Details - " .. regionName)
 
         -- Create a decorative line under the title
         local titleLine = dialog:CreateTexture(nil, "ARTWORK")
@@ -147,7 +158,7 @@ function OpenWoundDialog(regionName, button)
         dialog.AddNoteButton:SetText("Add Note")
         dialog.AddNoteButton:SetScript("OnClick", function()
             dialog:Hide()
-            OpenAddNoteDialog(regionName)
+            OpenAddNoteDialog(dialog.regionName)
         end)
 
         FleshWoundDialog = dialog
@@ -155,6 +166,8 @@ function OpenWoundDialog(regionName, button)
 
     -- Update the dialog content
     FleshWoundDialog.Title:SetText("Wound Details - " .. regionName)
+    FleshWoundDialog.regionName = regionName  -- Store the current region name
+
     local notes = woundData[regionName]
 
     -- Clear previous entries
@@ -198,7 +211,7 @@ function OpenWoundDialog(regionName, button)
             editButton:SetText("Edit")
             editButton:SetScript("OnClick", function()
                 FleshWoundDialog:Hide()
-                OpenEditNoteDialog(regionName, i)
+                OpenEditNoteDialog(FleshWoundDialog.regionName, i)
             end)
 
             local deleteButton = CreateFrame("Button", nil, entry, "UIPanelButtonTemplate")
@@ -206,9 +219,8 @@ function OpenWoundDialog(regionName, button)
             deleteButton:SetPoint("TOPRIGHT", entry, "TOPRIGHT", -5, -10)
             deleteButton:SetText("Delete")
             deleteButton:SetScript("OnClick", function()
-                table.remove(woundData[regionName], i)
-                FleshWoundData = woundData  -- Save data
-                OpenWoundDialog(regionName) -- Refresh the dialog
+                table.remove(woundData[FleshWoundDialog.regionName], i)
+                OpenWoundDialog(FleshWoundDialog.regionName) -- Refresh the dialog
             end)
 
             table.insert(FleshWoundDialog.NoteEntries, entry)
@@ -262,12 +274,11 @@ function OpenAddNoteDialog(regionName)
         dialog.CloseButton:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -5, -5)
         dialog.CloseButton:SetScript("OnClick", function()
             dialog:Hide()
-            OpenWoundDialog(regionName)
+            OpenWoundDialog(dialog.regionName)
         end)
 
         dialog.Title = dialog:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
         dialog.Title:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -15)
-        dialog.Title:SetText("Add Note - " .. regionName)
 
         -- Create a decorative line under the title
         local titleLine = dialog:CreateTexture(nil, "ARTWORK")
@@ -307,35 +318,38 @@ function OpenAddNoteDialog(regionName)
         dialog.SaveButton:SetSize(100, 30)
         dialog.SaveButton:SetPoint("BOTTOMRIGHT", dialog, "BOTTOM", -10, 15)
         dialog.SaveButton:SetText("Save")
-        dialog.SaveButton:SetScript("OnClick", function()
-            local text = dialog.EditBox:GetText()
-            if text and text ~= "" then
-                woundData[regionName] = woundData[regionName] or {}
-                table.insert(woundData[regionName], { text = text })
-                FleshWoundData = woundData  -- Save data
-            end
-            dialog.EditBox:SetText("")
-            dialog:Hide()
-            OpenWoundDialog(regionName)  -- Reopen the wound dialog to show updated notes
-        end)
 
         dialog.CancelButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
         dialog.CancelButton:SetSize(100, 30)
         dialog.CancelButton:SetPoint("BOTTOMLEFT", dialog, "BOTTOM", 10, 15)
         dialog.CancelButton:SetText("Cancel")
-        dialog.CancelButton:SetScript("OnClick", function()
-            dialog.EditBox:SetText("")
-            dialog:Hide()
-            OpenWoundDialog(regionName)  -- Reopen the wound dialog
-        end)
 
         FleshWoundAddNoteDialog = dialog
     end
 
     FleshWoundAddNoteDialog.Title:SetText("Add Note - " .. regionName)
+    FleshWoundAddNoteDialog.regionName = regionName  -- Store the current region name
     FleshWoundAddNoteDialog.EditBox:SetText("")
     FleshWoundAddNoteDialog:Show()
     FleshWoundAddNoteDialog.EditBox:SetFocus()
+
+    -- Reassign the OnClick handlers to capture the current regionName
+    FleshWoundAddNoteDialog.SaveButton:SetScript("OnClick", function()
+        local text = FleshWoundAddNoteDialog.EditBox:GetText()
+        if text and text ~= "" then
+            woundData[FleshWoundAddNoteDialog.regionName] = woundData[FleshWoundAddNoteDialog.regionName] or {}
+            table.insert(woundData[FleshWoundAddNoteDialog.regionName], { text = text })
+        end
+        FleshWoundAddNoteDialog.EditBox:SetText("")
+        FleshWoundAddNoteDialog:Hide()
+        OpenWoundDialog(FleshWoundAddNoteDialog.regionName)  -- Reopen the wound dialog to show updated notes
+    end)
+
+    FleshWoundAddNoteDialog.CancelButton:SetScript("OnClick", function()
+        FleshWoundAddNoteDialog.EditBox:SetText("")
+        FleshWoundAddNoteDialog:Hide()
+        OpenWoundDialog(FleshWoundAddNoteDialog.regionName)  -- Reopen the wound dialog
+    end)
 end
 
 -- Redesigned function to open the edit note dialog
@@ -370,12 +384,11 @@ function OpenEditNoteDialog(regionName, noteIndex)
         dialog.CloseButton:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -5, -5)
         dialog.CloseButton:SetScript("OnClick", function()
             dialog:Hide()
-            OpenWoundDialog(regionName)
+            OpenWoundDialog(dialog.regionName)
         end)
 
         dialog.Title = dialog:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
         dialog.Title:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -15)
-        dialog.Title:SetText("Edit Note - " .. regionName)
 
         -- Create a decorative line under the title
         local titleLine = dialog:CreateTexture(nil, "ARTWORK")
@@ -415,67 +428,41 @@ function OpenEditNoteDialog(regionName, noteIndex)
         dialog.SaveButton:SetSize(100, 30)
         dialog.SaveButton:SetPoint("BOTTOMRIGHT", dialog, "BOTTOM", -10, 15)
         dialog.SaveButton:SetText("Save")
-        dialog.SaveButton:SetScript("OnClick", function()
-            local text = dialog.EditBox:GetText()
-            if text and text ~= "" then
-                woundData[regionName][noteIndex].text = text
-                FleshWoundData = woundData  -- Save data
-            end
-            dialog.EditBox:SetText("")
-            dialog:Hide()
-            OpenWoundDialog(regionName)  -- Reopen the wound dialog to show updated notes
-        end)
 
         dialog.CancelButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
         dialog.CancelButton:SetSize(100, 30)
         dialog.CancelButton:SetPoint("BOTTOMLEFT", dialog, "BOTTOM", 10, 15)
         dialog.CancelButton:SetText("Cancel")
-        dialog.CancelButton:SetScript("OnClick", function()
-            dialog.EditBox:SetText("")
-            dialog:Hide()
-            OpenWoundDialog(regionName)  -- Reopen the wound dialog
-        end)
 
         FleshWoundEditNoteDialog = dialog
     end
 
     FleshWoundEditNoteDialog.Title:SetText("Edit Note - " .. regionName)
+    FleshWoundEditNoteDialog.regionName = regionName  -- Store the current region name
+    FleshWoundEditNoteDialog.noteIndex = noteIndex    -- Store the current note index
     FleshWoundEditNoteDialog.EditBox:SetText(woundData[regionName][noteIndex].text or "")
     FleshWoundEditNoteDialog:Show()
     FleshWoundEditNoteDialog.EditBox:SetFocus()
+
+    -- Reassign the OnClick handlers to capture the current regionName and noteIndex
+    FleshWoundEditNoteDialog.SaveButton:SetScript("OnClick", function()
+        local text = FleshWoundEditNoteDialog.EditBox:GetText()
+        if text and text ~= "" then
+            woundData[FleshWoundEditNoteDialog.regionName][FleshWoundEditNoteDialog.noteIndex].text = text
+        end
+        FleshWoundEditNoteDialog.EditBox:SetText("")
+        FleshWoundEditNoteDialog:Hide()
+        OpenWoundDialog(FleshWoundEditNoteDialog.regionName)  -- Reopen the wound dialog to show updated notes
+    end)
+
+    FleshWoundEditNoteDialog.CancelButton:SetScript("OnClick", function()
+        FleshWoundEditNoteDialog.EditBox:SetText("")
+        FleshWoundEditNoteDialog:Hide()
+        OpenWoundDialog(FleshWoundEditNoteDialog.regionName)  -- Reopen the wound dialog
+    end)
 end
 
 -- Function to create the addon options panel
 function FleshWound_AddonOptions()
-    local panel = CreateFrame("Frame", "FleshWoundOptionsPanel", UIParent)
-    panel.name = "FleshWound"
-    panel:Hide()
-
-    local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
-    title:SetPoint("TOPLEFT", 16, -16)
-    title:SetText("FleshWound Settings")
-
-    -- Option to hide/show minimap icon
-    local checkbox = CreateFrame("CheckButton", nil, panel, "InterfaceOptionsCheckButtonTemplate")
-    checkbox:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
-    checkbox.Text:SetText("Show Minimap Icon")
-    checkbox:SetChecked(not FleshWoundDB.hide)
-    checkbox:SetScript("OnClick", function(self)
-        FleshWoundDB.hide = not self:GetChecked()
-        if FleshWoundDB.hide then
-            icon:Hide("FleshWound")
-        else
-            icon:Show("FleshWound")
-        end
-    end)
-
-    -- Register the options panel
-    if Settings and Settings.RegisterCanvasLayoutCategory then
-        local category = Settings.RegisterCanvasLayoutCategory(panel, "FleshWound")
-        Settings.RegisterAddOnCategory(category)
-    elseif InterfaceOptions_AddCategory then
-        InterfaceOptions_AddCategory(panel)
-    else
-        print("Error: Could not register options panel.")
-    end
+    -- (Implement options panel as needed)
 end

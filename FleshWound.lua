@@ -1,36 +1,34 @@
 -- FleshWound.lua
--- Main addon file
 
 local addonName, addonTable = ...
-addonTable.addonVersion = "1.0.0"
 
--- Create the main frame for the addon
-local FleshWoundFrame = CreateFrame("Frame", "FleshWoundFrame", UIParent, "BackdropTemplate")
-addonTable.FleshWoundFrame = FleshWoundFrame
-
--- Frame drag functions
-function FleshWoundFrame_OnDragStart(self)
-    self:StartMoving()
-end
-
-function FleshWoundFrame_OnDragStop(self)
-    self:StopMovingOrSizing()
-end
-
--- Initialize the frame
-FleshWoundFrame:SetPoint("CENTER")
-FleshWoundFrame:EnableMouse(true)
-FleshWoundFrame:SetMovable(true)
-FleshWoundFrame:SetScript("OnMouseDown", FleshWoundFrame_OnDragStart)
-FleshWoundFrame:SetScript("OnMouseUp", FleshWoundFrame_OnDragStop)
+-- Create a frame to handle events
+local eventFrame = CreateFrame("Frame")
 
 -- Event handler function
-local function OnEvent(self, event, arg1, ...)
-    if event == "ADDON_LOADED" and arg1 == addonName then
-        FleshWound_OnLoad(self)
-        self:UnregisterEvent("ADDON_LOADED")
+local function OnEvent(self, event, ...)
+    if event == "ADDON_LOADED" then
+        local name = ...
+        if name == addonName then
+            -- Initialize SavedVariables
+            if not FleshWoundData then
+                FleshWoundData = {}
+            end
+            addonTable.woundData = FleshWoundData
+
+            -- Initialize the main frame
+            FleshWoundFrame = CreateFrame("Frame", "FleshWoundFrame", UIParent, "BackdropTemplate")
+            FleshWoundFrame:SetPoint("CENTER")
+
+            -- Call the OnLoad function, passing in FleshWoundFrame
+            FleshWound_OnLoad(FleshWoundFrame)
+
+            -- Unregister the event after it's handled
+            self:UnregisterEvent("ADDON_LOADED")
+        end
     end
 end
 
-FleshWoundFrame:RegisterEvent("ADDON_LOADED")
-FleshWoundFrame:SetScript("OnEvent", OnEvent)
+-- Register events
+eventFrame:RegisterEvent("ADDON_LOADED")
+eventFrame:SetScript("OnEvent", OnEvent)

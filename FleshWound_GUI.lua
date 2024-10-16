@@ -1,5 +1,5 @@
 -- FleshWound_GUI.lua
--- Contains all GUI-related functions
+-- Contains all GUI-related functions with redesigned note window
 
 local addonName, addonTable = ...
 local woundData = addonTable.woundData
@@ -7,11 +7,6 @@ local FleshWoundFrame = addonTable.FleshWoundFrame
 
 -- Function to handle the frame's OnLoad event
 function FleshWound_OnLoad(self)
-    self:RegisterEvent("ADDON_LOADED")
-    self:SetScript("OnEvent", FleshWound_OnEvent)
-    self:SetClampedToScreen(true)
-    self:RegisterForDrag("LeftButton")
-
     -- Set the frame size slightly larger than the body image
     self:SetSize(320, 540)
 
@@ -89,54 +84,70 @@ function CreateBodyRegions(self)
     end
 end
 
--- Function to open the wound dialog
+-- Redesigned function to open the wound dialog
 function OpenWoundDialog(regionName, button)
     if not FleshWoundDialog then
         local dialog = CreateFrame("Frame", "FleshWoundDialog", UIParent, "BackdropTemplate")
         dialog:SetPoint("CENTER")
-        dialog:SetSize(400, 300)  -- Set default size
+        dialog:SetSize(550, 500)
         dialog:SetBackdrop({
-            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",  -- Blizzard default background
+            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
             edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
             tile = true,
             tileSize = 32,
-            edgeSize = 32,
-            insets = { left = 11, right = 12, top = 12, bottom = 11 }
+            edgeSize = 24,
+            insets = { left = 5, right = 5, top = 5, bottom = 5 }
         })
         dialog:SetFrameStrata("DIALOG")
-        dialog:Hide()
+
+        -- Make the dialog draggable
+        dialog:EnableMouse(true)
+        dialog:SetMovable(true)
+        dialog:RegisterForDrag("LeftButton")
+        dialog:SetScript("OnDragStart", function(self)
+            self:StartMoving()
+        end)
+        dialog:SetScript("OnDragStop", function(self)
+            self:StopMovingOrSizing()
+        end)
+
+        -- Close Button
+        dialog.CloseButton = CreateFrame("Button", nil, dialog, "UIPanelCloseButton")
+        dialog.CloseButton:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -5, -5)
+        dialog.CloseButton:SetScript("OnClick", function()
+            dialog:Hide()
+        end)
 
         dialog.Title = dialog:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-        dialog.Title:SetPoint("TOP", 0, -16)
-        dialog.Title:SetText("Wound Details")
+        dialog.Title:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -15)
+        dialog.Title:SetText("Wound Details - " .. regionName)
+
+        -- Create a decorative line under the title
+        local titleLine = dialog:CreateTexture(nil, "ARTWORK")
+        titleLine:SetHeight(2)
+        titleLine:SetPoint("TOPLEFT", dialog.Title, "BOTTOMLEFT", 0, -10)
+        titleLine:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -15, -40)
+        titleLine:SetColorTexture(1, 1, 1, 0.2)
 
         -- ScrollFrame to display notes
         dialog.ScrollFrame = CreateFrame("ScrollFrame", nil, dialog, "UIPanelScrollFrameTemplate")
-        dialog.ScrollFrame:SetPoint("TOPLEFT", dialog.Title, "BOTTOMLEFT", 0, -10)
-        dialog.ScrollFrame:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -30, 60)
+        dialog.ScrollFrame:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
+        dialog.ScrollFrame:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -35, 60)
 
         dialog.ScrollChild = CreateFrame("Frame", nil, dialog.ScrollFrame)
-        dialog.ScrollChild:SetSize(1, 1)
+        dialog.ScrollChild:SetSize(dialog.ScrollFrame:GetWidth(), 1)
         dialog.ScrollFrame:SetScrollChild(dialog.ScrollChild)
 
         -- Placeholder for note entries
         dialog.NoteEntries = {}
 
         dialog.AddNoteButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-        dialog.AddNoteButton:SetSize(100, 22)
-        dialog.AddNoteButton:SetPoint("BOTTOMLEFT", dialog, "BOTTOMLEFT", 20, 20)
-        dialog.AddNoteButton:SetText("Add a Note")
+        dialog.AddNoteButton:SetSize(120, 30)
+        dialog.AddNoteButton:SetPoint("BOTTOMLEFT", dialog, "BOTTOMLEFT", 15, 15)
+        dialog.AddNoteButton:SetText("Add Note")
         dialog.AddNoteButton:SetScript("OnClick", function()
             dialog:Hide()
             OpenAddNoteDialog(regionName)
-        end)
-
-        dialog.CloseButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-        dialog.CloseButton:SetSize(80, 22)
-        dialog.CloseButton:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -20, 20)
-        dialog.CloseButton:SetText("Close")
-        dialog.CloseButton:SetScript("OnClick", function()
-            dialog:Hide()
         end)
 
         FleshWoundDialog = dialog
@@ -155,19 +166,35 @@ function OpenWoundDialog(regionName, button)
     if notes and #notes > 0 then
         local yOffset = -10
         for i, note in ipairs(notes) do
-            local entry = CreateFrame("Frame", nil, FleshWoundDialog.ScrollChild)
-            entry:SetSize(340, 30)
-            entry:SetPoint("TOPLEFT", 0, yOffset)
+            local entry = CreateFrame("Frame", nil, FleshWoundDialog.ScrollChild, "BackdropTemplate")
+            entry:SetWidth(FleshWoundDialog.ScrollChild:GetWidth() - 20)
+            entry:SetPoint("TOPLEFT", 10, yOffset)
+            entry:SetBackdrop({
+                bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+                edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+                tile = false,
+                tileSize = 0,
+                edgeSize = 14,
+                insets = { left = 4, right = 4, top = 4, bottom = 4 }
+            })
+            entry:SetBackdropColor(0, 0, 0, 0.5)
+            entry:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
 
-            local noteText = entry:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            noteText:SetPoint("LEFT")
-            noteText:SetWidth(220)
+            local noteText = entry:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            noteText:SetPoint("TOPLEFT", entry, "TOPLEFT", 10, -10)
+            noteText:SetPoint("BOTTOMRIGHT", entry, "BOTTOMRIGHT", -110, 10)
             noteText:SetJustifyH("LEFT")
-            noteText:SetText(i .. ". " .. note.text)
+            noteText:SetJustifyV("TOP")
+            noteText:SetText(note.text)
+
+            -- Adjust the height based on the text content
+            local textHeight = noteText:GetStringHeight()
+            local entryHeight = textHeight + 30
+            entry:SetHeight(entryHeight)
 
             local editButton = CreateFrame("Button", nil, entry, "UIPanelButtonTemplate")
             editButton:SetSize(50, 22)
-            editButton:SetPoint("LEFT", noteText, "RIGHT", 5, 0)
+            editButton:SetPoint("TOPRIGHT", entry, "TOPRIGHT", -55, -10)
             editButton:SetText("Edit")
             editButton:SetScript("OnClick", function()
                 FleshWoundDialog:Hide()
@@ -176,7 +203,7 @@ function OpenWoundDialog(regionName, button)
 
             local deleteButton = CreateFrame("Button", nil, entry, "UIPanelButtonTemplate")
             deleteButton:SetSize(60, 22)
-            deleteButton:SetPoint("LEFT", editButton, "RIGHT", 5, 0)
+            deleteButton:SetPoint("TOPRIGHT", entry, "TOPRIGHT", -5, -10)
             deleteButton:SetText("Delete")
             deleteButton:SetScript("OnClick", function()
                 table.remove(woundData[regionName], i)
@@ -185,16 +212,16 @@ function OpenWoundDialog(regionName, button)
             end)
 
             table.insert(FleshWoundDialog.NoteEntries, entry)
-            yOffset = yOffset - 35
+            yOffset = yOffset - (entryHeight + 10)
         end
         -- Adjust the ScrollChild height
         FleshWoundDialog.ScrollChild:SetHeight(-yOffset)
     else
-        local noNotesText = FleshWoundDialog.ScrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        noNotesText:SetPoint("TOPLEFT", 0, -10)
-        noNotesText:SetWidth(340)
-        noNotesText:SetJustifyH("LEFT")
-        noNotesText:SetText("Nothing noteworthy.")
+        local noNotesText = FleshWoundDialog.ScrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        noNotesText:SetPoint("TOPLEFT", 10, -10)
+        noNotesText:SetWidth(FleshWoundDialog.ScrollChild:GetWidth() - 20)
+        noNotesText:SetJustifyH("CENTER")
+        noNotesText:SetText("No notes have been added for this region.")
 
         table.insert(FleshWoundDialog.NoteEntries, noNotesText)
         FleshWoundDialog.ScrollChild:SetHeight(30)
@@ -203,57 +230,101 @@ function OpenWoundDialog(regionName, button)
     FleshWoundDialog:Show()
 end
 
--- Function to open the add note dialog
+-- Redesigned function to open the add note dialog
 function OpenAddNoteDialog(regionName)
     if not FleshWoundAddNoteDialog then
         local dialog = CreateFrame("Frame", "FleshWoundAddNoteDialog", UIParent, "BackdropTemplate")
-        dialog:SetSize(400, 300)
+        dialog:SetSize(500, 400)
         dialog:SetPoint("CENTER")
         dialog:SetBackdrop({
-            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",  -- Blizzard default background
+            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
             edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
             tile = true,
             tileSize = 32,
-            edgeSize = 32,
-            insets = { left = 11, right = 12, top = 12, bottom = 11 }
+            edgeSize = 24,
+            insets = { left = 5, right = 5, top = 5, bottom = 5 }
         })
         dialog:SetFrameStrata("DIALOG")
-        dialog:Hide()
+
+        -- Make the dialog draggable
+        dialog:EnableMouse(true)
+        dialog:SetMovable(true)
+        dialog:RegisterForDrag("LeftButton")
+        dialog:SetScript("OnDragStart", function(self)
+            self:StartMoving()
+        end)
+        dialog:SetScript("OnDragStop", function(self)
+            self:StopMovingOrSizing()
+        end)
+
+        -- Close Button
+        dialog.CloseButton = CreateFrame("Button", nil, dialog, "UIPanelCloseButton")
+        dialog.CloseButton:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -5, -5)
+        dialog.CloseButton:SetScript("OnClick", function()
+            dialog:Hide()
+            OpenWoundDialog(regionName)
+        end)
 
         dialog.Title = dialog:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-        dialog.Title:SetPoint("TOP", 0, -16)
-        dialog.Title:SetText("Add Note")
+        dialog.Title:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -15)
+        dialog.Title:SetText("Add Note - " .. regionName)
 
-        -- Multi-line EditBox
-        dialog.EditBox = CreateFrame("ScrollFrame", nil, dialog, "InputScrollFrameTemplate")
-        dialog.EditBox:SetPoint("TOPLEFT", dialog.Title, "BOTTOMLEFT", 10, -20)
-        dialog.EditBox:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -30, 60)
-        dialog.EditBox.EditBox:SetMaxLetters(1000)
-        dialog.EditBox.EditBox:SetAutoFocus(true)
-        dialog.EditBox.CharCount:Hide()  -- Hide character count if not needed
+        -- Create a decorative line under the title
+        local titleLine = dialog:CreateTexture(nil, "ARTWORK")
+        titleLine:SetHeight(2)
+        titleLine:SetPoint("TOPLEFT", dialog.Title, "BOTTOMLEFT", 0, -10)
+        titleLine:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -15, -40)
+        titleLine:SetColorTexture(1, 1, 1, 0.2)
+
+        -- Create the multi-line EditBox within a ScrollFrame
+        dialog.ScrollFrame = CreateFrame("ScrollFrame", nil, dialog, "UIPanelScrollFrameTemplate")
+        dialog.ScrollFrame:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
+        dialog.ScrollFrame:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -35, 80)
+
+        -- Include "BackdropTemplate" for the EditBox
+        dialog.EditBox = CreateFrame("EditBox", nil, dialog.ScrollFrame, "BackdropTemplate")
+        dialog.EditBox:SetMultiLine(true)
+        dialog.EditBox:SetFontObject("ChatFontNormal")
+        dialog.EditBox:SetMaxLetters(2000)
+        dialog.EditBox:SetAutoFocus(true)
+        dialog.EditBox:SetWidth(dialog.ScrollFrame:GetWidth())
+        dialog.EditBox:SetTextInsets(10, 10, 10, 10)
+        dialog.EditBox:SetBackdrop({
+            bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+            edgeFile = nil,
+            tile = false,
+            tileSize = 0,
+            edgeSize = 0,
+            insets = { left = 0, right = 0, top = 0, bottom = 0 }
+        })
+        dialog.EditBox:SetBackdropColor(0, 0, 0, 0.5)
+        dialog.EditBox:SetScript("OnEscapePressed", function(self)
+            self:ClearFocus()
+        end)
+        dialog.ScrollFrame:SetScrollChild(dialog.EditBox)
 
         dialog.SaveButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-        dialog.SaveButton:SetSize(80, 22)
-        dialog.SaveButton:SetPoint("BOTTOM", dialog, "BOTTOM", -50, 20)
+        dialog.SaveButton:SetSize(100, 30)
+        dialog.SaveButton:SetPoint("BOTTOMRIGHT", dialog, "BOTTOM", -10, 15)
         dialog.SaveButton:SetText("Save")
         dialog.SaveButton:SetScript("OnClick", function()
-            local text = dialog.EditBox.EditBox:GetText()
+            local text = dialog.EditBox:GetText()
             if text and text ~= "" then
                 woundData[regionName] = woundData[regionName] or {}
                 table.insert(woundData[regionName], { text = text })
                 FleshWoundData = woundData  -- Save data
             end
-            dialog.EditBox.EditBox:SetText("")
+            dialog.EditBox:SetText("")
             dialog:Hide()
             OpenWoundDialog(regionName)  -- Reopen the wound dialog to show updated notes
         end)
 
         dialog.CancelButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-        dialog.CancelButton:SetSize(80, 22)
-        dialog.CancelButton:SetPoint("BOTTOM", dialog, "BOTTOM", 50, 20)
+        dialog.CancelButton:SetSize(100, 30)
+        dialog.CancelButton:SetPoint("BOTTOMLEFT", dialog, "BOTTOM", 10, 15)
         dialog.CancelButton:SetText("Cancel")
         dialog.CancelButton:SetScript("OnClick", function()
-            dialog.EditBox.EditBox:SetText("")
+            dialog.EditBox:SetText("")
             dialog:Hide()
             OpenWoundDialog(regionName)  -- Reopen the wound dialog
         end)
@@ -262,61 +333,105 @@ function OpenAddNoteDialog(regionName)
     end
 
     FleshWoundAddNoteDialog.Title:SetText("Add Note - " .. regionName)
-    FleshWoundAddNoteDialog.EditBox.EditBox:SetText("")
+    FleshWoundAddNoteDialog.EditBox:SetText("")
     FleshWoundAddNoteDialog:Show()
-    FleshWoundAddNoteDialog.EditBox.EditBox:SetFocus()
+    FleshWoundAddNoteDialog.EditBox:SetFocus()
 end
 
--- Function to open the edit note dialog
+-- Redesigned function to open the edit note dialog
 function OpenEditNoteDialog(regionName, noteIndex)
     if not FleshWoundEditNoteDialog then
         local dialog = CreateFrame("Frame", "FleshWoundEditNoteDialog", UIParent, "BackdropTemplate")
-        dialog:SetSize(400, 300)
+        dialog:SetSize(500, 400)
         dialog:SetPoint("CENTER")
         dialog:SetBackdrop({
-            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",  -- Blizzard default background
+            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
             edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
             tile = true,
             tileSize = 32,
-            edgeSize = 32,
-            insets = { left = 11, right = 12, top = 12, bottom = 11 }
+            edgeSize = 24,
+            insets = { left = 5, right = 5, top = 5, bottom = 5 }
         })
         dialog:SetFrameStrata("DIALOG")
-        dialog:Hide()
+
+        -- Make the dialog draggable
+        dialog:EnableMouse(true)
+        dialog:SetMovable(true)
+        dialog:RegisterForDrag("LeftButton")
+        dialog:SetScript("OnDragStart", function(self)
+            self:StartMoving()
+        end)
+        dialog:SetScript("OnDragStop", function(self)
+            self:StopMovingOrSizing()
+        end)
+
+        -- Close Button
+        dialog.CloseButton = CreateFrame("Button", nil, dialog, "UIPanelCloseButton")
+        dialog.CloseButton:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -5, -5)
+        dialog.CloseButton:SetScript("OnClick", function()
+            dialog:Hide()
+            OpenWoundDialog(regionName)
+        end)
 
         dialog.Title = dialog:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-        dialog.Title:SetPoint("TOP", 0, -16)
-        dialog.Title:SetText("Edit Note")
+        dialog.Title:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -15)
+        dialog.Title:SetText("Edit Note - " .. regionName)
 
-        -- Multi-line EditBox
-        dialog.EditBox = CreateFrame("ScrollFrame", nil, dialog, "InputScrollFrameTemplate")
-        dialog.EditBox:SetPoint("TOPLEFT", dialog.Title, "BOTTOMLEFT", 10, -20)
-        dialog.EditBox:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -30, 60)
-        dialog.EditBox.EditBox:SetMaxLetters(1000)
-        dialog.EditBox.EditBox:SetAutoFocus(true)
-        dialog.EditBox.CharCount:Hide()  -- Hide character count if not needed
+        -- Create a decorative line under the title
+        local titleLine = dialog:CreateTexture(nil, "ARTWORK")
+        titleLine:SetHeight(2)
+        titleLine:SetPoint("TOPLEFT", dialog.Title, "BOTTOMLEFT", 0, -10)
+        titleLine:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -15, -40)
+        titleLine:SetColorTexture(1, 1, 1, 0.2)
+
+        -- Create the multi-line EditBox within a ScrollFrame
+        dialog.ScrollFrame = CreateFrame("ScrollFrame", nil, dialog, "UIPanelScrollFrameTemplate")
+        dialog.ScrollFrame:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
+        dialog.ScrollFrame:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -35, 80)
+
+        -- Include "BackdropTemplate" for the EditBox
+        dialog.EditBox = CreateFrame("EditBox", nil, dialog.ScrollFrame, "BackdropTemplate")
+        dialog.EditBox:SetMultiLine(true)
+        dialog.EditBox:SetFontObject("ChatFontNormal")
+        dialog.EditBox:SetMaxLetters(2000)
+        dialog.EditBox:SetAutoFocus(true)
+        dialog.EditBox:SetWidth(dialog.ScrollFrame:GetWidth())
+        dialog.EditBox:SetTextInsets(10, 10, 10, 10)
+        dialog.EditBox:SetBackdrop({
+            bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+            edgeFile = nil,
+            tile = false,
+            tileSize = 0,
+            edgeSize = 0,
+            insets = { left = 0, right = 0, top = 0, bottom = 0 }
+        })
+        dialog.EditBox:SetBackdropColor(0, 0, 0, 0.5)
+        dialog.EditBox:SetScript("OnEscapePressed", function(self)
+            self:ClearFocus()
+        end)
+        dialog.ScrollFrame:SetScrollChild(dialog.EditBox)
 
         dialog.SaveButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-        dialog.SaveButton:SetSize(80, 22)
-        dialog.SaveButton:SetPoint("BOTTOM", dialog, "BOTTOM", -50, 20)
+        dialog.SaveButton:SetSize(100, 30)
+        dialog.SaveButton:SetPoint("BOTTOMRIGHT", dialog, "BOTTOM", -10, 15)
         dialog.SaveButton:SetText("Save")
         dialog.SaveButton:SetScript("OnClick", function()
-            local text = dialog.EditBox.EditBox:GetText()
+            local text = dialog.EditBox:GetText()
             if text and text ~= "" then
                 woundData[regionName][noteIndex].text = text
                 FleshWoundData = woundData  -- Save data
             end
-            dialog.EditBox.EditBox:SetText("")
+            dialog.EditBox:SetText("")
             dialog:Hide()
             OpenWoundDialog(regionName)  -- Reopen the wound dialog to show updated notes
         end)
 
         dialog.CancelButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-        dialog.CancelButton:SetSize(80, 22)
-        dialog.CancelButton:SetPoint("BOTTOM", dialog, "BOTTOM", 50, 20)
+        dialog.CancelButton:SetSize(100, 30)
+        dialog.CancelButton:SetPoint("BOTTOMLEFT", dialog, "BOTTOM", 10, 15)
         dialog.CancelButton:SetText("Cancel")
         dialog.CancelButton:SetScript("OnClick", function()
-            dialog.EditBox.EditBox:SetText("")
+            dialog.EditBox:SetText("")
             dialog:Hide()
             OpenWoundDialog(regionName)  -- Reopen the wound dialog
         end)
@@ -325,9 +440,9 @@ function OpenEditNoteDialog(regionName, noteIndex)
     end
 
     FleshWoundEditNoteDialog.Title:SetText("Edit Note - " .. regionName)
-    FleshWoundEditNoteDialog.EditBox.EditBox:SetText(woundData[regionName][noteIndex].text or "")
+    FleshWoundEditNoteDialog.EditBox:SetText(woundData[regionName][noteIndex].text or "")
     FleshWoundEditNoteDialog:Show()
-    FleshWoundEditNoteDialog.EditBox.EditBox:SetFocus()
+    FleshWoundEditNoteDialog.EditBox:SetFocus()
 end
 
 -- Function to create the addon options panel

@@ -31,6 +31,17 @@ function FleshWound_OnLoad(self)
     self:SetScript("OnDragStart", FleshWoundFrame_OnDragStart)
     self:SetScript("OnDragStop", FleshWoundFrame_OnDragStop)
 
+    -- **Added Close Button to the Main Window**
+    -- Close Button for the main window
+    self.CloseButton = CreateFrame("Button", nil, self, "UIPanelCloseButton")
+    self.CloseButton:SetPoint("TOPRIGHT", self, "TOPRIGHT", -5, -5)
+    self.CloseButton:SetScript("OnClick", function()
+        self:Hide()
+    end)
+
+    -- **Bind the main window to the ESC key**
+    table.insert(UISpecialFrames, self:GetName())
+
     -- Create the body image
     self.BodyImage = self:CreateTexture(nil, "BACKGROUND")
     self.BodyImage:SetSize(300, 500)
@@ -129,6 +140,9 @@ function OpenWoundDialog(regionName)
         dialog.CloseButton:SetScript("OnClick", function()
             dialog:Hide()
         end)
+
+        -- **Bind the dialog to the ESC key**
+        table.insert(UISpecialFrames, dialog:GetName())
 
         dialog.Title = dialog:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
         dialog.Title:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -15)
@@ -246,7 +260,7 @@ end
 function OpenAddNoteDialog(regionName)
     if not FleshWoundAddNoteDialog then
         local dialog = CreateFrame("Frame", "FleshWoundAddNoteDialog", UIParent, "BackdropTemplate")
-        dialog:SetSize(500, 400)
+        dialog:SetSize(400, 300)
         dialog:SetPoint("CENTER")
         dialog:SetBackdrop({
             bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -277,6 +291,9 @@ function OpenAddNoteDialog(regionName)
             OpenWoundDialog(dialog.regionName)
         end)
 
+        -- **Bind the dialog to the ESC key**
+        table.insert(UISpecialFrames, dialog:GetName())
+
         dialog.Title = dialog:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
         dialog.Title:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -15)
 
@@ -290,7 +307,7 @@ function OpenAddNoteDialog(regionName)
         -- Create the multi-line EditBox within a ScrollFrame
         dialog.ScrollFrame = CreateFrame("ScrollFrame", nil, dialog, "UIPanelScrollFrameTemplate")
         dialog.ScrollFrame:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
-        dialog.ScrollFrame:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -35, 80)
+        dialog.ScrollFrame:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -35, 60)
 
         -- Include "BackdropTemplate" for the EditBox
         dialog.EditBox = CreateFrame("EditBox", nil, dialog.ScrollFrame, "BackdropTemplate")
@@ -315,12 +332,12 @@ function OpenAddNoteDialog(regionName)
         dialog.ScrollFrame:SetScrollChild(dialog.EditBox)
 
         dialog.SaveButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-        dialog.SaveButton:SetSize(100, 30)
+        dialog.SaveButton:SetSize(80, 24)
         dialog.SaveButton:SetPoint("BOTTOMRIGHT", dialog, "BOTTOM", -10, 15)
         dialog.SaveButton:SetText("Save")
 
         dialog.CancelButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-        dialog.CancelButton:SetSize(100, 30)
+        dialog.CancelButton:SetSize(80, 24)
         dialog.CancelButton:SetPoint("BOTTOMLEFT", dialog, "BOTTOM", 10, 15)
         dialog.CancelButton:SetText("Cancel")
 
@@ -356,7 +373,7 @@ end
 function OpenEditNoteDialog(regionName, noteIndex)
     if not FleshWoundEditNoteDialog then
         local dialog = CreateFrame("Frame", "FleshWoundEditNoteDialog", UIParent, "BackdropTemplate")
-        dialog:SetSize(500, 400)
+        dialog:SetSize(400, 300)
         dialog:SetPoint("CENTER")
         dialog:SetBackdrop({
             bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -387,6 +404,9 @@ function OpenEditNoteDialog(regionName, noteIndex)
             OpenWoundDialog(dialog.regionName)
         end)
 
+        -- **Bind the dialog to the ESC key**
+        table.insert(UISpecialFrames, dialog:GetName())
+
         dialog.Title = dialog:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
         dialog.Title:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -15)
 
@@ -400,7 +420,7 @@ function OpenEditNoteDialog(regionName, noteIndex)
         -- Create the multi-line EditBox within a ScrollFrame
         dialog.ScrollFrame = CreateFrame("ScrollFrame", nil, dialog, "UIPanelScrollFrameTemplate")
         dialog.ScrollFrame:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
-        dialog.ScrollFrame:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -35, 80)
+        dialog.ScrollFrame:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -35, 60)
 
         -- Include "BackdropTemplate" for the EditBox
         dialog.EditBox = CreateFrame("EditBox", nil, dialog.ScrollFrame, "BackdropTemplate")
@@ -425,12 +445,12 @@ function OpenEditNoteDialog(regionName, noteIndex)
         dialog.ScrollFrame:SetScrollChild(dialog.EditBox)
 
         dialog.SaveButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-        dialog.SaveButton:SetSize(100, 30)
+        dialog.SaveButton:SetSize(80, 24)
         dialog.SaveButton:SetPoint("BOTTOMRIGHT", dialog, "BOTTOM", -10, 15)
         dialog.SaveButton:SetText("Save")
 
         dialog.CancelButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-        dialog.CancelButton:SetSize(100, 30)
+        dialog.CancelButton:SetSize(80, 24)
         dialog.CancelButton:SetPoint("BOTTOMLEFT", dialog, "BOTTOM", 10, 15)
         dialog.CancelButton:SetText("Cancel")
 

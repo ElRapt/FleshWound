@@ -31,7 +31,6 @@ function FleshWound_OnLoad(self)
     self:SetScript("OnDragStart", FleshWoundFrame_OnDragStart)
     self:SetScript("OnDragStop", FleshWoundFrame_OnDragStop)
 
-    -- **Added Close Button to the Main Window**
     -- Close Button for the main window
     self.CloseButton = CreateFrame("Button", nil, self, "UIPanelCloseButton")
     self.CloseButton:SetPoint("TOPRIGHT", self, "TOPRIGHT", -5, -5)
@@ -39,13 +38,42 @@ function FleshWound_OnLoad(self)
         self:Hide()
     end)
 
-    -- **Bind the main window to the ESC key**
+    -- Bind the main window to the ESC key
     table.insert(UISpecialFrames, self:GetName())
+
+    -- Create a frame to act as the border for the head model
+    self.HeadFrame = CreateFrame("Frame", nil, self, "BackdropTemplate")
+    self.HeadFrame:SetSize(80, 80)  -- Adjust size as needed
+    self.HeadFrame:SetPoint("TOPLEFT", self, "TOPLEFT", 15, -15)  -- Original position
+    self.HeadFrame:SetBackdrop({
+        bgFile = nil,
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        edgeSize = 12,
+        insets = { left = 2, right = 2, top = 2, bottom = 2 },
+    })
+    self.HeadFrame:SetBackdropBorderColor(1, 1, 1, 1)  -- White border
+    self.HeadFrame:SetBackdropColor(0, 0, 0, 0)  -- Transparent background
+
+    -- Add PlayerModel to display the player's head inside the HeadFrame
+    self.PlayerHeadModel = CreateFrame("PlayerModel", nil, self.HeadFrame)
+    self.PlayerHeadModel:SetSize(76, 76)  -- Slightly smaller to fit inside the border
+    self.PlayerHeadModel:SetPoint("CENTER", self.HeadFrame, "CENTER", 0, 0)
+
+    -- Load the player's model
+    self.PlayerHeadModel:SetUnit("player")
+
+    -- Adjust camera to focus on the head
+    self.PlayerHeadModel:SetPortraitZoom(1)  -- Zoom in on the face
+    self.PlayerHeadModel:SetCamDistanceScale(0.9)  -- Adjust camera distance
+
+    -- Adjust position to center the head more to the right within the frame
+    self.PlayerHeadModel:SetPosition(0, 0.03, 0)  -- Shift the model to the right
+    self.PlayerHeadModel:SetRotation(0)  -- Adjust rotation if needed
 
     -- Create the body image
     self.BodyImage = self:CreateTexture(nil, "BACKGROUND")
     self.BodyImage:SetSize(300, 500)
-    self.BodyImage:SetPoint("CENTER")
+    self.BodyImage:SetPoint("CENTER", self, "CENTER", 0, 0)  -- Original position
     self.BodyImage:SetTexture("Interface\\AddOns\\FleshWound\\Textures\\body_image.tga")
 
     -- Create clickable regions on the body
@@ -68,7 +96,7 @@ end
 function CreateBodyRegions(self)
     self.BodyRegions = {}
 
-    -- Define regions
+    -- Define regions (positions reset to original)
     local regions = {
         {name = "Head", x = 130, y = 420, width = 50, height = 75},
         {name = "Torso", x = 130, y = 275, width = 50, height = 120},

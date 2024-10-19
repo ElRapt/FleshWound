@@ -7,19 +7,29 @@ local FleshWoundFrame
 
 -- Define severities and their colors
 local severities = {
-    { name = "None", color = {0, 0, 0, 0.0} },               -- Transparent
-    { name = "Unknown", color = {0.5, 0.5, 0.5, 0.4} },   -- Grey, 40% opacity
-    { name = "Benign", color = {0, 1, 0, 0.4} },          -- Green, 40% opacity
-    { name = "Moderate", color = {1, 1, 0, 0.4} },        -- Yellow, 40% opacity
-    { name = "Severe", color = {1, 0.5, 0, 0.4} },        -- Orange, 40% opacity
-    { name = "Critical", color = {1, 0, 0, 0.4} },        -- Red, 40% opacity
-    { name = "Deadly", color = {0.6, 0, 0.6, 0.4} }    -- Purple, 40% opacity
+    { name = "None", color = {0, 0, 0, 0.0} },             -- Transparent
+    { name = "Unknown", color = {0.5, 0.5, 0.5, 0.4} },    -- Grey, 40% opacity
+    { name = "Benign", color = {0, 1, 0, 0.4} },           -- Green, 40% opacity
+    { name = "Moderate", color = {1, 1, 0, 0.4} },         -- Yellow, 40% opacity
+    { name = "Severe", color = {1, 0.5, 0, 0.4} },         -- Orange, 40% opacity
+    { name = "Critical", color = {1, 0, 0, 0.4} },         -- Red, 40% opacity
+    { name = "Deadly", color = {0.5, 0, 0, 0.4} },         -- Dark Red, 40% opacity
+}
 
+-- Severity levels mapping for comparison
+local severityLevels = {
+    ["None"] = -1,
+    ["Unknown"] = 0,
+    ["Benign"] = 1,
+    ["Moderate"] = 2,
+    ["Severe"] = 3,
+    ["Critical"] = 4,
+    ["Deadly"] = 5,
 }
 
 -- Function to handle the frame's OnLoad event
 function FleshWound_OnLoad(self)
-    -- Now that the frame is loaded, we can initialize woundData and FleshWoundFrame
+    -- Initialize woundData and FleshWoundFrame
     woundData = addonTable.woundData or {}
     FleshWoundFrame = self
 
@@ -40,8 +50,8 @@ function FleshWound_OnLoad(self)
     self:EnableMouse(true)
     self:SetMovable(true)
     self:RegisterForDrag("LeftButton")
-    self:SetScript("OnDragStart", FleshWoundFrame_OnDragStart)
-    self:SetScript("OnDragStop", FleshWoundFrame_OnDragStop)
+    self:SetScript("OnDragStart", self.StartMoving)
+    self:SetScript("OnDragStop", self.StopMovingOrSizing)
 
     -- Close Button for the main window
     self.CloseButton = CreateFrame("Button", nil, self, "UIPanelCloseButton")
@@ -53,9 +63,6 @@ function FleshWound_OnLoad(self)
     -- Bind the main window to the ESC key
     table.insert(UISpecialFrames, self:GetName())
 
-    -- Create the player head frame and model
-    -- (Your existing code for the head frame remains the same)
-
     -- Create the body image
     self.BodyImage = self:CreateTexture(nil, "BACKGROUND")
     self.BodyImage:SetSize(300, 500)
@@ -65,27 +72,18 @@ function FleshWound_OnLoad(self)
     -- Create clickable regions on the body
     CreateBodyRegions(self)
 
-    -- Set up the options panel
+    -- Set up the options panel (if needed)
     FleshWound_AddonOptions()
 
     -- Update region colors based on the severities of their notes
     UpdateRegionColors()
 end
 
--- Frame drag functions
-function FleshWoundFrame_OnDragStart(self)
-    self:StartMoving()
-end
-
-function FleshWoundFrame_OnDragStop(self)
-    self:StopMovingOrSizing()
-end
-
 -- Function to create clickable regions on the body image
 function CreateBodyRegions(self)
     self.BodyRegions = {}
 
-    -- Define regions (positions reset to original)
+    -- Define regions
     local regions = {
         {name = "Head", x = 130, y = 420, width = 50, height = 75},
         {name = "Torso", x = 130, y = 275, width = 50, height = 120},
@@ -149,18 +147,6 @@ function GetHighestSeverity(regionName)
         return "None"
     end
 
-    -- Map severities to numerical values for comparison
-    local severityLevels = {
-        ["None"] = -1,
-        ["Unknown"] = 0,
-        ["Benign"] = 1,
-        ["Moderate"] = 2,
-        ["Severe"] = 3,
-        ["Critical"] = 4,
-        ["Deadly"] = 5,
-
-    }
-
     local highestLevel = -1
     local highestSeverity = "None"
 
@@ -186,80 +172,265 @@ function GetSeverityColor(severityName)
     return {0, 0, 0, 0.0}
 end
 
+-- Function to create common dialog frames
+function CreateDialog(name, titleText, width, height)
+    local dialog = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
+    dialog:SetSize(width, height)
+    dialog:SetPoint("CENTER")
+    dialog:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true,
+        tileSize = 32,
+        edgeSize = 24,
+        insets = { left = 5, right = 5, top = 5, bottom = 5 }
+    })
+    dialog:SetFrameStrata("DIALOG")
+
+    -- Make the dialog draggable
+    dialog:EnableMouse(true)
+    dialog:SetMovable(true)
+    dialog:RegisterForDrag("LeftButton")
+    dialog:SetScript("OnDragStart", dialog.StartMoving)
+    dialog:SetScript("OnDragStop", dialog.StopMovingOrSizing)
+
+    -- Close Button
+    dialog.CloseButton = CreateFrame("Button", nil, dialog, "UIPanelCloseButton")
+    dialog.CloseButton:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -5, -5)
+    dialog.CloseButton:SetScript("OnClick", function()
+        dialog:Hide()
+    end)
+
+    -- Bind the dialog to the ESC key
+    table.insert(UISpecialFrames, dialog:GetName())
+
+    -- Title
+    dialog.Title = dialog:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
+    dialog.Title:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -15)
+    dialog.Title:SetText(titleText)
+
+    -- Decorative line under the title
+    local titleLine = dialog:CreateTexture(nil, "ARTWORK")
+    titleLine:SetHeight(2)
+    titleLine:SetPoint("TOPLEFT", dialog.Title, "BOTTOMLEFT", 0, -10)
+    titleLine:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -15, -40)
+    titleLine:SetColorTexture(1, 1, 1, 0.2)
+
+    return dialog
+end
+
+-- Function to create severity dropdown menus
+function CreateSeverityDropdown(parent)
+    -- Severity Label
+    local severityLabel = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    severityLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", 15, -60)
+    severityLabel:SetText("Severity:")
+
+    -- Severity Dropdown Menu
+    local severityDropdown = CreateFrame("Frame", nil, parent, "UIDropDownMenuTemplate")
+    severityDropdown:SetPoint("LEFT", severityLabel, "RIGHT", -10, -3)
+    UIDropDownMenu_SetWidth(severityDropdown, 150)
+
+    severityDropdown.initialize = function(self, level)
+        local info
+        for _, sev in ipairs(severities) do
+            info = UIDropDownMenu_CreateInfo()
+            info.text = sev.name
+            info.arg1 = sev.name
+            info.func = function(self, arg1)
+                UIDropDownMenu_SetSelectedName(severityDropdown, arg1)
+                parent.selectedSeverity = arg1
+            end
+            info.checked = (sev.name == (parent.selectedSeverity or "Unknown"))
+            UIDropDownMenu_AddButton(info)
+        end
+    end
+
+    return severityLabel, severityDropdown
+end
+
+-- Function to create the edit box with character count
+function CreateEditBoxWithCounter(parent, maxChars)
+    -- ScrollFrame for the EditBox
+    local scrollFrame = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", parent.SeverityLabel, "BOTTOMLEFT", 0, -20)
+    scrollFrame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -35, 100)
+
+    -- EditBox
+    local editBox = CreateFrame("EditBox", nil, scrollFrame, "BackdropTemplate")
+    editBox:SetMultiLine(true)
+    editBox:SetFontObject("ChatFontNormal")
+    editBox:SetMaxLetters(maxChars)
+    editBox:SetAutoFocus(true)
+    editBox:SetWidth(scrollFrame:GetWidth())
+    editBox:SetTextInsets(10, 10, 10, 10)
+    editBox:SetBackdrop({
+        bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+        edgeFile = nil,
+        tile = false,
+        tileSize = 0,
+        edgeSize = 0,
+        insets = { left = 0, right = 0, top = 0, bottom = 0 }
+    })
+    editBox:SetBackdropColor(0, 0, 0, 0.5)
+    editBox:SetScript("OnEscapePressed", function(self)
+        self:ClearFocus()
+    end)
+    scrollFrame:SetScrollChild(editBox)
+
+    -- Character Count Label
+    local charCountLabel = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    charCountLabel:SetPoint("BOTTOMLEFT", scrollFrame, "BOTTOMLEFT", 0, -5)
+    charCountLabel:SetText("0 / " .. maxChars)
+
+    -- Update character count on text change
+    editBox:SetScript("OnTextChanged", function(self)
+        local text = self:GetText()
+        local length = strlenutf8(text)
+        charCountLabel:SetText(length .. " / " .. maxChars)
+    end)
+
+    return scrollFrame, editBox, charCountLabel
+end
+
+-- Function to create Save and Cancel buttons
+function CreateSaveCancelButtons(parent)
+    local saveButton = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    saveButton:SetSize(80, 24)
+    saveButton:SetPoint("BOTTOMRIGHT", parent, "BOTTOM", -10, 15)
+    saveButton:SetText("Save")
+
+    local cancelButton = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    cancelButton:SetSize(80, 24)
+    cancelButton:SetPoint("BOTTOMLEFT", parent, "BOTTOM", 10, 15)
+    cancelButton:SetText("Cancel")
+
+    return saveButton, cancelButton
+end
+
+-- Function to open the Add/Edit Note dialog
+function OpenNoteDialog(regionName, noteIndex)
+    local isEdit = noteIndex ~= nil
+    local dialogName = isEdit and "FleshWoundEditNoteDialog" or "FleshWoundAddNoteDialog"
+    local dialogTitle = (isEdit and "Edit Note - " or "Add Note - ") .. regionName
+    local maxChars = 125
+
+    local dialog = _G[dialogName]
+    if not dialog then
+        dialog = CreateDialog(dialogName, dialogTitle, 400, 370)
+        dialog.regionName = regionName
+
+        -- Severity Dropdown
+        dialog.SeverityLabel, dialog.SeverityDropdown = CreateSeverityDropdown(dialog)
+
+        -- EditBox with Character Counter
+        dialog.ScrollFrame, dialog.EditBox, dialog.CharCountLabel = CreateEditBoxWithCounter(dialog, maxChars)
+
+        -- Save and Cancel Buttons
+        dialog.SaveButton, dialog.CancelButton = CreateSaveCancelButtons(dialog)
+
+        _G[dialogName] = dialog
+    else
+        dialog.Title:SetText(dialogTitle)
+        dialog.regionName = regionName
+    end
+
+    dialog.noteIndex = noteIndex
+    dialog.selectedSeverity = "Unknown"
+    UIDropDownMenu_SetSelectedName(dialog.SeverityDropdown, "Unknown")
+    UIDropDownMenu_Initialize(dialog.SeverityDropdown, dialog.SeverityDropdown.initialize)
+
+    if isEdit then
+        local note = woundData[regionName][noteIndex]
+        dialog.EditBox:SetText(note.text or "")
+        dialog.selectedSeverity = note.severity or "Unknown"
+        UIDropDownMenu_SetSelectedName(dialog.SeverityDropdown, dialog.selectedSeverity)
+        -- Update character count label
+        local initialText = note.text or ""
+        local initialLength = strlenutf8(initialText)
+        dialog.CharCountLabel:SetText(initialLength .. " / " .. maxChars)
+    else
+        dialog.EditBox:SetText("")
+        dialog.CharCountLabel:SetText("0 / " .. maxChars)
+    end
+
+    dialog:Show()
+    dialog.EditBox:SetFocus()
+
+    -- Save Button Handler
+    dialog.SaveButton:SetScript("OnClick", function()
+        local text = dialog.EditBox:GetText()
+        local severity = dialog.selectedSeverity or "Unknown"
+        if text and text ~= "" then
+            -- Check for duplicate content
+            woundData[regionName] = woundData[regionName] or {}
+            local isDuplicate = false
+            for idx, note in ipairs(woundData[regionName]) do
+                if (not isEdit or idx ~= noteIndex) and note.text == text then
+                    isDuplicate = true
+                    break
+                end
+            end
+
+            if isDuplicate then
+                -- Display error message
+                UIErrorsFrame:AddMessage("Error: A note with this content already exists.", 1.0, 0.0, 0.0, 53, 5)
+            else
+                if isEdit then
+                    woundData[regionName][noteIndex].text = text
+                    woundData[regionName][noteIndex].severity = severity
+                else
+                    table.insert(woundData[regionName], { text = text, severity = severity })
+                end
+                UpdateRegionColors() -- Update the region color
+                dialog.EditBox:SetText("")
+                dialog:Hide()
+                OpenWoundDialog(regionName)  -- Reopen the wound dialog to show updated notes
+            end
+        else
+            -- Display error message if text is empty
+            UIErrorsFrame:AddMessage("Error: Note content cannot be empty.", 1.0, 0.0, 0.0, 53, 5)
+        end
+    end)
+
+    -- Cancel Button Handler
+    dialog.CancelButton:SetScript("OnClick", function()
+        dialog.EditBox:SetText("")
+        dialog:Hide()
+        OpenWoundDialog(regionName)  -- Reopen the wound dialog
+    end)
+end
+
 -- Redesigned function to open the wound dialog
 function OpenWoundDialog(regionName)
     if not FleshWoundDialog then
-        local dialog = CreateFrame("Frame", "FleshWoundDialog", UIParent, "BackdropTemplate")
-        dialog:SetPoint("CENTER")
-        dialog:SetSize(550, 500)
-        dialog:SetBackdrop({
-            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-            tile = true,
-            tileSize = 32,
-            edgeSize = 24,
-            insets = { left = 5, right = 5, top = 5, bottom = 5 }
-        })
-        dialog:SetFrameStrata("DIALOG")
-
-        -- Make the dialog draggable
-        dialog:EnableMouse(true)
-        dialog:SetMovable(true)
-        dialog:RegisterForDrag("LeftButton")
-        dialog:SetScript("OnDragStart", function(self)
-            self:StartMoving()
-        end)
-        dialog:SetScript("OnDragStop", function(self)
-            self:StopMovingOrSizing()
-        end)
-
-        -- Close Button
-        dialog.CloseButton = CreateFrame("Button", nil, dialog, "UIPanelCloseButton")
-        dialog.CloseButton:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -5, -5)
-        dialog.CloseButton:SetScript("OnClick", function()
-            dialog:Hide()
-        end)
-
-        -- Bind the dialog to the ESC key
-        table.insert(UISpecialFrames, dialog:GetName())
-
-        dialog.Title = dialog:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-        dialog.Title:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -15)
-
-        -- Create a decorative line under the title
-        local titleLine = dialog:CreateTexture(nil, "ARTWORK")
-        titleLine:SetHeight(2)
-        titleLine:SetPoint("TOPLEFT", dialog.Title, "BOTTOMLEFT", 0, -10)
-        titleLine:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -15, -40)
-        titleLine:SetColorTexture(1, 1, 1, 0.2)
+        FleshWoundDialog = CreateDialog("FleshWoundDialog", "Wound Details - " .. regionName, 550, 500)
+        FleshWoundDialog.regionName = regionName
 
         -- ScrollFrame to display notes
-        dialog.ScrollFrame = CreateFrame("ScrollFrame", nil, dialog, "UIPanelScrollFrameTemplate")
-        dialog.ScrollFrame:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
-        dialog.ScrollFrame:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -35, 60)
+        FleshWoundDialog.ScrollFrame = CreateFrame("ScrollFrame", nil, FleshWoundDialog, "UIPanelScrollFrameTemplate")
+        FleshWoundDialog.ScrollFrame:SetPoint("TOPLEFT", FleshWoundDialog, "TOPLEFT", 15, -60)
+        FleshWoundDialog.ScrollFrame:SetPoint("BOTTOMRIGHT", FleshWoundDialog, "BOTTOMRIGHT", -35, 60)
 
-        dialog.ScrollChild = CreateFrame("Frame", nil, dialog.ScrollFrame)
-        dialog.ScrollChild:SetSize(dialog.ScrollFrame:GetWidth(), 1)
-        dialog.ScrollFrame:SetScrollChild(dialog.ScrollChild)
+        FleshWoundDialog.ScrollChild = CreateFrame("Frame", nil, FleshWoundDialog.ScrollFrame)
+        FleshWoundDialog.ScrollChild:SetSize(FleshWoundDialog.ScrollFrame:GetWidth(), 1)
+        FleshWoundDialog.ScrollFrame:SetScrollChild(FleshWoundDialog.ScrollChild)
 
         -- Placeholder for note entries
-        dialog.NoteEntries = {}
+        FleshWoundDialog.NoteEntries = {}
 
-        dialog.AddNoteButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-        dialog.AddNoteButton:SetSize(120, 30)
-        dialog.AddNoteButton:SetPoint("BOTTOMLEFT", dialog, "BOTTOMLEFT", 15, 15)
-        dialog.AddNoteButton:SetText("Add Note")
-        dialog.AddNoteButton:SetScript("OnClick", function()
-            dialog:Hide()
-            OpenAddNoteDialog(dialog.regionName)
+        FleshWoundDialog.AddNoteButton = CreateFrame("Button", nil, FleshWoundDialog, "UIPanelButtonTemplate")
+        FleshWoundDialog.AddNoteButton:SetSize(120, 30)
+        FleshWoundDialog.AddNoteButton:SetPoint("BOTTOMLEFT", FleshWoundDialog, "BOTTOMLEFT", 15, 15)
+        FleshWoundDialog.AddNoteButton:SetText("Add Note")
+        FleshWoundDialog.AddNoteButton:SetScript("OnClick", function()
+            FleshWoundDialog:Hide()
+            OpenNoteDialog(FleshWoundDialog.regionName)
         end)
-
-        FleshWoundDialog = dialog
+    else
+        FleshWoundDialog.Title:SetText("Wound Details - " .. regionName)
+        FleshWoundDialog.regionName = regionName
     end
-
-    -- Update the dialog content
-    FleshWoundDialog.Title:SetText("Wound Details - " .. regionName)
-    FleshWoundDialog.regionName = regionName  -- Store the current region name
 
     local notes = woundData[regionName]
 
@@ -301,18 +472,20 @@ function OpenWoundDialog(regionName)
             local entryHeight = textHeight + 20
             entry:SetHeight(entryHeight)
 
+            -- Edit Button
             local editButton = CreateFrame("Button", nil, entry, "UIPanelButtonTemplate")
             editButton:SetSize(50, 22)
-            editButton:SetPoint("TOPRIGHT", entry, "TOPRIGHT", -55, -10)
+            editButton:SetPoint("TOPRIGHT", entry, "TOPRIGHT", -80, -10)
             editButton:SetText("Edit")
             editButton:SetScript("OnClick", function()
                 FleshWoundDialog:Hide()
-                OpenEditNoteDialog(FleshWoundDialog.regionName, i)
+                OpenNoteDialog(FleshWoundDialog.regionName, i)
             end)
 
+            -- Delete Button
             local deleteButton = CreateFrame("Button", nil, entry, "UIPanelButtonTemplate")
             deleteButton:SetSize(60, 22)
-            deleteButton:SetPoint("TOPRIGHT", entry, "TOPRIGHT", -5, -10)
+            deleteButton:SetPoint("TOPRIGHT", entry, "TOPRIGHT", -10, -10)
             deleteButton:SetText("Delete")
             deleteButton:SetScript("OnClick", function()
                 table.remove(woundData[FleshWoundDialog.regionName], i)
@@ -338,303 +511,8 @@ function OpenWoundDialog(regionName)
 
     FleshWoundDialog:Show()
 end
--- Redesigned function to open the add note dialog
-    function OpenAddNoteDialog(regionName)
-        if not FleshWoundAddNoteDialog then
-            local dialog = CreateFrame("Frame", "FleshWoundAddNoteDialog", UIParent, "BackdropTemplate")
-            dialog:SetSize(400, 350)
-            dialog:SetPoint("CENTER")
-            dialog:SetBackdrop({
-                bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-                edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-                tile = true,
-                tileSize = 32,
-                edgeSize = 24,
-                insets = { left = 5, right = 5, top = 5, bottom = 5 }
-            })
-            dialog:SetFrameStrata("DIALOG")
-    
-            -- Make the dialog draggable
-            dialog:EnableMouse(true)
-            dialog:SetMovable(true)
-            dialog:RegisterForDrag("LeftButton")
-            dialog:SetScript("OnDragStart", function(self)
-                self:StartMoving()
-            end)
-            dialog:SetScript("OnDragStop", function(self)
-                self:StopMovingOrSizing()
-            end)
-    
-            -- Close Button
-            dialog.CloseButton = CreateFrame("Button", nil, dialog, "UIPanelCloseButton")
-            dialog.CloseButton:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -5, -5)
-            dialog.CloseButton:SetScript("OnClick", function()
-                dialog:Hide()
-                OpenWoundDialog(dialog.regionName)
-            end)
-    
-            -- Bind the dialog to the ESC key
-            table.insert(UISpecialFrames, dialog:GetName())
-    
-            dialog.Title = dialog:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-            dialog.Title:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -15)
-    
-            -- Create a decorative line under the title
-            local titleLine = dialog:CreateTexture(nil, "ARTWORK")
-            titleLine:SetHeight(2)
-            titleLine:SetPoint("TOPLEFT", dialog.Title, "BOTTOMLEFT", 0, -10)
-            titleLine:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -15, -40)
-            titleLine:SetColorTexture(1, 1, 1, 0.2)
-    
-            -- Severity Label
-            dialog.SeverityLabel = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            dialog.SeverityLabel:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
-            dialog.SeverityLabel:SetText("Severity:")
-    
-            -- Severity Dropdown Menu
-            dialog.SeverityDropdown = CreateFrame("Frame", "FleshWoundAddNoteSeverityDropdown", dialog, "UIDropDownMenuTemplate")
-            dialog.SeverityDropdown:SetPoint("LEFT", dialog.SeverityLabel, "RIGHT", -10, -3)
-            UIDropDownMenu_SetWidth(dialog.SeverityDropdown, 150)
-    
-            dialog.SeverityDropdown.initialize = function(self, level)
-                local info
-                for _, sev in ipairs(severities) do
-                    info = UIDropDownMenu_CreateInfo()
-                    info.text = sev.name
-                    info.arg1 = sev.name
-                    info.func = function(self, arg1)
-                        UIDropDownMenu_SetSelectedName(dialog.SeverityDropdown, arg1)
-                        dialog.selectedSeverity = arg1
-                    end
-                    info.checked = (sev.name == (dialog.selectedSeverity or "None"))
-                    UIDropDownMenu_AddButton(info)
-                end
-            end
-    
-            -- Adjusted the position of the ScrollFrame to move the EditBox downwards
-            dialog.ScrollFrame = CreateFrame("ScrollFrame", nil, dialog, "UIPanelScrollFrameTemplate")
-            dialog.ScrollFrame:SetPoint("TOPLEFT", dialog.SeverityLabel, "BOTTOMLEFT", 0, -20)  -- Increased the Y offset to -20
-            dialog.ScrollFrame:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -35, 60)
-    
-            -- Include "BackdropTemplate" for the EditBox
-            dialog.EditBox = CreateFrame("EditBox", nil, dialog.ScrollFrame, "BackdropTemplate")
-            dialog.EditBox:SetMultiLine(true)
-            dialog.EditBox:SetFontObject("ChatFontNormal")
-            dialog.EditBox:SetMaxLetters(2000)
-            dialog.EditBox:SetAutoFocus(true)
-            dialog.EditBox:SetWidth(dialog.ScrollFrame:GetWidth())
-            dialog.EditBox:SetTextInsets(10, 10, 10, 10)
-            dialog.EditBox:SetBackdrop({
-                bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
-                edgeFile = nil,
-                tile = false,
-                tileSize = 0,
-                edgeSize = 0,
-                insets = { left = 0, right = 0, top = 0, bottom = 0 }
-            })
-            dialog.EditBox:SetBackdropColor(0, 0, 0, 0.5)
-            dialog.EditBox:SetScript("OnEscapePressed", function(self)
-                self:ClearFocus()
-            end)
-            dialog.ScrollFrame:SetScrollChild(dialog.EditBox)
-    
-            dialog.SaveButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-            dialog.SaveButton:SetSize(80, 24)
-            dialog.SaveButton:SetPoint("BOTTOMRIGHT", dialog, "BOTTOM", -10, 15)
-            dialog.SaveButton:SetText("Save")
-    
-            dialog.CancelButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-            dialog.CancelButton:SetSize(80, 24)
-            dialog.CancelButton:SetPoint("BOTTOMLEFT", dialog, "BOTTOM", 10, 15)
-            dialog.CancelButton:SetText("Cancel")
-    
-            FleshWoundAddNoteDialog = dialog
-        end
-    
-        FleshWoundAddNoteDialog.Title:SetText("Add Note - " .. regionName)
-        FleshWoundAddNoteDialog.regionName = regionName  -- Store the current region name
-        FleshWoundAddNoteDialog.EditBox:SetText("")
-        FleshWoundAddNoteDialog.selectedSeverity = "None"
-        UIDropDownMenu_SetSelectedName(FleshWoundAddNoteDialog.SeverityDropdown, "None")
-        UIDropDownMenu_Initialize(FleshWoundAddNoteDialog.SeverityDropdown, FleshWoundAddNoteDialog.SeverityDropdown.initialize)
-    
-        FleshWoundAddNoteDialog:Show()
-        FleshWoundAddNoteDialog.EditBox:SetFocus()
-    
-        -- Reassign the OnClick handlers to capture the current regionName
-        FleshWoundAddNoteDialog.SaveButton:SetScript("OnClick", function()
-            local text = FleshWoundAddNoteDialog.EditBox:GetText()
-            local severity = FleshWoundAddNoteDialog.selectedSeverity or "None"
-            if text and text ~= "" then
-                woundData[FleshWoundAddNoteDialog.regionName] = woundData[FleshWoundAddNoteDialog.regionName] or {}
-                table.insert(woundData[FleshWoundAddNoteDialog.regionName], { text = text, severity = severity })
-                UpdateRegionColors() -- Update the region color
-            end
-            FleshWoundAddNoteDialog.EditBox:SetText("")
-            FleshWoundAddNoteDialog:Hide()
-            OpenWoundDialog(FleshWoundAddNoteDialog.regionName)  -- Reopen the wound dialog to show updated notes
-        end)
-    
-        FleshWoundAddNoteDialog.CancelButton:SetScript("OnClick", function()
-            FleshWoundAddNoteDialog.EditBox:SetText("")
-            FleshWoundAddNoteDialog:Hide()
-            OpenWoundDialog(FleshWoundAddNoteDialog.regionName)  -- Reopen the wound dialog
-        end)
-    end
-    
--- Redesigned function to open the edit note dialog
-    function OpenEditNoteDialog(regionName, noteIndex)
-        if not FleshWoundEditNoteDialog then
-            local dialog = CreateFrame("Frame", "FleshWoundEditNoteDialog", UIParent, "BackdropTemplate")
-            dialog:SetSize(400, 350)
-            dialog:SetPoint("CENTER")
-            dialog:SetBackdrop({
-                bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-                edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-                tile = true,
-                tileSize = 32,
-                edgeSize = 24,
-                insets = { left = 5, right = 5, top = 5, bottom = 5 }
-            })
-            dialog:SetFrameStrata("DIALOG")
-    
-            -- Make the dialog draggable
-            dialog:EnableMouse(true)
-            dialog:SetMovable(true)
-            dialog:RegisterForDrag("LeftButton")
-            dialog:SetScript("OnDragStart", function(self)
-                self:StartMoving()
-            end)
-            dialog:SetScript("OnDragStop", function(self)
-                self:StopMovingOrSizing()
-            end)
-    
-            -- Close Button
-            dialog.CloseButton = CreateFrame("Button", nil, dialog, "UIPanelCloseButton")
-            dialog.CloseButton:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -5, -5)
-            dialog.CloseButton:SetScript("OnClick", function()
-                dialog:Hide()
-                OpenWoundDialog(dialog.regionName)
-            end)
-    
-            -- Bind the dialog to the ESC key
-            table.insert(UISpecialFrames, dialog:GetName())
-    
-            dialog.Title = dialog:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-            dialog.Title:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -15)
-    
-            -- Create a decorative line under the title
-            local titleLine = dialog:CreateTexture(nil, "ARTWORK")
-            titleLine:SetHeight(2)
-            titleLine:SetPoint("TOPLEFT", dialog.Title, "BOTTOMLEFT", 0, -10)
-            titleLine:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -15, -40)
-            titleLine:SetColorTexture(1, 1, 1, 0.2)
-    
-            -- Severity Label
-            dialog.SeverityLabel = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            dialog.SeverityLabel:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
-            dialog.SeverityLabel:SetText("Severity:")
-    
-            -- Severity Dropdown Menu
-            dialog.SeverityDropdown = CreateFrame("Frame", "FleshWoundEditNoteSeverityDropdown", dialog, "UIDropDownMenuTemplate")
-            dialog.SeverityDropdown:SetPoint("LEFT", dialog.SeverityLabel, "RIGHT", -10, -3)
-            UIDropDownMenu_SetWidth(dialog.SeverityDropdown, 150)
-    
-            -- Adjusted the position of the ScrollFrame to move the EditBox downwards
-            dialog.ScrollFrame = CreateFrame("ScrollFrame", nil, dialog, "UIPanelScrollFrameTemplate")
-            dialog.ScrollFrame:SetPoint("TOPLEFT", dialog.SeverityLabel, "BOTTOMLEFT", 0, -20)  -- Increased the Y offset to -20
-            dialog.ScrollFrame:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -35, 60)
-    
-            -- Include "BackdropTemplate" for the EditBox
-            dialog.EditBox = CreateFrame("EditBox", nil, dialog.ScrollFrame, "BackdropTemplate")
-            dialog.EditBox:SetMultiLine(true)
-            dialog.EditBox:SetFontObject("ChatFontNormal")
-            dialog.EditBox:SetMaxLetters(2000)
-            dialog.EditBox:SetAutoFocus(true)
-            dialog.EditBox:SetWidth(dialog.ScrollFrame:GetWidth())
-            dialog.EditBox:SetTextInsets(10, 10, 10, 10)
-            dialog.EditBox:SetBackdrop({
-                bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
-                edgeFile = nil,
-                tile = false,
-                tileSize = 0,
-                edgeSize = 0,
-                insets = { left = 0, right = 0, top = 0, bottom = 0 }
-            })
-            dialog.EditBox:SetBackdropColor(0, 0, 0, 0.5)
-            dialog.EditBox:SetScript("OnEscapePressed", function(self)
-                self:ClearFocus()
-            end)
-            dialog.ScrollFrame:SetScrollChild(dialog.EditBox)
-    
-            dialog.SaveButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-            dialog.SaveButton:SetSize(80, 24)
-            dialog.SaveButton:SetPoint("BOTTOMRIGHT", dialog, "BOTTOM", -10, 15)
-            dialog.SaveButton:SetText("Save")
-    
-            dialog.CancelButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-            dialog.CancelButton:SetSize(80, 24)
-            dialog.CancelButton:SetPoint("BOTTOMLEFT", dialog, "BOTTOM", 10, 15)
-            dialog.CancelButton:SetText("Cancel")
-    
-            FleshWoundEditNoteDialog = dialog
-        end
-    
-        FleshWoundEditNoteDialog.Title:SetText("Edit Note - " .. regionName)
-        FleshWoundEditNoteDialog.regionName = regionName  -- Store the current region name
-        FleshWoundEditNoteDialog.noteIndex = noteIndex    -- Store the current note index
-    
-        local note = woundData[regionName][noteIndex]
-    
-        FleshWoundEditNoteDialog.EditBox:SetText(note.text or "")
-        FleshWoundEditNoteDialog.selectedSeverity = note.severity or "None"
-    
-        -- Initialize the severity dropdown
-        FleshWoundEditNoteDialog.SeverityDropdown.initialize = function(self, level)
-            local info
-            for _, sev in ipairs(severities) do
-                info = UIDropDownMenu_CreateInfo()
-                info.text = sev.name
-                info.arg1 = sev.name
-                info.func = function(self, arg1)
-                    UIDropDownMenu_SetSelectedName(FleshWoundEditNoteDialog.SeverityDropdown, arg1)
-                    FleshWoundEditNoteDialog.selectedSeverity = arg1
-                end
-                info.checked = (sev.name == (FleshWoundEditNoteDialog.selectedSeverity or "None"))
-                UIDropDownMenu_AddButton(info)
-            end
-        end
-    
-        UIDropDownMenu_SetSelectedName(FleshWoundEditNoteDialog.SeverityDropdown, FleshWoundEditNoteDialog.selectedSeverity)
-        UIDropDownMenu_Initialize(FleshWoundEditNoteDialog.SeverityDropdown, FleshWoundEditNoteDialog.SeverityDropdown.initialize)
-    
-        FleshWoundEditNoteDialog:Show()
-        FleshWoundEditNoteDialog.EditBox:SetFocus()
-    
-        -- Reassign the OnClick handlers to capture the current regionName and noteIndex
-        FleshWoundEditNoteDialog.SaveButton:SetScript("OnClick", function()
-            local text = FleshWoundEditNoteDialog.EditBox:GetText()
-            local severity = FleshWoundEditNoteDialog.selectedSeverity or "None"
-            if text and text ~= "" then
-                woundData[FleshWoundEditNoteDialog.regionName][FleshWoundEditNoteDialog.noteIndex].text = text
-                woundData[FleshWoundEditNoteDialog.regionName][FleshWoundEditNoteDialog.noteIndex].severity = severity
-                UpdateRegionColors() -- Update the region color
-            end
-            FleshWoundEditNoteDialog.EditBox:SetText("")
-            FleshWoundEditNoteDialog:Hide()
-            OpenWoundDialog(FleshWoundEditNoteDialog.regionName)  -- Reopen the wound dialog to show updated notes
-        end)
-    
-        FleshWoundEditNoteDialog.CancelButton:SetScript("OnClick", function()
-            FleshWoundEditNoteDialog.EditBox:SetText("")
-            FleshWoundEditNoteDialog:Hide()
-            OpenWoundDialog(FleshWoundEditNoteDialog.regionName)  -- Reopen the wound dialog
-        end)
-    end
-    
-    
-    
--- Function to create the addon options panel
+
+-- Function to create the addon options panel (Placeholder for future implementation)
 function FleshWound_AddonOptions()
-    -- (Implement options panel as needed)
+    -- Implement options panel as needed
 end

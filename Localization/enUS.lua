@@ -1,0 +1,40 @@
+-- enUS.lua
+local addonName, addonTable = ...
+local L = addonTable.L or {}
+addonTable.L = L
+
+-- English localization
+L["Add Note"] = "Add Note"
+L["Edit Note"] = "Edit Note"
+L["Delete"] = "Delete"
+L["Save"] = "Save"
+L["Cancel"] = "Cancel"
+L["Wound Details - %s"] = "Wound Details - %s"
+L["Add Note - %s"] = "Add Note - %s"
+L["Edit Note - %s"] = "Edit Note - %s"
+L["Severity:"] = "Severity:"
+L["No notes have been added for this region."] = "No notes have been added for this region."
+L["Note content cannot be empty."] = "Note content cannot be empty."
+L["A note with this content already exists."] = "A note with this content already exists."
+L["Error: %s"] = "Error: %s"
+L["Character Limit Exceeded"] = "Character Limit Exceeded"
+L["%d / %d"] = "%d / %d"
+-- Severities
+L["None"] = "None"
+L["Unknown"] = "Unknown"
+L["Benign"] = "Benign"
+L["Moderate"] = "Moderate"
+L["Severe"] = "Severe"
+L["Critical"] = "Critical"
+L["Deadly"] = "Deadly"
+-- Body Parts
+L["Head"] = "Head"
+L["Torso"] = "Torso"
+L["Left Arm"] = "Left Arm"
+L["Right Arm"] = "Right Arm"
+L["Left Hand"] = "Left Hand"
+L["Right Hand"] = "Right Hand"
+L["Left Leg"] = "Left Leg"
+L["Right Leg"] = "Right Leg"
+L["Left Foot"] = "Left Foot"
+L["Right Foot"] = "Right Foot"

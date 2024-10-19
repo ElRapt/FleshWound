@@ -174,6 +174,7 @@ end
 
 -- Function to create common dialog frames
 function CreateDialog(name, titleText, width, height)
+    -- Ensure the frame name is global and unique
     local dialog = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
     dialog:SetSize(width, height)
     dialog:SetPoint("CENTER")
@@ -202,7 +203,14 @@ function CreateDialog(name, titleText, width, height)
     end)
 
     -- Bind the dialog to the ESC key
-    table.insert(UISpecialFrames, dialog:GetName())
+    if dialog:GetName() then
+        table.insert(UISpecialFrames, dialog:GetName())
+    else
+        -- If the frame does not have a name, assign one
+        local uniqueName = "FleshWoundDialog_" .. tostring(math.random(10000, 99999))
+        dialog:SetName(uniqueName)
+        table.insert(UISpecialFrames, uniqueName)
+    end
 
     -- Title
     dialog.Title = dialog:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
@@ -311,25 +319,28 @@ end
 -- Function to open the Add/Edit Note dialog
 function OpenNoteDialog(regionName, noteIndex)
     local isEdit = noteIndex ~= nil
-    local dialogName = isEdit and "FleshWoundEditNoteDialog" or "FleshWoundAddNoteDialog"
+    local dialogBaseName = isEdit and "FleshWoundEditNoteDialog" or "FleshWoundAddNoteDialog"
     local dialogTitle = (isEdit and "Edit Note - " or "Add Note - ") .. regionName
-    local maxChars = 125
 
-    local dialog = _G[dialogName]
+    -- Use a unique global name for the dialog
+    local frameName = dialogBaseName .. "_" .. regionName
+
+    local dialog = _G[frameName]
     if not dialog then
-        dialog = CreateDialog(dialogName, dialogTitle, 400, 370)
+        dialog = CreateDialog(frameName, dialogTitle, 400, 370)
         dialog.regionName = regionName
 
         -- Severity Dropdown
         dialog.SeverityLabel, dialog.SeverityDropdown = CreateSeverityDropdown(dialog)
 
         -- EditBox with Character Counter
-        dialog.ScrollFrame, dialog.EditBox, dialog.CharCountLabel = CreateEditBoxWithCounter(dialog, maxChars)
+        dialog.ScrollFrame, dialog.EditBox, dialog.CharCountLabel = CreateEditBoxWithCounter(dialog, 125)
 
         -- Save and Cancel Buttons
         dialog.SaveButton, dialog.CancelButton = CreateSaveCancelButtons(dialog)
 
-        _G[dialogName] = dialog
+        -- Store the dialog globally
+        _G[frameName] = dialog
     else
         dialog.Title:SetText(dialogTitle)
         dialog.regionName = regionName
@@ -348,10 +359,10 @@ function OpenNoteDialog(regionName, noteIndex)
         -- Update character count label
         local initialText = note.text or ""
         local initialLength = strlenutf8(initialText)
-        dialog.CharCountLabel:SetText(initialLength .. " / " .. maxChars)
+        dialog.CharCountLabel:SetText(initialLength .. " / 125")
     else
         dialog.EditBox:SetText("")
-        dialog.CharCountLabel:SetText("0 / " .. maxChars)
+        dialog.CharCountLabel:SetText("0 / 125")
     end
 
     dialog:Show()
@@ -404,7 +415,7 @@ end
 -- Redesigned function to open the wound dialog
 function OpenWoundDialog(regionName)
     if not FleshWoundDialog then
-        FleshWoundDialog = CreateDialog("FleshWoundDialog", "Wound Details - " .. regionName, 550, 500)
+        FleshWoundDialog = CreateDialog("FleshWoundDialog_" .. regionName, "Wound Details - " .. regionName, 550, 500)
         FleshWoundDialog.regionName = regionName
 
         -- ScrollFrame to display notes

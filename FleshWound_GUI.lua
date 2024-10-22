@@ -121,7 +121,9 @@ function CreateBodyRegions(self)
 
         -- Add an overlay texture to color the region based on severity
         local overlay = btn:CreateTexture(nil, "ARTWORK")
-        overlay:SetAllPoints(btn)
+        local inset = 7  -- Adjust this value to control how much smaller the overlay is compared to the button
+        overlay:SetPoint("TOPLEFT", btn, "TOPLEFT", inset, -inset)
+        overlay:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -inset, inset)
         overlay:SetColorTexture(0, 0, 0, 0)  -- Default transparent
         btn.overlay = overlay
 

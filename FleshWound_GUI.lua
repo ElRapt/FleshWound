@@ -28,6 +28,15 @@ local severityLevels = {
     [L["Deadly"]] = 5,
 }
 
+-- Function to sanitize input text
+function SanitizeInput(text)
+    -- Trim leading and trailing whitespace
+    text = text:match("^%s*(.-)%s*$")
+    -- Remove control characters
+    text = text:gsub("[%c]", "")
+    return text
+end
+
 -- Function to handle the frame's OnLoad event
 function FleshWound_OnLoad(self)
     -- Initialize woundData and FleshWoundFrame
@@ -294,13 +303,6 @@ function CreateEditBoxWithCounter(parent, maxChars)
     charCountLabel:SetPoint("TOPLEFT", scrollFrame, "BOTTOMLEFT", 0, -10)
     charCountLabel:SetText(format(L["%d / %d"], 0, maxChars))
 
-    -- Update character count on text change
-    editBox:SetScript("OnTextChanged", function(self)
-        local text = self:GetText()
-        local length = strlenutf8(text)
-        charCountLabel:SetText(format(L["%d / %d"], length, maxChars))
-    end)
-
     return scrollFrame, editBox, charCountLabel
 end
 
@@ -352,7 +354,7 @@ function OpenNoteDialog(regionName, noteIndex)
 
     dialog.noteIndex = noteIndex
     dialog.selectedSeverity = L["Unknown"]
-    UIDropDownMenu_SetSelectedName(dialog.SeverityDropdown, L["Unknown"])
+    UIDropDownMenu_SetSelectedName(dialog.SeverityDropdown, dialog.selectedSeverity)
     UIDropDownMenu_Initialize(dialog.SeverityDropdown, dialog.SeverityDropdown.initialize)
 
     if isEdit then
@@ -369,12 +371,60 @@ function OpenNoteDialog(regionName, noteIndex)
         dialog.CharCountLabel:SetText(format(L["%d / %d"], 0, 125))
     end
 
+    -- Function to check for duplicate notes and sanitize input
+    local function UpdateSaveButtonState()
+        local text = dialog.EditBox:GetText()
+        text = SanitizeInput(text)
+        local length = strlenutf8(text)
+        dialog.CharCountLabel:SetText(format(L["%d / %d"], length, 125))
+
+        if text == "" then
+            dialog.SaveButton:Disable()
+            return
+        end
+
+        -- Check for duplicate content
+        woundData[regionName] = woundData[regionName] or {}
+        local isDuplicate = false
+        for idx, note in ipairs(woundData[regionName]) do
+            if (not isEdit or idx ~= noteIndex) and note.text == text then
+                isDuplicate = true
+                break
+            end
+        end
+
+        if isDuplicate then
+            dialog.SaveButton:Disable()
+            -- Optionally, display a message or change the appearance
+            if not dialog.DuplicateWarning then
+                dialog.DuplicateWarning = dialog:CreateFontString(nil, "OVERLAY", "GameFontRedSmall")
+                dialog.DuplicateWarning:SetPoint("TOPLEFT", dialog.EditBox, "BOTTOMLEFT", 0, -5)
+                dialog.DuplicateWarning:SetText(L["A note with this content already exists."])
+            end
+            dialog.DuplicateWarning:Show()
+        else
+            dialog.SaveButton:Enable()
+            if dialog.DuplicateWarning then
+                dialog.DuplicateWarning:Hide()
+            end
+        end
+    end
+
+    -- Set the OnTextChanged handler
+    dialog.EditBox:SetScript("OnTextChanged", function(self)
+        UpdateSaveButtonState()
+    end)
+
+    -- Initial call to set the correct state
+    UpdateSaveButtonState()
+
     dialog:Show()
     dialog.EditBox:SetFocus()
 
     -- Save Button Handler
     dialog.SaveButton:SetScript("OnClick", function()
         local text = dialog.EditBox:GetText()
+        text = SanitizeInput(text)
         local severity = dialog.selectedSeverity or L["Unknown"]
         if text and text ~= "" then
             -- Check for duplicate content

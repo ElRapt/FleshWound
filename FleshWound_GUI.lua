@@ -54,6 +54,7 @@ function FleshWound_OnLoad(self)
         edgeSize = 32,
         insets = { left = 11, right = 12, top = 12, bottom = 11 }
     })
+    self:SetFrameStrata("DIALOG")
 
     -- Make the frame draggable
     self:EnableMouse(true)
@@ -69,6 +70,24 @@ function FleshWound_OnLoad(self)
         self:Hide()
     end)
 
+    -- Profile Icon Button (New)
+    self.ProfileButton = CreateFrame("Button", nil, self)
+    self.ProfileButton:SetSize(35, 35)  -- Increased size for better visibility
+    self.ProfileButton:SetPoint("TOPLEFT", self, "TOPLEFT", 15, -15)
+    self.ProfileButton:SetNormalTexture("Interface\\ICONS\\INV_Misc_Book_09") 
+    self.ProfileButton:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
+    self.ProfileButton:SetScript("OnClick", function()
+        OpenProfileManager()
+    end)
+    self.ProfileButton:SetScript("OnEnter", function()
+        GameTooltip:SetOwner(self.ProfileButton, "ANCHOR_RIGHT")
+        GameTooltip:SetText(L["Profile Manager"], 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    self.ProfileButton:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+
     -- Bind the main window to the ESC key
     table.insert(UISpecialFrames, self:GetName())
 
@@ -80,15 +99,6 @@ function FleshWound_OnLoad(self)
 
     -- Create clickable regions on the body
     CreateBodyRegions(self)
-
-    -- Profile Manager Button
-    self.ProfileButton = CreateFrame("Button", nil, self, "UIPanelButtonTemplate")
-    self.ProfileButton:SetSize(100, 24)
-    self.ProfileButton:SetPoint("TOPRIGHT", self, "TOPRIGHT", -40, -40)
-    self.ProfileButton:SetText(L["Profiles"])
-    self.ProfileButton:SetScript("OnClick", function()
-        OpenProfileManager()
-    end)
 
     -- Set up the options panel (if needed)
     FleshWound_AddonOptions()
@@ -558,7 +568,7 @@ function OpenWoundDialog(regionName)
 
             -- Edit Button
             local editButton = CreateFrame("Button", nil, entry, "UIPanelButtonTemplate")
-            editButton:SetSize(50, 22)
+            editButton:SetSize(70, 22)
             editButton:SetPoint("TOPRIGHT", entry, "TOPRIGHT", -80, -5)
             editButton:SetText(L["Edit"])
             editButton:SetScript("OnClick", function()
@@ -568,7 +578,7 @@ function OpenWoundDialog(regionName)
 
             -- Delete Button
             local deleteButton = CreateFrame("Button", nil, entry, "UIPanelButtonTemplate")
-            deleteButton:SetSize(60, 22)
+            deleteButton:SetSize(70, 22)
             deleteButton:SetPoint("TOPRIGHT", entry, "TOPRIGHT", -10, -5)
             deleteButton:SetText(L["Delete"])
             deleteButton:SetScript("OnClick", function()
@@ -603,7 +613,7 @@ function OpenProfileManager()
 
     local dialog = _G[frameName]
     if not dialog then
-        dialog = CreateDialog(frameName, dialogTitle, 400, 500)
+        dialog = CreateDialog(frameName, dialogTitle, 500, 500)
 
         -- ScrollFrame to display profiles
         dialog.ScrollFrame = CreateFrame("ScrollFrame", nil, dialog, "UIPanelScrollFrameTemplate")
@@ -683,7 +693,7 @@ function OpenProfileManager()
 
         -- Select Button
         local selectButton = CreateFrame("Button", nil, entry, "UIPanelButtonTemplate")
-        selectButton:SetSize(60, 24)
+        selectButton:SetSize(80, 24)
         selectButton:SetPoint("RIGHT", entry, "RIGHT", -10, 0)
         selectButton:SetText(L["Select"])
         selectButton:SetScript("OnClick", function()
@@ -694,7 +704,7 @@ function OpenProfileManager()
 
         -- Delete Button
         local deleteButton = CreateFrame("Button", nil, entry, "UIPanelButtonTemplate")
-        deleteButton:SetSize(60, 24)
+        deleteButton:SetSize(80, 24)
         deleteButton:SetPoint("RIGHT", selectButton, "LEFT", -5, 0)
         deleteButton:SetText(L["Delete"])
         deleteButton:SetScript("OnClick", function()
@@ -707,7 +717,7 @@ function OpenProfileManager()
 
         -- Rename Button
         local renameButton = CreateFrame("Button", nil, entry, "UIPanelButtonTemplate")
-        renameButton:SetSize(60, 24)
+        renameButton:SetSize(80, 24)
         renameButton:SetPoint("RIGHT", deleteButton, "LEFT", -5, 0)
         renameButton:SetText(L["Rename"])
         renameButton:SetScript("OnClick", function()
@@ -741,7 +751,7 @@ function OpenCreateProfileDialog()
 
         -- Profile Name EditBox
         local nameEditBox = CreateFrame("EditBox", nil, dialog, "InputBoxTemplate")
-        nameEditBox:SetSize(200, 30)
+        nameEditBox:SetSize(160, 30)
         nameEditBox:SetPoint("LEFT", nameLabel, "RIGHT", 10, 0)
         nameEditBox:SetAutoFocus(true)
 

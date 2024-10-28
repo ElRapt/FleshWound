@@ -735,6 +735,30 @@ function OpenProfileManager()
     dialog:Show()
 end
 
+
+-- Function to create a single-line edit box with character counter
+function CreateSingleLineEditBoxWithCounter(parent, maxChars)
+    -- EditBox
+    local editBox = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
+    editBox:SetAutoFocus(true)
+    editBox:SetMaxLetters(maxChars)
+    editBox:SetSize(160, 30)
+
+    -- Character Count Label
+    local charCountLabel = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    charCountLabel:SetPoint("TOPLEFT", editBox, "BOTTOMLEFT", 0, -5)
+    charCountLabel:SetText(format(L["%d / %d"], 0, maxChars))
+
+    -- Update character count on text change
+    editBox:HookScript("OnTextChanged", function(self)
+        local text = self:GetText()
+        local length = strlenutf8(text)
+        charCountLabel:SetText(format(L["%d / %d"], length, maxChars))
+    end)
+
+    return editBox, charCountLabel
+end
+
 -- Function to open the Create Profile dialog
 function OpenCreateProfileDialog()
     local frameName = "FleshWoundCreateProfileDialog"
@@ -742,18 +766,18 @@ function OpenCreateProfileDialog()
 
     local dialog = _G[frameName]
     if not dialog then
-        dialog = CreateDialog(frameName, dialogTitle, 300, 150)
+        dialog = CreateDialog(frameName, dialogTitle, 300, 200)
 
         -- Profile Name Label
         local nameLabel = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         nameLabel:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
         nameLabel:SetText(L["Profile Name:"])
 
-        -- Profile Name EditBox
-        local nameEditBox = CreateFrame("EditBox", nil, dialog, "InputBoxTemplate")
-        nameEditBox:SetSize(160, 30)
+        -- Profile Name EditBox with Character Counter
+        local nameEditBox, charCountLabel = CreateSingleLineEditBoxWithCounter(dialog, 20)
         nameEditBox:SetPoint("LEFT", nameLabel, "RIGHT", 10, 0)
-        nameEditBox:SetAutoFocus(true)
+        dialog.nameEditBox = nameEditBox  -- Store reference
+        dialog.charCountLabel = charCountLabel
 
         -- Create and Cancel Buttons
         local createButton, cancelButton = CreateSaveCancelButtons(dialog)
@@ -770,8 +794,11 @@ function OpenCreateProfileDialog()
             end
         end
 
-        -- Set the OnTextChanged handler
-        nameEditBox:SetScript("OnTextChanged", UpdateCreateButtonState)
+        -- Hook the OnTextChanged handler
+        nameEditBox:HookScript("OnTextChanged", function(self)
+            UpdateCreateButtonState()
+            -- Character count label updates automatically in CreateSingleLineEditBoxWithCounter
+        end)
 
         createButton:SetScript("OnClick", function()
             local profileName = SanitizeInput(nameEditBox:GetText())
@@ -786,11 +813,11 @@ function OpenCreateProfileDialog()
         end)
 
         _G[frameName] = dialog
-        dialog.nameEditBox = nameEditBox
         dialog.createButton = createButton  -- Store reference
     end
 
     dialog.nameEditBox:SetText("")
+    dialog.charCountLabel:SetText(format(L["%d / %d"], 0, 50))
     dialog:Show()
     dialog.nameEditBox:SetFocus()
     dialog.createButton:Disable()  -- Disable the Create button initially
@@ -803,18 +830,18 @@ function OpenRenameProfileDialog(oldProfileName)
 
     local dialog = _G[frameName]
     if not dialog then
-        dialog = CreateDialog(frameName, dialogTitle, 300, 150)
+        dialog = CreateDialog(frameName, dialogTitle, 300, 200)
 
         -- Profile Name Label
         local nameLabel = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         nameLabel:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
         nameLabel:SetText(L["New Name:"])
 
-        -- Profile Name EditBox
-        local nameEditBox = CreateFrame("EditBox", nil, dialog, "InputBoxTemplate")
-        nameEditBox:SetSize(200, 30)
+        -- Profile Name EditBox with Character Counter
+        local nameEditBox, charCountLabel = CreateSingleLineEditBoxWithCounter(dialog, 50)
         nameEditBox:SetPoint("LEFT", nameLabel, "RIGHT", 10, 0)
-        nameEditBox:SetAutoFocus(true)
+        dialog.nameEditBox = nameEditBox  -- Store reference
+        dialog.charCountLabel = charCountLabel
 
         -- Rename and Cancel Buttons
         local renameButton, cancelButton = CreateSaveCancelButtons(dialog)
@@ -831,8 +858,11 @@ function OpenRenameProfileDialog(oldProfileName)
             end
         end
 
-        -- Set the OnTextChanged handler
-        nameEditBox:SetScript("OnTextChanged", UpdateRenameButtonState)
+        -- Hook the OnTextChanged handler
+        nameEditBox:HookScript("OnTextChanged", function(self)
+            UpdateRenameButtonState()
+            -- Character count label updates automatically in CreateSingleLineEditBoxWithCounter
+        end)
 
         renameButton:SetScript("OnClick", function()
             local newProfileName = SanitizeInput(nameEditBox:GetText())
@@ -847,11 +877,12 @@ function OpenRenameProfileDialog(oldProfileName)
         end)
 
         _G[frameName] = dialog
-        dialog.nameEditBox = nameEditBox
         dialog.renameButton = renameButton  -- Store reference
     end
 
     dialog.nameEditBox:SetText(oldProfileName)
+    local initialLength = strlenutf8(oldProfileName)
+    dialog.charCountLabel:SetText(format(L["%d / %d"], initialLength, 50))
     dialog:Show()
     dialog.nameEditBox:SetFocus()
     dialog.renameButton:Disable()  -- Disable the Rename button initially

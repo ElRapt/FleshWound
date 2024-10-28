@@ -1,4 +1,5 @@
--- frFR.lua
+-- Localization\frFR.lua
+
 local addonName, addonTable = ...
 local L = addonTable.L or {}
 addonTable.L = L
@@ -6,11 +7,24 @@ addonTable.L = L
 if GetLocale() ~= "frFR" then return end
 
 -- French localization
-L["Add Note"] = "Ajouter"
-L["Edit"] = "Modifier"
+L["Profiles"] = "Profils"
+L["Profile Manager"] = "Gestion des profils"
+L["Create Profile"] = "Créer un profil"
+L["Rename Profile"] = "Renommer le profil"
 L["Delete"] = "Supprimer"
+L["Select"] = "Sélectionner"
+L["Rename"] = "Renommer"
+L["Create"] = "Créer"
+L["Profile Name:"] = "Nom du profil :"
+L["New Name:"] = "Nouveau nom :"
+L["Profile name cannot be empty."] = "Le nom du profil ne peut pas être vide."
+L["A profile with this name already exists."] = "Un profil avec ce nom existe déjà."
+L["Add Note"] = "Ajouter une note"
+L["Edit"] = "Modifier"
+L["Edit Note"] = "Modifier la note"
 L["Save"] = "Enregistrer"
 L["Cancel"] = "Annuler"
+L["Close"] = "Fermer"
 L["Wound Details - %s"] = "Détails de la blessure - %s"
 L["Add Note - %s"] = "Ajouter une note - %s"
 L["Edit Note - %s"] = "Modifier la note - %s"
@@ -22,13 +36,13 @@ L["Error: %s"] = "Erreur : %s"
 L["Character Limit Exceeded"] = "Limite de caractères dépassée"
 L["%d / %d"] = "%d / %d"
 -- Severities
-L["None"] = "Aucun"
-L["Unknown"] = "Inconnu"
-L["Benign"] = "Bénin"
-L["Moderate"] = "Modéré"
+L["None"] = "Aucune"
+L["Unknown"] = "Inconnue"
+L["Benign"] = "Bénigne"
+L["Moderate"] = "Modérée"
 L["Severe"] = "Sévère"
 L["Critical"] = "Critique"
-L["Deadly"] = "Mortel"
+L["Deadly"] = "Mortelle"
 -- Body Parts
 L["Head"] = "Tête"
 L["Torso"] = "Torse"

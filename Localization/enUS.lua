@@ -1,14 +1,29 @@
--- enUS.lua
+-- Localization\enUS.lua
+
 local addonName, addonTable = ...
 local L = addonTable.L or {}
 addonTable.L = L
 
+
 -- English localization
-L["Add Note"] = "Add Note"
-L["Edit Note"] = "Edit Note"
+L["Profiles"] = "Profiles"
+L["Profile Manager"] = "Profile Manager"
+L["Create Profile"] = "Create Profile"
+L["Rename Profile"] = "Rename Profile"
 L["Delete"] = "Delete"
+L["Select"] = "Select"
+L["Rename"] = "Rename"
+L["Create"] = "Create"
+L["Profile Name:"] = "Profile Name:"
+L["New Name:"] = "New Name:"
+L["Profile name cannot be empty."] = "Profile name cannot be empty."
+L["A profile with this name already exists."] = "A profile with this name already exists."
+L["Add Note"] = "Add Note"
+L["Edit"] = "Edit"
+L["Edit Note"] = "Edit Note"
 L["Save"] = "Save"
 L["Cancel"] = "Cancel"
+L["Close"] = "Close"
 L["Wound Details - %s"] = "Wound Details - %s"
 L["Add Note - %s"] = "Add Note - %s"
 L["Edit Note - %s"] = "Edit Note - %s"

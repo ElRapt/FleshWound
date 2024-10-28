@@ -14,7 +14,34 @@ local function OnEvent(self, event, ...)
             if not FleshWoundData then
                 FleshWoundData = {}
             end
-            addonTable.woundData = FleshWoundData
+
+            -- Migrate old data format to new profiles format
+            if FleshWoundData.woundData then
+                local defaultProfileName = UnitName("player")
+                FleshWoundData.profiles = FleshWoundData.profiles or {}
+                FleshWoundData.profiles[defaultProfileName] = { woundData = FleshWoundData.woundData }
+                FleshWoundData.currentProfile = defaultProfileName
+                FleshWoundData.woundData = nil -- Remove old data
+            end
+
+            -- Ensure profiles table exists
+            FleshWoundData.profiles = FleshWoundData.profiles or {}
+
+            -- Ensure currentProfile is set
+            if not FleshWoundData.currentProfile then
+                FleshWoundData.currentProfile = UnitName("player") -- Default profile name is character name
+            end
+
+            -- If currentProfile does not exist in profiles, create it
+            if not FleshWoundData.profiles[FleshWoundData.currentProfile] then
+                FleshWoundData.profiles[FleshWoundData.currentProfile] = { woundData = {} }
+            end
+
+            -- Set addonTable.woundData to the woundData of the current profile
+            addonTable.woundData = FleshWoundData.profiles[FleshWoundData.currentProfile].woundData
+
+            -- Store the FleshWoundData in addonTable for access in other files
+            addonTable.FleshWoundData = FleshWoundData
 
             -- Initialize the main frame
             local FleshWoundFrame = CreateFrame("Frame", "FleshWoundFrame", UIParent, "BackdropTemplate")

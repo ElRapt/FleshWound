@@ -3,7 +3,6 @@
 
 local addonName, addonTable = ...
 local L = addonTable.L
-local woundData
 local FleshWoundFrame
 
 -- Define severities and their colors
@@ -40,7 +39,7 @@ end
 -- Function to handle the frame's OnLoad event
 function FleshWound_OnLoad(self)
     -- Initialize woundData and FleshWoundFrame
-    woundData = addonTable.woundData or {}
+    local woundData = addonTable.woundData or {}
     FleshWoundFrame = self
 
     -- Set the frame size slightly larger than the body image
@@ -81,6 +80,15 @@ function FleshWound_OnLoad(self)
 
     -- Create clickable regions on the body
     CreateBodyRegions(self)
+
+    -- Profile Manager Button
+    self.ProfileButton = CreateFrame("Button", nil, self, "UIPanelButtonTemplate")
+    self.ProfileButton:SetSize(100, 24)
+    self.ProfileButton:SetPoint("TOPRIGHT", self, "TOPRIGHT", -40, -40)
+    self.ProfileButton:SetText(L["Profiles"])
+    self.ProfileButton:SetScript("OnClick", function()
+        OpenProfileManager()
+    end)
 
     -- Set up the options panel (if needed)
     FleshWound_AddonOptions()
@@ -145,6 +153,7 @@ function UpdateRegionColors()
     if not FleshWoundFrame or not FleshWoundFrame.BodyRegions then
         return
     end
+    local woundData = addonTable.woundData or {}
     for regionName, btn in pairs(FleshWoundFrame.BodyRegions) do
         local highestSeverity = GetHighestSeverity(regionName)
         local color = GetSeverityColor(highestSeverity)
@@ -154,6 +163,7 @@ end
 
 -- Function to get the highest severity for a region
 function GetHighestSeverity(regionName)
+    local woundData = addonTable.woundData or {}
     local notes = woundData[regionName]
     if not notes or #notes == 0 then
         return L["None"]
@@ -352,6 +362,7 @@ function OpenNoteDialog(regionName, noteIndex)
         dialog.regionName = regionName
     end
 
+    local woundData = addonTable.woundData or {}
     dialog.noteIndex = noteIndex
     dialog.selectedSeverity = L["Unknown"]
     UIDropDownMenu_SetSelectedName(dialog.SeverityDropdown, dialog.selectedSeverity)
@@ -504,6 +515,7 @@ function OpenWoundDialog(regionName)
         dialog.regionName = regionName
     end
 
+    local woundData = addonTable.woundData or {}
     local notes = woundData[regionName]
 
     -- Clear previous entries
@@ -584,7 +596,274 @@ function OpenWoundDialog(regionName)
     dialog:Show()
 end
 
+-- Function to open the Profile Manager
+function OpenProfileManager()
+    local frameName = "FleshWoundProfileManager"
+    local dialogTitle = L["Profile Manager"]
+
+    local dialog = _G[frameName]
+    if not dialog then
+        dialog = CreateDialog(frameName, dialogTitle, 400, 500)
+
+        -- ScrollFrame to display profiles
+        dialog.ScrollFrame = CreateFrame("ScrollFrame", nil, dialog, "UIPanelScrollFrameTemplate")
+        dialog.ScrollFrame:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
+        dialog.ScrollFrame:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -35, 100)
+
+        dialog.ScrollChild = CreateFrame("Frame", nil, dialog.ScrollFrame)
+        dialog.ScrollChild:SetSize(dialog.ScrollFrame:GetWidth(), 1)
+        dialog.ScrollFrame:SetScrollChild(dialog.ScrollChild)
+
+        -- Placeholder for profile entries
+        dialog.ProfileEntries = {}
+
+        -- Create Profile Button
+        dialog.CreateProfileButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
+        dialog.CreateProfileButton:SetSize(120, 30)
+        dialog.CreateProfileButton:SetPoint("BOTTOMLEFT", dialog, "BOTTOMLEFT", 15, 15)
+        dialog.CreateProfileButton:SetText(L["Create Profile"])
+        dialog.CreateProfileButton:SetScript("OnClick", function()
+            OpenCreateProfileDialog()
+        end)
+
+        -- Close Button
+        dialog.CloseButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
+        dialog.CloseButton:SetSize(80, 30)
+        dialog.CloseButton:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -15, 15)
+        dialog.CloseButton:SetText(L["Close"])
+        dialog.CloseButton:SetScript("OnClick", function()
+            dialog:Hide()
+        end)
+
+        _G[frameName] = dialog
+    end
+
+    -- Populate the profiles list
+    local profiles = addonTable.FleshWoundData.profiles
+    local currentProfile = addonTable.FleshWoundData.currentProfile
+
+    -- Clear previous entries
+    for _, entry in ipairs(dialog.ProfileEntries) do
+        entry:Hide()
+    end
+    dialog.ProfileEntries = {}
+
+    local yOffset = -10
+    local index = 1
+    local sortedProfiles = {}
+    for profileName in pairs(profiles) do
+        table.insert(sortedProfiles, profileName)
+    end
+    table.sort(sortedProfiles)
+
+    for _, profileName in ipairs(sortedProfiles) do
+        local entry = CreateFrame("Frame", nil, dialog.ScrollChild, "BackdropTemplate")
+        entry:SetWidth(dialog.ScrollChild:GetWidth() - 20)
+        entry:SetHeight(40)
+        entry:SetPoint("TOPLEFT", 10, yOffset)
+        entry:SetBackdrop({
+            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            tile = false,
+            tileSize = 0,
+            edgeSize = 14,
+            insets = { left = 4, right = 4, top = 4, bottom = 4 }
+        })
+        if profileName == currentProfile then
+            entry:SetBackdropColor(0.0, 0.5, 0.0, 0.5)  -- Highlight current profile
+        else
+            entry:SetBackdropColor(0.0, 0.0, 0.0, 0.5)
+        end
+        entry:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+
+        -- Profile Name
+        local nameText = entry:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        nameText:SetPoint("LEFT", entry, "LEFT", 10, 0)
+        nameText:SetText(profileName)
+
+        -- Select Button
+        local selectButton = CreateFrame("Button", nil, entry, "UIPanelButtonTemplate")
+        selectButton:SetSize(60, 24)
+        selectButton:SetPoint("RIGHT", entry, "RIGHT", -10, 0)
+        selectButton:SetText(L["Select"])
+        selectButton:SetScript("OnClick", function()
+            FleshWound_SwitchProfile(profileName)
+            UpdateRegionColors()  -- Update the region colors immediately
+            OpenProfileManager()  -- Refresh the profile manager
+        end)
+
+        -- Delete Button
+        local deleteButton = CreateFrame("Button", nil, entry, "UIPanelButtonTemplate")
+        deleteButton:SetSize(60, 24)
+        deleteButton:SetPoint("RIGHT", selectButton, "LEFT", -5, 0)
+        deleteButton:SetText(L["Delete"])
+        deleteButton:SetScript("OnClick", function()
+            FleshWound_DeleteProfile(profileName)
+            OpenProfileManager()  -- Refresh the profile manager
+        end)
+        if profileName == currentProfile then
+            deleteButton:Disable()
+        end
+
+        -- Rename Button
+        local renameButton = CreateFrame("Button", nil, entry, "UIPanelButtonTemplate")
+        renameButton:SetSize(60, 24)
+        renameButton:SetPoint("RIGHT", deleteButton, "LEFT", -5, 0)
+        renameButton:SetText(L["Rename"])
+        renameButton:SetScript("OnClick", function()
+            OpenRenameProfileDialog(profileName)
+        end)
+
+        table.insert(dialog.ProfileEntries, entry)
+        yOffset = yOffset - 50
+        index = index + 1
+    end
+
+    -- Adjust the ScrollChild height
+    dialog.ScrollChild:SetHeight(-yOffset)
+
+    dialog:Show()
+end
+
+-- Function to open the Create Profile dialog
+function OpenCreateProfileDialog()
+    local frameName = "FleshWoundCreateProfileDialog"
+    local dialogTitle = L["Create Profile"]
+
+    local dialog = _G[frameName]
+    if not dialog then
+        dialog = CreateDialog(frameName, dialogTitle, 300, 150)
+
+        -- Profile Name Label
+        local nameLabel = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        nameLabel:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
+        nameLabel:SetText(L["Profile Name:"])
+
+        -- Profile Name EditBox
+        local nameEditBox = CreateFrame("EditBox", nil, dialog, "InputBoxTemplate")
+        nameEditBox:SetSize(200, 30)
+        nameEditBox:SetPoint("LEFT", nameLabel, "RIGHT", 10, 0)
+        nameEditBox:SetAutoFocus(true)
+
+        -- Create and Cancel Buttons
+        local createButton, cancelButton = CreateSaveCancelButtons(dialog)
+        createButton:SetText(L["Create"])
+        cancelButton:SetText(L["Cancel"])
+
+        -- Function to update the Create button state
+        local function UpdateCreateButtonState()
+            local profileName = SanitizeInput(nameEditBox:GetText())
+            if profileName == "" or addonTable.FleshWoundData.profiles[profileName] then
+                createButton:Disable()
+            else
+                createButton:Enable()
+            end
+        end
+
+        -- Set the OnTextChanged handler
+        nameEditBox:SetScript("OnTextChanged", UpdateCreateButtonState)
+
+        createButton:SetScript("OnClick", function()
+            local profileName = SanitizeInput(nameEditBox:GetText())
+            FleshWound_CreateProfile(profileName)
+            dialog:Hide()
+            OpenProfileManager()
+        end)
+
+        cancelButton:SetScript("OnClick", function()
+            dialog:Hide()
+            OpenProfileManager()
+        end)
+
+        _G[frameName] = dialog
+        dialog.nameEditBox = nameEditBox
+        dialog.createButton = createButton  -- Store reference
+    end
+
+    dialog.nameEditBox:SetText("")
+    dialog:Show()
+    dialog.nameEditBox:SetFocus()
+    dialog.createButton:Disable()  -- Disable the Create button initially
+end
+
+-- Function to open the Rename Profile dialog
+function OpenRenameProfileDialog(oldProfileName)
+    local frameName = "FleshWoundRenameProfileDialog"
+    local dialogTitle = L["Rename Profile"]
+
+    local dialog = _G[frameName]
+    if not dialog then
+        dialog = CreateDialog(frameName, dialogTitle, 300, 150)
+
+        -- Profile Name Label
+        local nameLabel = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        nameLabel:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
+        nameLabel:SetText(L["New Name:"])
+
+        -- Profile Name EditBox
+        local nameEditBox = CreateFrame("EditBox", nil, dialog, "InputBoxTemplate")
+        nameEditBox:SetSize(200, 30)
+        nameEditBox:SetPoint("LEFT", nameLabel, "RIGHT", 10, 0)
+        nameEditBox:SetAutoFocus(true)
+
+        -- Rename and Cancel Buttons
+        local renameButton, cancelButton = CreateSaveCancelButtons(dialog)
+        renameButton:SetText(L["Rename"])
+        cancelButton:SetText(L["Cancel"])
+
+        -- Function to update the Rename button state
+        local function UpdateRenameButtonState()
+            local newProfileName = SanitizeInput(nameEditBox:GetText())
+            if newProfileName == "" or addonTable.FleshWoundData.profiles[newProfileName] or newProfileName == oldProfileName then
+                renameButton:Disable()
+            else
+                renameButton:Enable()
+            end
+        end
+
+        -- Set the OnTextChanged handler
+        nameEditBox:SetScript("OnTextChanged", UpdateRenameButtonState)
+
+        renameButton:SetScript("OnClick", function()
+            local newProfileName = SanitizeInput(nameEditBox:GetText())
+            FleshWound_RenameProfile(oldProfileName, newProfileName)
+            dialog:Hide()
+            OpenProfileManager()
+        end)
+
+        cancelButton:SetScript("OnClick", function()
+            dialog:Hide()
+            OpenProfileManager()
+        end)
+
+        _G[frameName] = dialog
+        dialog.nameEditBox = nameEditBox
+        dialog.renameButton = renameButton  -- Store reference
+    end
+
+    dialog.nameEditBox:SetText(oldProfileName)
+    dialog:Show()
+    dialog.nameEditBox:SetFocus()
+    dialog.renameButton:Disable()  -- Disable the Rename button initially
+end
+
 -- Function to create the addon options panel (Placeholder for future implementation)
 function FleshWound_AddonOptions()
     -- Implement options panel as needed
+end
+
+-- Close all open dialogs (used when switching profiles)
+function CloseAllDialogs()
+    -- Close the main frame
+    if FleshWoundFrame then
+        FleshWoundFrame:Hide()
+    end
+    -- Close any other dialogs
+    for _, frame in pairs({ "FleshWoundDialog_", "FleshWoundAddNoteDialog_", "FleshWoundEditNoteDialog_", "FleshWoundProfileManager", "FleshWoundCreateProfileDialog", "FleshWoundRenameProfileDialog" }) do
+        for k, v in pairs(_G) do
+            if type(k) == "string" and k:match(frame) and type(v) == "table" and v.Hide then
+                v:Hide()
+            end
+        end
+    end
 end

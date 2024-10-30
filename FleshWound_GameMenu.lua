@@ -1,49 +1,59 @@
 -- FleshWound_GameMenu.lua
--- Handles adding the addon button to the Game Menu
+-- Handles adding the addon button to the Game Menu and minimap icon
 
 local addonName, addonTable = ...
+local GameMenu = {}
+addonTable.GameMenu = GameMenu  -- Expose the GameMenu module to addonTable
 
--- Function to toggle the FleshWoundFrame
-local function ToggleFleshWoundFrame()
-    local FleshWoundFrame = addonTable.FleshWoundFrame
-    if not FleshWoundFrame then
+-- Dependencies
+local LDB = LibStub("LibDataBroker-1.1")
+local Icon = LibStub("LibDBIcon-1.0")
+
+-- Initialize GameMenu
+function GameMenu:Initialize()
+    self:CreateMinimapIcon()
+    self:AddToGameMenu()
+end
+
+-- Toggle the main frame
+function GameMenu:ToggleMainFrame()
+    local GUI = addonTable.GUI
+    if not GUI or not GUI.frame then
         print("FleshWoundFrame is not yet initialized.")
         return
     end
 
-    if FleshWoundFrame:IsShown() then
-        FleshWoundFrame:Hide()
+    if GUI.frame:IsShown() then
+        GUI.frame:Hide()
     else
-        FleshWoundFrame:Show()
+        GUI.frame:Show()
     end
 end
 
 -- Create minimap button using LibDataBroker and LibDBIcon
-local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("FleshWound", {
-    type = "launcher",
-    text = "FleshWound",
-    icon = "Interface\\Icons\\INV_Misc_Bandage_01",
-    OnClick = function(_, button)
-        if button == "LeftButton" then
-            ToggleFleshWoundFrame()
-        end
-    end,
-    OnTooltipShow = function(tooltip)
-        tooltip:AddLine("FleshWound")
-        tooltip:AddLine("Left-click to show/hide the health frame.")
-    end,
-})
+function GameMenu:CreateMinimapIcon()
+    local ldb = LDB:NewDataObject("FleshWound", {
+        type = "launcher",
+        text = "FleshWound",
+        icon = "Interface\\Icons\\INV_Misc_Bandage_01",
+        OnClick = function(_, button)
+            if button == "LeftButton" then
+                self:ToggleMainFrame()
+            end
+        end,
+        OnTooltipShow = function(tooltip)
+            tooltip:AddLine("FleshWound")
+            tooltip:AddLine("Left-click to show/hide the health frame.")
+        end,
+    })
 
--- Use LibDBIcon to create minimap icon
-local icon = LibStub("LibDBIcon-1.0")
-if not FleshWoundDB then
-    FleshWoundDB = {}
+    -- Use LibDBIcon to create minimap icon
+    FleshWoundDB = FleshWoundDB or {}
+    Icon:Register("FleshWound", ldb, FleshWoundDB)
 end
-icon:Register("FleshWound", LDB, FleshWoundDB)
 
--- Function to add the FleshWound button to the Game Menu
-local function AddFleshWoundToGameMenu()
-    -- Create the button
+-- Add the FleshWound button to the Game Menu
+function GameMenu:AddToGameMenu()
     local btn = CreateFrame("Button", "GameMenuButtonFleshWound", GameMenuFrame, "GameMenuButtonTemplate")
     btn:SetText("FleshWound")
     btn:SetNormalFontObject("GameFontNormal")
@@ -52,12 +62,12 @@ local function AddFleshWoundToGameMenu()
     -- Set the click handler
     btn:SetScript("OnClick", function()
         HideUIPanel(GameMenuFrame)
-        ToggleFleshWoundFrame()
+        self:ToggleMainFrame()
     end)
 
     -- Adjust the positions of other buttons when GameMenuFrame is shown
     GameMenuFrame:HookScript("OnShow", function()
-        -- Position the FleshWound button below the AddOns button if it exists, else below Macros
+        btn:ClearAllPoints()
         if GameMenuButtonAddOns and GameMenuButtonAddOns:IsShown() then
             btn:SetPoint("TOP", GameMenuButtonAddOns, "BOTTOM", 0, -1)
         elseif GameMenuButtonMacros and GameMenuButtonMacros:IsShown() then
@@ -66,14 +76,10 @@ local function AddFleshWoundToGameMenu()
             btn:SetPoint("TOP", GameMenuButtonOptions, "BOTTOM", 0, -1)
         end
 
-        -- Adjust the positions of the Logout button and other buttons
-        if GameMenuButtonLogout then
-            GameMenuButtonLogout:ClearAllPoints()
-            GameMenuButtonLogout:SetPoint("TOP", btn, "BOTTOM", 0, -16)
-        end
-
-        -- Adjust the height of the Game Menu to fit the new button
-        GameMenuFrame:SetHeight(GameMenuFrame:GetHeight() + btn:GetHeight() + 2)
+        -- Adjust the positions of the Logout button and others
+        local heightOffset = btn:GetHeight() + 2
+        GameMenuFrame:SetHeight(GameMenuFrame:GetHeight() + heightOffset)
+        self:AdjustGameMenuButtons(btn)
     end)
 
     -- Add the bandage icon to the button
@@ -88,12 +94,36 @@ local function AddFleshWoundToGameMenu()
     text:SetPoint("LEFT", iconTexture, "RIGHT", 4, 0)
 end
 
--- Event listener to add the button when the addon loads
-local gameMenuFrame = CreateFrame("Frame")
-gameMenuFrame:RegisterEvent("ADDON_LOADED")
-gameMenuFrame:SetScript("OnEvent", function(self, event, addon)
+-- Adjust positions of other Game Menu buttons
+function GameMenu:AdjustGameMenuButtons(btn)
+    local prevButton = btn
+    local buttons = {
+        GameMenuButtonLogout,
+        GameMenuButtonQuit,
+        GameMenuButtonContinue,
+        GameMenuButtonMacOptions,
+        GameMenuButtonOptions,
+        GameMenuButtonUIOptions,
+        GameMenuButtonKeybindings,
+        GameMenuButtonMacros,
+        GameMenuButtonAddOns,
+    }
+
+    for _, button in ipairs(buttons) do
+        if button and button:IsShown() and button ~= btn then
+            button:ClearAllPoints()
+            button:SetPoint("TOP", prevButton, "BOTTOM", 0, -1)
+            prevButton = button
+        end
+    end
+end
+
+-- Initialize when the addon loads
+local eventFrame = CreateFrame("Frame")
+eventFrame:RegisterEvent("ADDON_LOADED")
+eventFrame:SetScript("OnEvent", function(self, event, addon)
     if addon == addonName then
-        AddFleshWoundToGameMenu()
-        self:UnregisterEvent("ADDON_LOADED")  -- Unregister the event after adding the button
+        GameMenu:Initialize()
+        self:UnregisterEvent("ADDON_LOADED")
     end
 end)

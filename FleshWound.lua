@@ -1,66 +1,47 @@
 -- FleshWound.lua
+-- Main addon file that initializes the addon and handles events
 
 local addonName, addonTable = ...
 
--- Create a frame to handle events
-local eventFrame = CreateFrame("Frame")
+-- Create an Event Handler Module
+local EventHandler = {}
+addonTable.EventHandler = EventHandler  -- Expose to addonTable
 
--- Event handler function
-local function OnEvent(self, event, ...)
-    if event == "ADDON_LOADED" then
-        local name = ...
-        if name == addonName then
-            -- Initialize SavedVariables
-            if not FleshWoundData then
-                FleshWoundData = {}
-            end
-
-            -- Migrate old data format to new profiles format
-            if FleshWoundData.woundData then
-                local defaultProfileName = UnitName("player")
-                FleshWoundData.profiles = FleshWoundData.profiles or {}
-                FleshWoundData.profiles[defaultProfileName] = { woundData = FleshWoundData.woundData }
-                FleshWoundData.currentProfile = defaultProfileName
-                FleshWoundData.woundData = nil -- Remove old data
-            end
-
-            -- Ensure profiles table exists
-            FleshWoundData.profiles = FleshWoundData.profiles or {}
-
-            -- Ensure currentProfile is set
-            if not FleshWoundData.currentProfile then
-                FleshWoundData.currentProfile = UnitName("player") -- Default profile name is character name
-            end
-
-            -- If currentProfile does not exist in profiles, create it
-            if not FleshWoundData.profiles[FleshWoundData.currentProfile] then
-                FleshWoundData.profiles[FleshWoundData.currentProfile] = { woundData = {} }
-            end
-
-            -- Set addonTable.woundData to the woundData of the current profile
-            addonTable.woundData = FleshWoundData.profiles[FleshWoundData.currentProfile].woundData
-
-            -- Store the FleshWoundData in addonTable for access in other files
-            addonTable.FleshWoundData = FleshWoundData
-
-            -- Initialize the main frame
-            local FleshWoundFrame = CreateFrame("Frame", "FleshWoundFrame", UIParent, "BackdropTemplate")
-            FleshWoundFrame:SetPoint("CENTER")
-            addonTable.FleshWoundFrame = FleshWoundFrame  -- Store in addonTable
-
-            -- Call the OnLoad function from FleshWound_GUI.lua
-            if FleshWound_OnLoad then
-                FleshWound_OnLoad(FleshWoundFrame)
-            else
-                print("FleshWound_OnLoad function not found in FleshWound_GUI.lua")
-            end
-
-            -- Unregister the event after it's handled
-            self:UnregisterEvent("ADDON_LOADED")
+-- Handle ADDON_LOADED event
+function EventHandler:OnAddonLoaded(name)
+    if name == addonName then
+        -- Initialize SavedVariables
+        if not FleshWoundData then
+            FleshWoundData = {}
         end
+
+        -- Store the FleshWoundData in addonTable for access in other files
+        addonTable.FleshWoundData = FleshWoundData
+
+        -- Initialize Data Module
+        if addonTable.Data and addonTable.Data.Initialize then
+            addonTable.Data:Initialize()
+        else
+            print("Data module not found or does not have an Initialize method.")
+        end
+
+        -- Initialize GUI Module
+        if addonTable.GUI and addonTable.GUI.Initialize then
+            addonTable.GUI:Initialize()
+        else
+            print("GUI module not found or does not have an Initialize method.")
+        end
+
+        -- Unregister the event after it's handled
+        self.eventFrame:UnregisterEvent("ADDON_LOADED")
     end
 end
 
--- Register events
-eventFrame:RegisterEvent("ADDON_LOADED")
-eventFrame:SetScript("OnEvent", OnEvent)
+-- Create the event frame and set scripts
+EventHandler.eventFrame = CreateFrame("Frame")
+EventHandler.eventFrame:RegisterEvent("ADDON_LOADED")
+EventHandler.eventFrame:SetScript("OnEvent", function(_, event, ...)
+    if event == "ADDON_LOADED" then
+        EventHandler:OnAddonLoaded(...)
+    end
+end)

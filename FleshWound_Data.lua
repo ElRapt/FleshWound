@@ -2,82 +2,92 @@
 -- Handles data persistence and wound data structures
 
 local addonName, addonTable = ...
-local woundData = addonTable.woundData or {}
-addonTable.woundData = woundData
+local Data = {}
+addonTable.Data = Data  -- Expose the Data module to addonTable
+
+-- Initialize woundData and profiles
+function Data:Initialize()
+    -- self.FleshWoundData should point to the saved variable table
+    self.FleshWoundData = addonTable.FleshWoundData
+
+    -- Migrate old data format to new profiles format
+    if self.FleshWoundData.woundData then
+        local defaultProfileName = UnitName("player")
+        self.FleshWoundData.profiles = self.FleshWoundData.profiles or {}
+        self.FleshWoundData.profiles[defaultProfileName] = { woundData = self.FleshWoundData.woundData }
+        self.FleshWoundData.currentProfile = defaultProfileName
+        self.FleshWoundData.woundData = nil -- Remove old data
+    end
+
+    -- Ensure profiles table exists
+    self.FleshWoundData.profiles = self.FleshWoundData.profiles or {}
+
+    -- Ensure currentProfile is set
+    if not self.FleshWoundData.currentProfile then
+        self.FleshWoundData.currentProfile = UnitName("player") -- Default profile name is character name
+    end
+
+    -- If currentProfile does not exist in profiles, create it
+    if not self.FleshWoundData.profiles[self.FleshWoundData.currentProfile] then
+        self.FleshWoundData.profiles[self.FleshWoundData.currentProfile] = { woundData = {} }
+    end
+
+    -- Set addonTable.woundData to the woundData of the current profile
+    addonTable.woundData = self.FleshWoundData.profiles[self.FleshWoundData.currentProfile].woundData
+    self.woundData = addonTable.woundData -- Also store in self for convenience
+end
 
 -- Function to switch profiles
-function FleshWound_SwitchProfile(profileName)
-    local FleshWoundData = addonTable.FleshWoundData
-    if not FleshWoundData.profiles[profileName] then
-        FleshWoundData.profiles[profileName] = { woundData = {} }
+function Data:SwitchProfile(profileName)
+    if not self.FleshWoundData.profiles[profileName] then
+        self.FleshWoundData.profiles[profileName] = { woundData = {} }
     end
-    FleshWoundData.currentProfile = profileName
-    addonTable.woundData = FleshWoundData.profiles[profileName].woundData
+    self.FleshWoundData.currentProfile = profileName
+    addonTable.woundData = self.FleshWoundData.profiles[profileName].woundData
+    self.woundData = addonTable.woundData
 
-    -- Update any GUI elements that rely on woundData
-    if UpdateRegionColors then
-        UpdateRegionColors()
-    end
-    -- Close any open dialogs
-    if CloseAllDialogs then
-        CloseAllDialogs()
+    -- Update GUI elements
+    if addonTable.GUI then
+        addonTable.GUI:UpdateRegionColors()
+        addonTable.GUI:CloseAllDialogs()
     end
 end
 
 -- Function to create a new profile
-function FleshWound_CreateProfile(profileName)
-    local FleshWoundData = addonTable.FleshWoundData
-    if not FleshWoundData.profiles[profileName] then
-        FleshWoundData.profiles[profileName] = { woundData = {} }
+function Data:CreateProfile(profileName)
+    if not self.FleshWoundData.profiles[profileName] then
+        self.FleshWoundData.profiles[profileName] = { woundData = {} }
     else
-        print("Profile '" .. profileName .. "' already exists.")
+        print(format("Profile '%s' already exists.", profileName))
     end
 end
 
 -- Function to delete a profile
-function FleshWound_DeleteProfile(profileName)
-    local FleshWoundData = addonTable.FleshWoundData
-    if FleshWoundData.profiles[profileName] then
-        if profileName == FleshWoundData.currentProfile then
+function Data:DeleteProfile(profileName)
+    if self.FleshWoundData.profiles[profileName] then
+        if profileName == self.FleshWoundData.currentProfile then
             print("Cannot delete the current profile.")
         else
-            FleshWoundData.profiles[profileName] = nil
+            self.FleshWoundData.profiles[profileName] = nil
         end
     else
-        print("Profile '" .. profileName .. "' does not exist.")
+        print(format("Profile '%s' does not exist.", profileName))
     end
 end
 
 -- Function to rename a profile
-function FleshWound_RenameProfile(oldName, newName)
-    local FleshWoundData = addonTable.FleshWoundData
-    if FleshWoundData.profiles[oldName] then
-        if FleshWoundData.profiles[newName] then
-            print("Profile '" .. newName .. "' already exists.")
+function Data:RenameProfile(oldName, newName)
+    if self.FleshWoundData.profiles[oldName] then
+        if self.FleshWoundData.profiles[newName] then
+            print(format("Profile '%s' already exists.", newName))
         else
-            FleshWoundData.profiles[newName] = FleshWoundData.profiles[oldName]
-            FleshWoundData.profiles[oldName] = nil
-            if FleshWoundData.currentProfile == oldName then
-                FleshWoundData.currentProfile = newName
+            self.FleshWoundData.profiles[newName] = self.FleshWoundData.profiles[oldName]
+            self.FleshWoundData.profiles[oldName] = nil
+            if self.FleshWoundData.currentProfile == oldName then
+                self.FleshWoundData.currentProfile = newName
             end
         end
     else
-        print("Profile '" .. oldName .. "' does not exist.")
-    end
-end
-
--- Function to close all dialogs
-function CloseAllDialogs()
-    -- Close the main frame
-    if FleshWoundFrame then
-        FleshWoundFrame:Hide()
-    end
-    -- Close any other dialogs
-    for _, frame in pairs({ "FleshWoundDialog_", "FleshWoundAddNoteDialog_", "FleshWoundEditNoteDialog_", "FleshWoundProfileManager", "FleshWoundCreateProfileDialog", "FleshWoundRenameProfileDialog" }) do
-        for k, v in pairs(_G) do
-            if type(k) == "string" and k:match(frame) and type(v) == "table" and v.Hide then
-                v:Hide()
-            end
-        end
+        print(format("Profile '%s' does not exist.", oldName))
     end
 end

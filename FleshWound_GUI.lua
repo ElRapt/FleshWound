@@ -3,176 +3,48 @@
 
 local addonName, addonTable = ...
 local L = addonTable.L
-local FleshWoundFrame
 
--- Define severities and their colors
-local severities = {
-    { name = L["None"], color = {0, 0, 0, 0.0} },             -- Transparent
-    { name = L["Unknown"], color = {0.5, 0.5, 0.5, 0.4} },    -- Grey, 40% opacity
-    { name = L["Benign"], color = {0, 1, 0, 0.4} },           -- Green, 40% opacity
-    { name = L["Moderate"], color = {1, 1, 0, 0.4} },         -- Yellow, 40% opacity
-    { name = L["Severe"], color = {1, 0.5, 0, 0.4} },         -- Orange, 40% opacity
-    { name = L["Critical"], color = {1, 0, 0, 0.4} },         -- Red, 40% opacity
-    { name = L["Deadly"], color = {0.6, 0, 0.6, 0.4} },       -- Purple, 40% opacity
+-- Create a GUI module to encapsulate all GUI-related functionality
+local GUI = {}
+addonTable.GUI = GUI  -- Expose the GUI module to the addonTable
+
+-- Constants
+local MAX_NOTE_LENGTH = 125
+local MAX_PROFILE_NAME_LENGTH = 50
+
+-- Severity definitions
+local Severities = {
+    { name = L["None"], color = {0, 0, 0, 0.0} },
+    { name = L["Unknown"], color = {0.5, 0.5, 0.5, 0.4} },
+    { name = L["Benign"], color = {0, 1, 0, 0.4} },
+    { name = L["Moderate"], color = {1, 1, 0, 0.4} },
+    { name = L["Severe"], color = {1, 0.5, 0, 0.4} },
+    { name = L["Critical"], color = {1, 0, 0, 0.4} },
+    { name = L["Deadly"], color = {0.6, 0, 0.6, 0.4} },
 }
 
--- Severity levels mapping for comparison
-local severityLevels = {
-    [L["None"]] = -1,
-    [L["Unknown"]] = 0,
-    [L["Benign"]] = 1,
-    [L["Moderate"]] = 2,
-    [L["Severe"]] = 3,
-    [L["Critical"]] = 4,
-    [L["Deadly"]] = 5,
-}
+local SeverityLevels = {}
+for index, severity in ipairs(Severities) do
+    SeverityLevels[severity.name] = index - 2  -- Start from -1 for "None"
+end
 
--- Function to sanitize input text
-function SanitizeInput(text)
-    -- Trim leading and trailing whitespace
-    text = text:match("^%s*(.-)%s*$")
-    -- Remove control characters
-    text = text:gsub("[%c]", "")
+-- Utility Functions
+local function SanitizeInput(text)
+    text = text:match("^%s*(.-)%s*$")  -- Trim whitespace
+    text = text:gsub("[%c]", "")       -- Remove control characters
     return text
 end
 
--- Function to handle the frame's OnLoad event
-function FleshWound_OnLoad(self)
-    -- Initialize woundData and FleshWoundFrame
-    local woundData = addonTable.woundData or {}
-    FleshWoundFrame = self
-
-    -- Set the frame size slightly larger than the body image
-    self:SetSize(320, 540)
-
-    -- Set the backdrop with Blizzard default background
-    self:SetBackdrop({
-        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",  -- Blizzard default background
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true,
-        tileSize = 32,
-        edgeSize = 32,
-        insets = { left = 11, right = 12, top = 12, bottom = 11 }
-    })
-    self:SetFrameStrata("DIALOG")
-
-    -- Make the frame draggable
-    self:EnableMouse(true)
-    self:SetMovable(true)
-    self:RegisterForDrag("LeftButton")
-    self:SetScript("OnDragStart", self.StartMoving)
-    self:SetScript("OnDragStop", self.StopMovingOrSizing)
-
-    -- Close Button for the main window
-    self.CloseButton = CreateFrame("Button", nil, self, "UIPanelCloseButton")
-    self.CloseButton:SetPoint("TOPRIGHT", self, "TOPRIGHT", -5, -5)
-    self.CloseButton:SetScript("OnClick", function()
-        self:Hide()
-    end)
-
-    -- Profile Icon Button (New)
-    self.ProfileButton = CreateFrame("Button", nil, self)
-    self.ProfileButton:SetSize(35, 35)  -- Increased size for better visibility
-    self.ProfileButton:SetPoint("TOPLEFT", self, "TOPLEFT", 15, -15)
-    self.ProfileButton:SetNormalTexture("Interface\\ICONS\\INV_Misc_Book_09") 
-    self.ProfileButton:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
-    self.ProfileButton:SetScript("OnClick", function()
-        OpenProfileManager()
-    end)
-    self.ProfileButton:SetScript("OnEnter", function()
-        GameTooltip:SetOwner(self.ProfileButton, "ANCHOR_RIGHT")
-        GameTooltip:SetText(L["Profile Manager"], 1, 1, 1)
-        GameTooltip:Show()
-    end)
-    self.ProfileButton:SetScript("OnLeave", function()
-        GameTooltip:Hide()
-    end)
-
-    -- Bind the main window to the ESC key
-    table.insert(UISpecialFrames, self:GetName())
-
-    -- Create the body image
-    self.BodyImage = self:CreateTexture(nil, "BACKGROUND")
-    self.BodyImage:SetSize(300, 500)
-    self.BodyImage:SetPoint("CENTER", self, "CENTER", 0, 0)
-    self.BodyImage:SetTexture("Interface\\AddOns\\" .. addonName .. "\\Textures\\body_image.tga")
-
-    -- Create clickable regions on the body
-    CreateBodyRegions(self)
-
-    -- Set up the options panel (if needed)
-    FleshWound_AddonOptions()
-
-    -- Update region colors based on the severities of their notes
-    UpdateRegionColors()
+local function GetSeverityColor(severityName)
+    for _, severity in ipairs(Severities) do
+        if severity.name == severityName then
+            return severity.color
+        end
+    end
+    return {0, 0, 0, 0.0}  -- Default to transparent if not found
 end
 
--- Function to create clickable regions on the body image
-function CreateBodyRegions(self)
-    self.BodyRegions = {}
-
-    -- Define regions
-    local regions = {
-        {name = "Head", x = 130, y = 420, width = 50, height = 75},
-        {name = "Torso", x = 130, y = 275, width = 50, height = 120},
-        {name = "Left Arm", x = 75, y = 300, width = 50, height = 120},
-        {name = "Right Arm", x = 185, y = 300, width = 50, height = 120},
-        {name = "Left Hand", x = 40, y = 180, width = 50, height = 100},
-        {name = "Right Hand", x = 215, y = 180, width = 50, height = 100},
-        {name = "Left Leg", x = 100, y = 50, width = 50, height = 130},
-        {name = "Right Leg", x = 155, y = 50, width = 50, height = 130},
-        {name = "Left Foot", x = 110, y = 0, width = 50, height = 50},
-        {name = "Right Foot", x = 150, y = 0, width = 50, height = 50},
-    }
-
-    for _, region in ipairs(regions) do
-        local btn = CreateFrame("Button", nil, self)
-        btn:SetSize(region.width, region.height)
-
-        -- Position the button relative to the BodyImage
-        btn:SetPoint("BOTTOMLEFT", self.BodyImage, "BOTTOMLEFT", region.x, region.y)
-
-        btn:SetScript("OnClick", function()
-            OpenWoundDialog(region.name)
-        end)
-
-        -- Set a highlight texture to indicate when the region is hovered over
-        btn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight")
-
-        -- Add the region marker (green dot)
-        local regionMarker = btn:CreateTexture(nil, "OVERLAY")
-        regionMarker:SetSize(10, 10)
-        regionMarker:SetPoint("CENTER", btn, "CENTER")
-        regionMarker:SetColorTexture(0, 1, 0, 1) -- Green color
-        btn.regionMarker = regionMarker
-
-        -- Add an overlay texture to color the region based on severity
-        local overlay = btn:CreateTexture(nil, "ARTWORK")
-        local inset = 7  -- Adjust this value to control how much smaller the overlay is compared to the button
-        overlay:SetPoint("TOPLEFT", btn, "TOPLEFT", inset, -inset)
-        overlay:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -inset, inset)
-        overlay:SetColorTexture(0, 0, 0, 0)  -- Default transparent
-        btn.overlay = overlay
-
-        self.BodyRegions[region.name] = btn
-    end
-end
-
--- Function to update region colors based on the highest severity of their notes
-function UpdateRegionColors()
-    if not FleshWoundFrame or not FleshWoundFrame.BodyRegions then
-        return
-    end
-    local woundData = addonTable.woundData or {}
-    for regionName, btn in pairs(FleshWoundFrame.BodyRegions) do
-        local highestSeverity = GetHighestSeverity(regionName)
-        local color = GetSeverityColor(highestSeverity)
-        btn.overlay:SetColorTexture(unpack(color))
-    end
-end
-
--- Function to get the highest severity for a region
-function GetHighestSeverity(regionName)
+local function GetHighestSeverity(regionName)
     local woundData = addonTable.woundData or {}
     local notes = woundData[regionName]
     if not notes or #notes == 0 then
@@ -183,7 +55,7 @@ function GetHighestSeverity(regionName)
     local highestSeverity = L["None"]
 
     for _, note in ipairs(notes) do
-        local level = severityLevels[note.severity] or 0
+        local level = SeverityLevels[note.severity] or 0
         if level > highestLevel then
             highestLevel = level
             highestSeverity = note.severity
@@ -193,20 +65,8 @@ function GetHighestSeverity(regionName)
     return highestSeverity
 end
 
--- Function to get the color based on severity name
-function GetSeverityColor(severityName)
-    for _, sev in ipairs(severities) do
-        if sev.name == severityName then
-            return sev.color
-        end
-    end
-    -- No coloring if severity is not found
-    return {0, 0, 0, 0.0}
-end
-
 -- Function to create common dialog frames
-function CreateDialog(name, titleText, width, height)
-    -- Ensure the frame name is global and unique
+local function CreateDialog(name, titleText, width, height)
     local dialog = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
     dialog:SetSize(width, height)
     dialog:SetPoint("CENTER")
@@ -216,7 +76,7 @@ function CreateDialog(name, titleText, width, height)
         tile = true,
         tileSize = 32,
         edgeSize = 24,
-        insets = { left = 5, right = 5, top = 5, bottom = 5 }
+        insets = { left = 5, right = 5, top = 5, bottom = 5 },
     })
     dialog:SetFrameStrata("DIALOG")
 
@@ -238,7 +98,6 @@ function CreateDialog(name, titleText, width, height)
     if dialog:GetName() then
         table.insert(UISpecialFrames, dialog:GetName())
     else
-        -- If the frame does not have a name, assign one
         local uniqueName = "FleshWoundDialog_" .. tostring(math.random(10000, 99999))
         dialog:SetName(uniqueName)
         table.insert(UISpecialFrames, uniqueName)
@@ -260,7 +119,7 @@ function CreateDialog(name, titleText, width, height)
 end
 
 -- Function to create severity dropdown menus
-function CreateSeverityDropdown(parent)
+local function CreateSeverityDropdown(parent)
     -- Severity Label
     local severityLabel = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     severityLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", 15, -60)
@@ -273,11 +132,11 @@ function CreateSeverityDropdown(parent)
 
     severityDropdown.initialize = function(self, level)
         local info
-        for _, sev in ipairs(severities) do
+        for _, sev in ipairs(Severities) do
             info = UIDropDownMenu_CreateInfo()
             info.text = sev.name
             info.arg1 = sev.name
-            info.func = function(self, arg1)
+            info.func = function(_, arg1)
                 UIDropDownMenu_SetSelectedName(severityDropdown, arg1)
                 parent.selectedSeverity = arg1
             end
@@ -290,11 +149,11 @@ function CreateSeverityDropdown(parent)
 end
 
 -- Function to create the edit box with character count
-function CreateEditBoxWithCounter(parent, maxChars)
+local function CreateEditBoxWithCounter(parent, maxChars)
     -- ScrollFrame for the EditBox
     local scrollFrame = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
     scrollFrame:SetPoint("TOPLEFT", parent.SeverityLabel, "BOTTOMLEFT", 0, -20)
-    scrollFrame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -35, 80)  -- Adjusted height
+    scrollFrame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -35, 80)
 
     -- EditBox
     local editBox = CreateFrame("EditBox", nil, scrollFrame, "BackdropTemplate")
@@ -327,7 +186,7 @@ function CreateEditBoxWithCounter(parent, maxChars)
 end
 
 -- Function to create Save and Cancel buttons
-function CreateSaveCancelButtons(parent)
+local function CreateSaveCancelButtons(parent)
     local saveButton = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     saveButton:SetSize(80, 24)
     saveButton:SetPoint("BOTTOMRIGHT", parent, "BOTTOM", -10, 15)
@@ -341,403 +200,8 @@ function CreateSaveCancelButtons(parent)
     return saveButton, cancelButton
 end
 
--- Function to open the Add/Edit Note dialog
-function OpenNoteDialog(regionName, noteIndex)
-    local isEdit = noteIndex ~= nil
-    local dialogBaseName = isEdit and "FleshWoundEditNoteDialog" or "FleshWoundAddNoteDialog"
-    local displayRegionName = L[regionName] or regionName
-    local dialogTitle = format(isEdit and L["Edit Note - %s"] or L["Add Note - %s"], displayRegionName)
-
-    -- Use a unique global name for the dialog
-    local frameName = dialogBaseName .. "_" .. regionName
-
-    local dialog = _G[frameName]
-    if not dialog then
-        dialog = CreateDialog(frameName, dialogTitle, 400, 370)
-        dialog.regionName = regionName
-
-        -- Severity Dropdown
-        dialog.SeverityLabel, dialog.SeverityDropdown = CreateSeverityDropdown(dialog)
-
-        -- EditBox with Character Counter
-        dialog.ScrollFrame, dialog.EditBox, dialog.CharCountLabel = CreateEditBoxWithCounter(dialog, 125)
-
-        -- Save and Cancel Buttons
-        dialog.SaveButton, dialog.CancelButton = CreateSaveCancelButtons(dialog)
-
-        -- Store the dialog globally
-        _G[frameName] = dialog
-    else
-        dialog.Title:SetText(dialogTitle)
-        dialog.regionName = regionName
-    end
-
-    local woundData = addonTable.woundData or {}
-    dialog.noteIndex = noteIndex
-    dialog.selectedSeverity = L["Unknown"]
-    UIDropDownMenu_SetSelectedName(dialog.SeverityDropdown, dialog.selectedSeverity)
-    UIDropDownMenu_Initialize(dialog.SeverityDropdown, dialog.SeverityDropdown.initialize)
-
-    if isEdit then
-        local note = woundData[regionName][noteIndex]
-        dialog.EditBox:SetText(note.text or "")
-        dialog.selectedSeverity = note.severity or L["Unknown"]
-        UIDropDownMenu_SetSelectedName(dialog.SeverityDropdown, dialog.selectedSeverity)
-        -- Update character count label
-        local initialText = note.text or ""
-        local initialLength = strlenutf8(initialText)
-        dialog.CharCountLabel:SetText(format(L["%d / %d"], initialLength, 125))
-    else
-        dialog.EditBox:SetText("")
-        dialog.CharCountLabel:SetText(format(L["%d / %d"], 0, 125))
-    end
-
-    -- Function to check for duplicate notes and sanitize input
-    local function UpdateSaveButtonState()
-        local text = dialog.EditBox:GetText()
-        text = SanitizeInput(text)
-        local length = strlenutf8(text)
-        dialog.CharCountLabel:SetText(format(L["%d / %d"], length, 125))
-
-        if text == "" then
-            dialog.SaveButton:Disable()
-            return
-        end
-
-        -- Check for duplicate content
-        woundData[regionName] = woundData[regionName] or {}
-        local isDuplicate = false
-        for idx, note in ipairs(woundData[regionName]) do
-            if (not isEdit or idx ~= noteIndex) and note.text == text then
-                isDuplicate = true
-                break
-            end
-        end
-
-        if isDuplicate then
-            dialog.SaveButton:Disable()
-            -- Optionally, display a message or change the appearance
-            if not dialog.DuplicateWarning then
-                dialog.DuplicateWarning = dialog:CreateFontString(nil, "OVERLAY", "GameFontRedSmall")
-                dialog.DuplicateWarning:SetPoint("TOPLEFT", dialog.EditBox, "BOTTOMLEFT", 0, -5)
-                dialog.DuplicateWarning:SetText(L["A note with this content already exists."])
-            end
-            dialog.DuplicateWarning:Show()
-        else
-            dialog.SaveButton:Enable()
-            if dialog.DuplicateWarning then
-                dialog.DuplicateWarning:Hide()
-            end
-        end
-    end
-
-    -- Set the OnTextChanged handler
-    dialog.EditBox:SetScript("OnTextChanged", function(self)
-        UpdateSaveButtonState()
-    end)
-
-    -- Initial call to set the correct state
-    UpdateSaveButtonState()
-
-    dialog:Show()
-    dialog.EditBox:SetFocus()
-
-    -- Save Button Handler
-    dialog.SaveButton:SetScript("OnClick", function()
-        local text = dialog.EditBox:GetText()
-        text = SanitizeInput(text)
-        local severity = dialog.selectedSeverity or L["Unknown"]
-        if text and text ~= "" then
-            -- Check for duplicate content
-            woundData[regionName] = woundData[regionName] or {}
-            local isDuplicate = false
-            for idx, note in ipairs(woundData[regionName]) do
-                if (not isEdit or idx ~= noteIndex) and note.text == text then
-                    isDuplicate = true
-                    break
-                end
-            end
-
-            if isDuplicate then
-                -- Display error message
-                UIErrorsFrame:AddMessage(format(L["Error: %s"], L["A note with this content already exists."]), 1.0, 0.0, 0.0, 53, 5)
-            else
-                if isEdit then
-                    woundData[regionName][noteIndex].text = text
-                    woundData[regionName][noteIndex].severity = severity
-                else
-                    table.insert(woundData[regionName], { text = text, severity = severity })
-                end
-                UpdateRegionColors() -- Update the region color
-                dialog.EditBox:SetText("")
-                dialog:Hide()
-                OpenWoundDialog(regionName)  -- Reopen the wound dialog to show updated notes
-            end
-        else
-            -- Display error message if text is empty
-            UIErrorsFrame:AddMessage(format(L["Error: %s"], L["Note content cannot be empty."]), 1.0, 0.0, 0.0, 53, 5)
-        end
-    end)
-
-    -- Cancel Button Handler
-    dialog.CancelButton:SetScript("OnClick", function()
-        dialog.EditBox:SetText("")
-        dialog:Hide()
-        OpenWoundDialog(regionName)  -- Reopen the wound dialog
-    end)
-end
-
--- Function to open the wound dialog
-function OpenWoundDialog(regionName)
-    local dialogName = "FleshWoundDialog_" .. regionName
-    local displayRegionName = L[regionName] or regionName
-    local dialogTitle = format(L["Wound Details - %s"], displayRegionName)
-
-    local dialog = _G[dialogName]
-    if not dialog then
-        dialog = CreateDialog(dialogName, dialogTitle, 550, 500)
-        dialog.regionName = regionName
-
-        -- ScrollFrame to display notes
-        dialog.ScrollFrame = CreateFrame("ScrollFrame", nil, dialog, "UIPanelScrollFrameTemplate")
-        dialog.ScrollFrame:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
-        dialog.ScrollFrame:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -35, 60)
-
-        dialog.ScrollChild = CreateFrame("Frame", nil, dialog.ScrollFrame)
-        dialog.ScrollChild:SetSize(dialog.ScrollFrame:GetWidth(), 1)
-        dialog.ScrollFrame:SetScrollChild(dialog.ScrollChild)
-
-        -- Placeholder for note entries
-        dialog.NoteEntries = {}
-
-        dialog.AddNoteButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-        dialog.AddNoteButton:SetSize(120, 30)
-        dialog.AddNoteButton:SetPoint("BOTTOMLEFT", dialog, "BOTTOMLEFT", 15, 15)
-        dialog.AddNoteButton:SetText(L["Add Note"])
-        dialog.AddNoteButton:SetScript("OnClick", function()
-            dialog:Hide()
-            OpenNoteDialog(dialog.regionName)
-        end)
-
-        _G[dialogName] = dialog
-    else
-        dialog.Title:SetText(dialogTitle)
-        dialog.regionName = regionName
-    end
-
-    local woundData = addonTable.woundData or {}
-    local notes = woundData[regionName]
-
-    -- Clear previous entries
-    for _, entry in ipairs(dialog.NoteEntries) do
-        entry:Hide()
-    end
-    dialog.NoteEntries = {}
-
-    if notes and #notes > 0 then
-        local yOffset = -10
-        for i, note in ipairs(notes) do
-            local entry = CreateFrame("Frame", nil, dialog.ScrollChild, "BackdropTemplate")
-            entry:SetWidth(dialog.ScrollChild:GetWidth() - 20)
-            entry:SetPoint("TOPLEFT", 10, yOffset)
-            entry:SetBackdrop({
-                bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-                edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-                tile = false,
-                tileSize = 0,
-                edgeSize = 14,
-                insets = { left = 4, right = 4, top = 4, bottom = 4 }
-            })
-            -- Get the color based on severity
-            local color = GetSeverityColor(note.severity or L["None"])
-            entry:SetBackdropColor(color[1], color[2], color[3], 0.4)
-            entry:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
-
-            -- Display the note text
-            local noteText = entry:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-            noteText:SetPoint("TOPLEFT", entry, "TOPLEFT", 10, -10)
-            noteText:SetPoint("BOTTOMRIGHT", entry, "BOTTOMRIGHT", -110, 10)
-            noteText:SetJustifyH("LEFT")
-            noteText:SetJustifyV("TOP")
-            noteText:SetText(note.text)
-
-            -- Adjust the height based on the text content
-            local textHeight = noteText:GetStringHeight()
-            local entryHeight = textHeight + 20
-            entry:SetHeight(entryHeight)
-
-            -- Edit Button
-            local editButton = CreateFrame("Button", nil, entry, "UIPanelButtonTemplate")
-            editButton:SetSize(70, 22)
-            editButton:SetPoint("TOPRIGHT", entry, "TOPRIGHT", -80, -5)
-            editButton:SetText(L["Edit"])
-            editButton:SetScript("OnClick", function()
-                dialog:Hide()
-                OpenNoteDialog(dialog.regionName, i)
-            end)
-
-            -- Delete Button
-            local deleteButton = CreateFrame("Button", nil, entry, "UIPanelButtonTemplate")
-            deleteButton:SetSize(70, 22)
-            deleteButton:SetPoint("TOPRIGHT", entry, "TOPRIGHT", -10, -5)
-            deleteButton:SetText(L["Delete"])
-            deleteButton:SetScript("OnClick", function()
-                table.remove(woundData[dialog.regionName], i)
-                OpenWoundDialog(dialog.regionName) -- Refresh the dialog
-                UpdateRegionColors() -- Update the region color
-            end)
-
-            table.insert(dialog.NoteEntries, entry)
-            yOffset = yOffset - (entryHeight + 10)
-        end
-        -- Adjust the ScrollChild height
-        dialog.ScrollChild:SetHeight(-yOffset)
-    else
-        local noNotesText = dialog.ScrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        noNotesText:SetPoint("TOPLEFT", 10, -10)
-        noNotesText:SetWidth(dialog.ScrollChild:GetWidth() - 20)
-        noNotesText:SetJustifyH("CENTER")
-        noNotesText:SetText(L["No notes have been added for this region."])
-
-        table.insert(dialog.NoteEntries, noNotesText)
-        dialog.ScrollChild:SetHeight(30)
-    end
-
-    dialog:Show()
-end
-
--- Function to open the Profile Manager
-function OpenProfileManager()
-    local frameName = "FleshWoundProfileManager"
-    local dialogTitle = L["Profile Manager"]
-
-    local dialog = _G[frameName]
-    if not dialog then
-        dialog = CreateDialog(frameName, dialogTitle, 500, 500)
-
-        -- ScrollFrame to display profiles
-        dialog.ScrollFrame = CreateFrame("ScrollFrame", nil, dialog, "UIPanelScrollFrameTemplate")
-        dialog.ScrollFrame:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
-        dialog.ScrollFrame:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -35, 100)
-
-        dialog.ScrollChild = CreateFrame("Frame", nil, dialog.ScrollFrame)
-        dialog.ScrollChild:SetSize(dialog.ScrollFrame:GetWidth(), 1)
-        dialog.ScrollFrame:SetScrollChild(dialog.ScrollChild)
-
-        -- Placeholder for profile entries
-        dialog.ProfileEntries = {}
-
-        -- Create Profile Button
-        dialog.CreateProfileButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-        dialog.CreateProfileButton:SetSize(120, 30)
-        dialog.CreateProfileButton:SetPoint("BOTTOMLEFT", dialog, "BOTTOMLEFT", 15, 15)
-        dialog.CreateProfileButton:SetText(L["Create Profile"])
-        dialog.CreateProfileButton:SetScript("OnClick", function()
-            OpenCreateProfileDialog()
-        end)
-
-        -- Close Button
-        dialog.CloseButton = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-        dialog.CloseButton:SetSize(80, 30)
-        dialog.CloseButton:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -15, 15)
-        dialog.CloseButton:SetText(L["Close"])
-        dialog.CloseButton:SetScript("OnClick", function()
-            dialog:Hide()
-        end)
-
-        _G[frameName] = dialog
-    end
-
-    -- Populate the profiles list
-    local profiles = addonTable.FleshWoundData.profiles
-    local currentProfile = addonTable.FleshWoundData.currentProfile
-
-    -- Clear previous entries
-    for _, entry in ipairs(dialog.ProfileEntries) do
-        entry:Hide()
-    end
-    dialog.ProfileEntries = {}
-
-    local yOffset = -10
-    local index = 1
-    local sortedProfiles = {}
-    for profileName in pairs(profiles) do
-        table.insert(sortedProfiles, profileName)
-    end
-    table.sort(sortedProfiles)
-
-    for _, profileName in ipairs(sortedProfiles) do
-        local entry = CreateFrame("Frame", nil, dialog.ScrollChild, "BackdropTemplate")
-        entry:SetWidth(dialog.ScrollChild:GetWidth() - 20)
-        entry:SetHeight(40)
-        entry:SetPoint("TOPLEFT", 10, yOffset)
-        entry:SetBackdrop({
-            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-            tile = false,
-            tileSize = 0,
-            edgeSize = 14,
-            insets = { left = 4, right = 4, top = 4, bottom = 4 }
-        })
-        if profileName == currentProfile then
-            entry:SetBackdropColor(0.0, 0.5, 0.0, 0.5)  -- Highlight current profile
-        else
-            entry:SetBackdropColor(0.0, 0.0, 0.0, 0.5)
-        end
-        entry:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
-
-        -- Profile Name
-        local nameText = entry:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        nameText:SetPoint("LEFT", entry, "LEFT", 10, 0)
-        nameText:SetText(profileName)
-
-        -- Select Button
-        local selectButton = CreateFrame("Button", nil, entry, "UIPanelButtonTemplate")
-        selectButton:SetSize(80, 24)
-        selectButton:SetPoint("RIGHT", entry, "RIGHT", -10, 0)
-        selectButton:SetText(L["Select"])
-        selectButton:SetScript("OnClick", function()
-            FleshWound_SwitchProfile(profileName)
-            UpdateRegionColors()  -- Update the region colors immediately
-            OpenProfileManager()  -- Refresh the profile manager
-        end)
-
-        -- Delete Button
-        local deleteButton = CreateFrame("Button", nil, entry, "UIPanelButtonTemplate")
-        deleteButton:SetSize(80, 24)
-        deleteButton:SetPoint("RIGHT", selectButton, "LEFT", -5, 0)
-        deleteButton:SetText(L["Delete"])
-        deleteButton:SetScript("OnClick", function()
-            FleshWound_DeleteProfile(profileName)
-            OpenProfileManager()  -- Refresh the profile manager
-        end)
-        if profileName == currentProfile then
-            deleteButton:Disable()
-        end
-
-        -- Rename Button
-        local renameButton = CreateFrame("Button", nil, entry, "UIPanelButtonTemplate")
-        renameButton:SetSize(80, 24)
-        renameButton:SetPoint("RIGHT", deleteButton, "LEFT", -5, 0)
-        renameButton:SetText(L["Rename"])
-        renameButton:SetScript("OnClick", function()
-            OpenRenameProfileDialog(profileName)
-        end)
-
-        table.insert(dialog.ProfileEntries, entry)
-        yOffset = yOffset - 50
-        index = index + 1
-    end
-
-    -- Adjust the ScrollChild height
-    dialog.ScrollChild:SetHeight(-yOffset)
-
-    dialog:Show()
-end
-
-
 -- Function to create a single-line edit box with character counter
-function CreateSingleLineEditBoxWithCounter(parent, maxChars)
+local function CreateSingleLineEditBoxWithCounter(parent, maxChars)
     -- EditBox
     local editBox = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
     editBox:SetAutoFocus(true)
@@ -759,78 +223,643 @@ function CreateSingleLineEditBoxWithCounter(parent, maxChars)
     return editBox, charCountLabel
 end
 
--- Function to open the Create Profile dialog
-function OpenCreateProfileDialog()
-    local frameName = "FleshWoundCreateProfileDialog"
-    local dialogTitle = L["Create Profile"]
+-- GUI Initialization
+function GUI:Initialize()
+    self.woundData = addonTable.woundData or {}
+    self:CreateMainFrame()
+    self:CreateBodyRegions()
+    self:UpdateRegionColors()
+end
 
-    local dialog = _G[frameName]
-    if not dialog then
-        dialog = CreateDialog(frameName, dialogTitle, 300, 200)
+-- Main Frame Creation
+function GUI:CreateMainFrame()
+    local frame = CreateFrame("Frame", "FleshWoundFrame", UIParent, "BackdropTemplate")
+    self.frame = frame
 
-        -- Profile Name Label
-        local nameLabel = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        nameLabel:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
-        nameLabel:SetText(L["Profile Name:"])
+    frame:SetSize(320, 540)
+    frame:SetPoint("CENTER")
+    frame:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true,
+        tileSize = 32,
+        edgeSize = 32,
+        insets = { left = 11, right = 12, top = 12, bottom = 11 },
+    })
+    frame:SetFrameStrata("DIALOG")
+    frame:EnableMouse(true)
+    frame:SetMovable(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", frame.StartMoving)
+    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
 
-        -- Profile Name EditBox with Character Counter
-        local nameEditBox, charCountLabel = CreateSingleLineEditBoxWithCounter(dialog, 20)
-        nameEditBox:SetPoint("LEFT", nameLabel, "RIGHT", 10, 0)
-        dialog.nameEditBox = nameEditBox  -- Store reference
-        dialog.charCountLabel = charCountLabel
+    -- Close Button
+    frame.CloseButton = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    frame.CloseButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -5, -5)
+    frame.CloseButton:SetScript("OnClick", function()
+        frame:Hide()
+    end)
 
-        -- Create and Cancel Buttons
-        local createButton, cancelButton = CreateSaveCancelButtons(dialog)
-        createButton:SetText(L["Create"])
-        cancelButton:SetText(L["Cancel"])
-
-        -- Function to update the Create button state
-        local function UpdateCreateButtonState()
-            local profileName = SanitizeInput(nameEditBox:GetText())
-            if profileName == "" or addonTable.FleshWoundData.profiles[profileName] then
-                createButton:Disable()
-            else
-                createButton:Enable()
+    -- Profile Icon Button
+    frame.ProfileButton = CreateFrame("Button", nil, frame)
+    frame.ProfileButton:SetSize(35, 35)
+    frame.ProfileButton:SetPoint("TOPLEFT", frame, "TOPLEFT", 15, -15)
+    frame.ProfileButton:SetNormalTexture("Interface\\ICONS\\INV_Misc_Book_09")
+    frame.ProfileButton:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
+    frame.ProfileButton:SetScript("OnClick", function()
+        -- Check if any note dialogs are open
+        local noteDialogOpen = false
+        for frameName, frame in pairs(_G) do
+            if type(frameName) == "string" and (frameName:match("^FleshWoundAddNoteDialog_") or frameName:match("^FleshWoundEditNoteDialog_")) and frame:IsShown() then
+                noteDialogOpen = true
+                break
             end
         end
 
-        -- Hook the OnTextChanged handler
-        nameEditBox:HookScript("OnTextChanged", function(self)
-            UpdateCreateButtonState()
-            -- Character count label updates automatically in CreateSingleLineEditBoxWithCounter
-        end)
+        if noteDialogOpen then
+            UIErrorsFrame:AddMessage(L["Cannot open Profile Manager while note dialog is open."], 1.0, 0.0, 0.0, 53, 5)
+            return
+        end
 
-        createButton:SetScript("OnClick", function()
-            local profileName = SanitizeInput(nameEditBox:GetText())
-            FleshWound_CreateProfile(profileName)
+        self:OpenProfileManager()
+    end)
+
+    frame.ProfileButton:SetScript("OnEnter", function()
+        GameTooltip:SetOwner(frame.ProfileButton, "ANCHOR_RIGHT")
+        GameTooltip:SetText(L["Profile Manager"], 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    frame.ProfileButton:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+
+    table.insert(UISpecialFrames, frame:GetName())
+
+    -- Body Image
+    frame.BodyImage = frame:CreateTexture(nil, "BACKGROUND")
+    frame.BodyImage:SetSize(300, 500)
+    frame.BodyImage:SetPoint("CENTER", frame, "CENTER", 0, 0)
+    frame.BodyImage:SetTexture("Interface\\AddOns\\" .. addonName .. "\\Textures\\body_image.tga")
+end
+
+-- Body Regions Creation
+function GUI:CreateBodyRegions()
+    local frame = self.frame
+    frame.BodyRegions = {}
+
+    local regions = {
+        { name = "Head", x = 130, y = 420, width = 50, height = 75 },
+        { name = "Torso", x = 130, y = 275, width = 50, height = 120 },
+        { name = "Left Arm", x = 75, y = 300, width = 50, height = 120 },
+        { name = "Right Arm", x = 185, y = 300, width = 50, height = 120 },
+        { name = "Left Hand", x = 40, y = 180, width = 50, height = 100 },
+        { name = "Right Hand", x = 215, y = 180, width = 50, height = 100 },
+        { name = "Left Leg", x = 100, y = 50, width = 50, height = 130 },
+        { name = "Right Leg", x = 155, y = 50, width = 50, height = 130 },
+        { name = "Left Foot", x = 110, y = 0, width = 50, height = 50 },
+        { name = "Right Foot", x = 150, y = 0, width = 50, height = 50 },
+    }
+
+    for _, region in ipairs(regions) do
+        self:CreateBodyRegion(frame, region)
+    end
+end
+
+function GUI:CreateBodyRegion(frame, region)
+    local btn = CreateFrame("Button", nil, frame)
+    btn:SetSize(region.width, region.height)
+    btn:SetPoint("BOTTOMLEFT", frame.BodyImage, "BOTTOMLEFT", region.x, region.y)
+    btn:SetScript("OnClick", function()
+        self:OpenWoundDialog(region.name)
+    end)
+    btn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight")
+
+    -- Region Marker
+    local regionMarker = btn:CreateTexture(nil, "OVERLAY")
+    regionMarker:SetSize(10, 10)
+    regionMarker:SetPoint("CENTER", btn, "CENTER")
+    regionMarker:SetColorTexture(0, 1, 0, 1)
+    btn.regionMarker = regionMarker
+
+    -- Severity Overlay
+    local overlay = btn:CreateTexture(nil, "ARTWORK")
+    local inset = 7
+    overlay:SetPoint("TOPLEFT", btn, "TOPLEFT", inset, -inset)
+    overlay:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -inset, inset)
+    overlay:SetColorTexture(0, 0, 0, 0)
+    btn.overlay = overlay
+
+    frame.BodyRegions[region.name] = btn
+end
+
+-- Update Region Colors Based on Severity
+function GUI:UpdateRegionColors()
+    local frame = self.frame
+    if not frame or not frame.BodyRegions then return end
+    for regionName, btn in pairs(frame.BodyRegions) do
+        local highestSeverity = GetHighestSeverity(regionName)
+        local color = GetSeverityColor(highestSeverity)
+        btn.overlay:SetColorTexture(unpack(color))
+    end
+end
+
+-- Dialog Creation Helpers
+function GUI:CreateDialog(name, titleText, width, height)
+    local dialog = CreateDialog(name, titleText, width, height)
+    return dialog
+end
+
+function GUI:CreateSeverityDropdown(parent)
+    return CreateSeverityDropdown(parent)
+end
+
+function GUI:CreateEditBoxWithCounter(parent, maxChars)
+    return CreateEditBoxWithCounter(parent, maxChars)
+end
+
+function GUI:CreateSingleLineEditBoxWithCounter(parent, maxChars)
+    return CreateSingleLineEditBoxWithCounter(parent, maxChars)
+end
+
+function GUI:CreateSaveCancelButtons(parent)
+    return CreateSaveCancelButtons(parent)
+end
+function GUI:OpenWoundDialog(regionName, skipCloseDialogs)
+    -- Check if Profile Manager is open
+    if _G["FleshWoundProfileManager"] and _G["FleshWoundProfileManager"]:IsShown() then
+        UIErrorsFrame:AddMessage(L["Cannot open wound dialog while Profile Manager is open."], 1.0, 0.0, 0.0, 53, 5)
+        return
+    end
+
+    if not skipCloseDialogs then
+        -- Close any open body part dialogs to ensure only one is open
+        self:CloseAllDialogs("BodyPartDialogs")
+    end
+
+    local dialogName = "FleshWoundDialog_" .. regionName
+    local displayRegionName = L[regionName] or regionName
+    local dialogTitle = format(L["Wound Details - %s"], displayRegionName)
+
+    -- Always create a new dialog to ensure a fresh UI
+    local dialog = self:CreateDialog(dialogName, dialogTitle, 550, 500)
+    dialog.regionName = regionName
+
+    -- Ensure clicks do not pass through the dialog
+    dialog:EnableMouse(true)
+    dialog:EnableMouseWheel(true)
+    dialog:SetFrameStrata("DIALOG")
+    dialog:SetToplevel(true)
+
+    -- Notes Scroll Frame
+    dialog.ScrollFrame, dialog.ScrollChild = self:CreateScrollFrame(dialog, 15, -60, -35, 60)
+
+    -- Notes Entries
+    dialog.NoteEntries = {}
+
+    -- Add Note Button
+    dialog.AddNoteButton = self:CreateButton(dialog, L["Add Note"], 120, 30, "BOTTOMLEFT", 15, 15)
+    dialog.AddNoteButton:SetScript("OnClick", function()
+        dialog:Hide()
+        self:OpenNoteDialog(regionName)
+    end)
+
+    -- Store the dialog in _G for reference
+    _G[dialogName] = dialog
+
+    self:PopulateWoundDialog(dialog)
+    dialog:Show()
+end
+
+
+
+
+function GUI:CreateNoteEntry(parent, note, index, regionName)
+    local entry = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+    entry:SetWidth(parent:GetWidth() - 20)
+    entry:SetBackdrop({
+        bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = false,
+        tileSize = 0,
+        edgeSize = 14,
+        insets = { left = 4, right = 4, top = 4, bottom = 4 },
+    })
+
+    local color = GetSeverityColor(note.severity or L["None"])
+    entry:SetBackdropColor(color[1], color[2], color[3], 0.4)
+    entry:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+
+    -- Store regionName in entry for easy access
+    entry.regionName = regionName
+
+    -- Note Text
+    local noteText = entry:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    noteText:SetPoint("TOPLEFT", entry, "TOPLEFT", 10, -10)
+    noteText:SetPoint("BOTTOMRIGHT", entry, "BOTTOMRIGHT", -110, 10)
+    noteText:SetJustifyH("LEFT")
+    noteText:SetJustifyV("TOP")
+    noteText:SetText(note.text)
+
+    -- Adjust height based on text content
+    local textHeight = noteText:GetStringHeight()
+    entry:SetHeight(textHeight + 20)
+
+    -- Edit Button
+    local editButton = self:CreateButton(entry, L["Edit"], 70, 22, "TOPRIGHT", -80, -5)
+    editButton:SetScript("OnClick", function()
+        entry:GetParent():GetParent():Hide()
+        self:OpenNoteDialog(entry.regionName, index)
+    end)
+
+    -- Delete Button
+    local deleteButton = self:CreateButton(entry, L["Delete"], 70, 22, "TOPRIGHT", -10, -5)
+    deleteButton:SetScript("OnClick", function()
+        if addonTable.woundData[entry.regionName] then
+            table.remove(addonTable.woundData[entry.regionName], index)
+            self:OpenWoundDialog(entry.regionName)
+            self:UpdateRegionColors()
+        end
+    end)
+
+    return entry
+end
+function GUI:OpenNoteDialog(regionName, noteIndex)
+    if not regionName then
+        print("Error: regionName is nil in OpenNoteDialog")
+        return
+    end
+
+    -- Check if Profile Manager is open
+    if _G["FleshWoundProfileManager"] and _G["FleshWoundProfileManager"]:IsShown() then
+        -- Option 1: Prevent opening and show an error message
+        UIErrorsFrame:AddMessage(L["Cannot open note dialog while Profile Manager is open."], 1.0, 0.0, 0.0, 53, 5)
+        return
+
+        -- Option 2: Close the Profile Manager before opening the note dialog
+        -- self:CloseAllDialogs()
+    end
+
+    -- Close the wound dialog when opening the note dialog
+    self:CloseAllDialogs("BodyPartDialogs")
+
+    local isEdit = noteIndex ~= nil
+    local dialogBaseName = isEdit and "FleshWoundEditNoteDialog" or "FleshWoundAddNoteDialog"
+    local displayRegionName = L[regionName] or regionName
+    local dialogTitle = format(isEdit and L["Edit Note - %s"] or L["Add Note - %s"], displayRegionName)
+    local frameName = dialogBaseName .. "_" .. regionName
+
+    -- Always create a new dialog
+    local dialog = self:CreateDialog(frameName, dialogTitle, 400, 370)
+    dialog.regionName = regionName
+
+    -- Ensure clicks do not pass through the dialog
+    dialog:EnableMouse(true)
+    dialog:EnableMouseWheel(true)
+    dialog:SetFrameStrata("DIALOG")
+    dialog:SetToplevel(true)
+
+    -- Severity Dropdown
+    dialog.SeverityLabel, dialog.SeverityDropdown = CreateSeverityDropdown(dialog)
+
+    -- EditBox with Character Counter
+    dialog.ScrollFrame, dialog.EditBox, dialog.CharCountLabel = CreateEditBoxWithCounter(dialog, MAX_NOTE_LENGTH)
+
+    -- Save and Cancel Buttons
+    dialog.SaveButton, dialog.CancelButton = CreateSaveCancelButtons(dialog)
+
+    -- Store the dialog in _G for reference
+    _G[frameName] = dialog
+
+    self:PopulateNoteDialog(dialog, noteIndex)
+    dialog:Show()
+    dialog.EditBox:SetFocus()
+end
+
+
+
+
+
+function GUI:PopulateNoteDialog(dialog, noteIndex)
+    local isEdit = noteIndex ~= nil
+    local woundData = addonTable.woundData or {}
+    local notes = woundData[dialog.regionName]
+    dialog.noteIndex = noteIndex
+    dialog.selectedSeverity = L["Unknown"]
+
+    UIDropDownMenu_SetSelectedName(dialog.SeverityDropdown, dialog.selectedSeverity)
+    UIDropDownMenu_Initialize(dialog.SeverityDropdown, dialog.SeverityDropdown.initialize)
+
+    if isEdit then
+        local note = notes[noteIndex]
+        dialog.EditBox:SetText(note.text or "")
+        dialog.selectedSeverity = note.severity or L["Unknown"]
+        UIDropDownMenu_SetSelectedName(dialog.SeverityDropdown, dialog.selectedSeverity)
+        local initialLength = strlenutf8(note.text or "")
+        dialog.CharCountLabel:SetText(format(L["%d / %d"], initialLength, MAX_NOTE_LENGTH))
+    else
+        dialog.EditBox:SetText("")
+        dialog.CharCountLabel:SetText(format(L["%d / %d"], 0, MAX_NOTE_LENGTH))
+    end
+
+    -- Update Save Button State
+    local function UpdateSaveButtonState()
+        local text = SanitizeInput(dialog.EditBox:GetText())
+        local length = strlenutf8(text)
+        dialog.CharCountLabel:SetText(format(L["%d / %d"], length, MAX_NOTE_LENGTH))
+
+        if text == "" then
+            dialog.SaveButton:Disable()
+            return
+        end
+
+        -- Check for duplicate content
+        woundData[dialog.regionName] = woundData[dialog.regionName] or {}
+        local isDuplicate = false
+        for idx, note in ipairs(woundData[dialog.regionName]) do
+            if (not isEdit or idx ~= noteIndex) and note.text == text then
+                isDuplicate = true
+                break
+            end
+        end
+
+        if isDuplicate then
+            dialog.SaveButton:Disable()
+            if not dialog.DuplicateWarning then
+                dialog.DuplicateWarning = dialog:CreateFontString(nil, "OVERLAY", "GameFontRedSmall")
+                dialog.DuplicateWarning:SetPoint("TOPLEFT", dialog.EditBox, "BOTTOMLEFT", 0, -5)
+                dialog.DuplicateWarning:SetText(L["A note with this content already exists."])
+            end
+            dialog.DuplicateWarning:Show()
+        else
+            dialog.SaveButton:Enable()
+            if dialog.DuplicateWarning then
+                dialog.DuplicateWarning:Hide()
+            end
+        end
+    end
+
+    dialog.EditBox:SetScript("OnTextChanged", UpdateSaveButtonState)
+    UpdateSaveButtonState()
+    -- Save Button Handler
+    dialog.SaveButton:SetScript("OnClick", function()
+        local text = SanitizeInput(dialog.EditBox:GetText())
+        local severity = dialog.selectedSeverity or L["Unknown"]
+        if text and text ~= "" then
+            woundData[dialog.regionName] = woundData[dialog.regionName] or {}
+            if isEdit then
+                woundData[dialog.regionName][noteIndex].text = text
+                woundData[dialog.regionName][noteIndex].severity = severity
+            else
+                table.insert(woundData[dialog.regionName], { text = text, severity = severity })
+            end
+            self:UpdateRegionColors()
+            dialog.EditBox:SetText("")
             dialog:Hide()
-            OpenProfileManager()
-        end)
+            self:OpenWoundDialog(dialog.regionName, true)  -- Pass true to skip closing dialogs
+        else
+            UIErrorsFrame:AddMessage(format(L["Error: %s"], L["Note content cannot be empty."]), 1.0, 0.0, 0.0, 53, 5)
+        end
+    end)
 
-        cancelButton:SetScript("OnClick", function()
-            dialog:Hide()
-            OpenProfileManager()
-        end)
+    -- Cancel Button Handler
+    dialog.CancelButton:SetScript("OnClick", function()
+        dialog.EditBox:SetText("")
+        dialog:Hide()
+        self:OpenWoundDialog(dialog.regionName, true)  -- Pass true to skip closing dialogs
+    end)
 
-        _G[frameName] = dialog
-        dialog.createButton = createButton  -- Store reference
+end
+
+function GUI:PopulateWoundDialog(dialog)
+    local woundData = addonTable.woundData or {}
+    local notes = woundData[dialog.regionName]
+
+    -- Remove previous entries from the parent frame and hide them
+    if dialog.NoteEntries then
+        for _, entry in ipairs(dialog.NoteEntries) do
+            entry:SetParent(nil)
+            entry:Hide()
+        end
+    end
+    dialog.NoteEntries = {}
+
+    if notes and #notes > 0 then
+        local yOffset = -10
+        for i, note in ipairs(notes) do
+            local entry = self:CreateNoteEntry(dialog.ScrollChild, note, i, dialog.regionName)
+            entry:SetPoint("TOPLEFT", 10, yOffset)
+            table.insert(dialog.NoteEntries, entry)
+            yOffset = yOffset - (entry:GetHeight() + 10)
+        end
+        dialog.ScrollChild:SetHeight(-yOffset)
+    else
+        local noNotesText = dialog.ScrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        noNotesText:SetPoint("TOPLEFT", 10, -10)
+        noNotesText:SetWidth(dialog.ScrollChild:GetWidth() - 20)
+        noNotesText:SetJustifyH("CENTER")
+        noNotesText:SetText(L["No notes have been added for this region."])
+        table.insert(dialog.NoteEntries, noNotesText)
+        dialog.ScrollChild:SetHeight(30)
+    end
+end
+
+
+
+function GUI:OpenProfileManager()
+    -- Close all other dialogs
+    self:CloseAllDialogs()
+
+    local frameName = "FleshWoundProfileManager"
+    local dialogTitle = L["Profile Manager"]
+
+    -- Always create a new dialog to ensure a fresh UI
+    local dialog = self:CreateDialog(frameName, dialogTitle, 500, 500)
+
+    -- Ensure clicks do not pass through the dialog
+    dialog:EnableMouse(true)
+    dialog:EnableMouseWheel(true)
+    dialog:SetFrameStrata("DIALOG")
+    dialog:SetToplevel(true)
+
+    -- Profiles Scroll Frame
+    dialog.ScrollFrame, dialog.ScrollChild = self:CreateScrollFrame(dialog, 15, -60, -35, 100)
+
+    -- Profile Entries
+    dialog.ProfileEntries = {}
+
+    -- Create Profile Button
+    dialog.CreateProfileButton = self:CreateButton(dialog, L["Create Profile"], 120, 30, "BOTTOMLEFT", 15, 15)
+    dialog.CreateProfileButton:SetScript("OnClick", function()
+        dialog:Hide()
+        self:OpenCreateProfileDialog()
+    end)
+
+    -- Close Button
+    dialog.CloseButton = self:CreateButton(dialog, L["Close"], 80, 30, "BOTTOMRIGHT", -15, 15)
+    dialog.CloseButton:SetScript("OnClick", function()
+        dialog:Hide()
+    end)
+
+    -- Store the dialog in _G for reference
+    _G[frameName] = dialog
+
+    self:PopulateProfileManager(dialog)
+    dialog:Show()
+end
+
+
+function GUI:PopulateProfileManager(dialog)
+    local profiles = addonTable.FleshWoundData.profiles
+    local currentProfile = addonTable.FleshWoundData.currentProfile
+
+    -- Clear previous entries
+    for _, entry in ipairs(dialog.ProfileEntries) do
+        entry:Hide()
+    end
+    dialog.ProfileEntries = {}
+
+    local yOffset = -10
+    local sortedProfiles = {}
+    for profileName in pairs(profiles) do
+        table.insert(sortedProfiles, profileName)
+    end
+    table.sort(sortedProfiles)
+
+    for _, profileName in ipairs(sortedProfiles) do
+        local entry = self:CreateProfileEntry(dialog.ScrollChild, profileName, currentProfile)
+        entry:SetPoint("TOPLEFT", 10, yOffset)
+        table.insert(dialog.ProfileEntries, entry)
+        yOffset = yOffset - 50
+    end
+
+    dialog.ScrollChild:SetHeight(-yOffset)
+end
+
+function GUI:CreateProfileEntry(parent, profileName, currentProfile)
+    local entry = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+    entry:SetWidth(parent:GetWidth() - 20)
+    entry:SetHeight(40)
+    entry:SetBackdrop({
+        bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = false,
+        tileSize = 0,
+        edgeSize = 14,
+        insets = { left = 4, right = 4, top = 4, bottom = 4 },
+    })
+    if profileName == currentProfile then
+        entry:SetBackdropColor(0.0, 0.5, 0.0, 0.5)
+    else
+        entry:SetBackdropColor(0.0, 0.0, 0.0, 0.5)
+    end
+    entry:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+
+    -- Profile Name
+    local nameText = entry:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    nameText:SetPoint("LEFT", entry, "LEFT", 10, 0)
+    nameText:SetText(profileName)
+
+    -- Buttons
+    local selectButton = self:CreateButton(entry, L["Select"], 80, 24, "RIGHT", -10, 0)
+    selectButton:SetScript("OnClick", function()
+        addonTable.Data:SwitchProfile(profileName)
+        self:UpdateRegionColors()
+        self:OpenProfileManager()
+    end)
+
+    local deleteButton = self:CreateButton(entry, L["Delete"], 80, 24, "RIGHT", selectButton, "LEFT", -5, 0)
+    deleteButton:SetScript("OnClick", function()
+        addonTable.Data:DeleteProfile(profileName)
+        self:OpenProfileManager()
+    end)
+    if profileName == currentProfile then
+        deleteButton:Disable()
+    end
+
+    local renameButton = self:CreateButton(entry, L["Rename"], 80, 24, "RIGHT", deleteButton, "LEFT", -5, 0)
+    renameButton:SetScript("OnClick", function()
+        self:OpenRenameProfileDialog(profileName)
+    end)
+
+    return entry
+end
+function GUI:OpenCreateProfileDialog()
+    -- Close all other dialogs
+    self:CloseAllDialogs()
+
+    local frameName = "FleshWoundCreateProfileDialog"
+    local dialogTitle = L["Create Profile"]
+
+    -- Always create a new dialog to ensure a fresh UI
+    local dialog = self:CreateDialog(frameName, dialogTitle, 300, 200)
+
+    -- Ensure clicks do not pass through the dialog
+    dialog:EnableMouse(true)
+    dialog:EnableMouseWheel(true)
+    dialog:SetFrameStrata("DIALOG")
+    dialog:SetToplevel(true)
+
+    -- Profile Name Label
+    local nameLabel = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    nameLabel:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
+    nameLabel:SetText(L["Profile Name:"])
+
+    -- Profile Name EditBox with Character Counter
+    local nameEditBox, charCountLabel = CreateSingleLineEditBoxWithCounter(dialog, MAX_PROFILE_NAME_LENGTH)
+    nameEditBox:SetPoint("LEFT", nameLabel, "RIGHT", 10, 0)
+    dialog.nameEditBox = nameEditBox
+    dialog.charCountLabel = charCountLabel
+
+    -- Create and Cancel Buttons
+    dialog.SaveButton, dialog.CancelButton = CreateSaveCancelButtons(dialog)
+    dialog.SaveButton:SetText(L["Create"])
+
+    -- Store the dialog in _G for reference
+    _G[frameName] = dialog
+
+    self:PopulateCreateProfileDialog(dialog)
+    dialog:Show()
+    dialog.nameEditBox:SetFocus()
+end
+
+
+function GUI:PopulateCreateProfileDialog(dialog)
+    local function UpdateCreateButtonState()
+        local profileName = SanitizeInput(dialog.nameEditBox:GetText())
+        if profileName == "" or addonTable.FleshWoundData.profiles[profileName] then
+            dialog.SaveButton:Disable()
+        else
+            dialog.SaveButton:Enable()
+        end
     end
 
     dialog.nameEditBox:SetText("")
-    dialog.charCountLabel:SetText(format(L["%d / %d"], 0, 50))
-    dialog:Show()
-    dialog.nameEditBox:SetFocus()
-    dialog.createButton:Disable()  -- Disable the Create button initially
+    dialog.charCountLabel:SetText(format(L["%d / %d"], 0, MAX_PROFILE_NAME_LENGTH))
+    dialog.SaveButton:Disable()
+
+    dialog.nameEditBox:SetScript("OnTextChanged", UpdateCreateButtonState)
+
+    dialog.SaveButton:SetScript("OnClick", function()
+        local profileName = SanitizeInput(dialog.nameEditBox:GetText())
+        addonTable.Data:CreateProfile(profileName)
+        dialog:Hide()
+        self:OpenProfileManager()
+    end)
+
+    dialog.CancelButton:SetScript("OnClick", function()
+        dialog:Hide()
+        self:OpenProfileManager()
+    end)
 end
 
--- Function to open the Rename Profile dialog
-function OpenRenameProfileDialog(oldProfileName)
+-- Open Rename Profile Dialog
+function GUI:OpenRenameProfileDialog(oldProfileName)
     local frameName = "FleshWoundRenameProfileDialog"
     local dialogTitle = L["Rename Profile"]
 
     local dialog = _G[frameName]
     if not dialog then
-        dialog = CreateDialog(frameName, dialogTitle, 300, 200)
+        dialog = self:CreateDialog(frameName, dialogTitle, 300, 200)
 
         -- Profile Name Label
         local nameLabel = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -838,73 +867,108 @@ function OpenRenameProfileDialog(oldProfileName)
         nameLabel:SetText(L["New Name:"])
 
         -- Profile Name EditBox with Character Counter
-        local nameEditBox, charCountLabel = CreateSingleLineEditBoxWithCounter(dialog, 50)
+        local nameEditBox, charCountLabel = CreateSingleLineEditBoxWithCounter(dialog, MAX_PROFILE_NAME_LENGTH)
         nameEditBox:SetPoint("LEFT", nameLabel, "RIGHT", 10, 0)
-        dialog.nameEditBox = nameEditBox  -- Store reference
+        dialog.nameEditBox = nameEditBox
         dialog.charCountLabel = charCountLabel
 
         -- Rename and Cancel Buttons
-        local renameButton, cancelButton = CreateSaveCancelButtons(dialog)
-        renameButton:SetText(L["Rename"])
-        cancelButton:SetText(L["Cancel"])
-
-        -- Function to update the Rename button state
-        local function UpdateRenameButtonState()
-            local newProfileName = SanitizeInput(nameEditBox:GetText())
-            if newProfileName == "" or addonTable.FleshWoundData.profiles[newProfileName] or newProfileName == oldProfileName then
-                renameButton:Disable()
-            else
-                renameButton:Enable()
-            end
-        end
-
-        -- Hook the OnTextChanged handler
-        nameEditBox:HookScript("OnTextChanged", function(self)
-            UpdateRenameButtonState()
-            -- Character count label updates automatically in CreateSingleLineEditBoxWithCounter
-        end)
-
-        renameButton:SetScript("OnClick", function()
-            local newProfileName = SanitizeInput(nameEditBox:GetText())
-            FleshWound_RenameProfile(oldProfileName, newProfileName)
-            dialog:Hide()
-            OpenProfileManager()
-        end)
-
-        cancelButton:SetScript("OnClick", function()
-            dialog:Hide()
-            OpenProfileManager()
-        end)
+        dialog.SaveButton, dialog.CancelButton = CreateSaveCancelButtons(dialog)
+        dialog.SaveButton:SetText(L["Rename"])
 
         _G[frameName] = dialog
-        dialog.renameButton = renameButton  -- Store reference
+    end
+
+    self:PopulateRenameProfileDialog(dialog, oldProfileName)
+    dialog:Show()
+    dialog.nameEditBox:SetFocus()
+end
+
+function GUI:PopulateRenameProfileDialog(dialog, oldProfileName)
+    local function UpdateRenameButtonState()
+        local newProfileName = SanitizeInput(dialog.nameEditBox:GetText())
+        if newProfileName == "" or addonTable.FleshWoundData.profiles[newProfileName] or newProfileName == oldProfileName then
+            dialog.SaveButton:Disable()
+        else
+            dialog.SaveButton:Enable()
+        end
     end
 
     dialog.nameEditBox:SetText(oldProfileName)
     local initialLength = strlenutf8(oldProfileName)
-    dialog.charCountLabel:SetText(format(L["%d / %d"], initialLength, 50))
-    dialog:Show()
-    dialog.nameEditBox:SetFocus()
-    dialog.renameButton:Disable()  -- Disable the Rename button initially
+    dialog.charCountLabel:SetText(format(L["%d / %d"], initialLength, MAX_PROFILE_NAME_LENGTH))
+    dialog.SaveButton:Disable()
+
+    dialog.nameEditBox:SetScript("OnTextChanged", UpdateRenameButtonState)
+
+    dialog.SaveButton:SetScript("OnClick", function()
+        local newProfileName = SanitizeInput(dialog.nameEditBox:GetText())
+        addonTable.Data:RenameProfile(oldProfileName, newProfileName)
+        dialog:Hide()
+        self:OpenProfileManager()
+    end)
+
+    dialog.CancelButton:SetScript("OnClick", function()
+        dialog:Hide()
+        self:OpenProfileManager()
+    end)
 end
 
--- Function to create the addon options panel (Placeholder for future implementation)
-function FleshWound_AddonOptions()
-    -- Implement options panel as needed
+-- Utility Methods
+function GUI:CreateScrollFrame(parent, left, top, right, bottom)
+    local scrollFrame = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", left, top)
+    scrollFrame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", right, bottom)
+
+    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    scrollChild:SetSize(scrollFrame:GetWidth(), 1)
+    scrollFrame:SetScrollChild(scrollChild)
+
+    return scrollFrame, scrollChild
 end
 
--- Close all open dialogs (used when switching profiles)
-function CloseAllDialogs()
-    -- Close the main frame
-    if FleshWoundFrame then
-        FleshWoundFrame:Hide()
+function GUI:CreateButton(parent, text, width, height, point, relativeTo, offsetX, offsetY)
+    local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    button:SetSize(width, height)
+    if type(relativeTo) == "string" then
+        button:SetPoint(point, parent, relativeTo, offsetX, offsetY)
+    else
+        button:SetPoint(point, relativeTo, offsetX, offsetY)
     end
-    -- Close any other dialogs
-    for _, frame in pairs({ "FleshWoundDialog_", "FleshWoundAddNoteDialog_", "FleshWoundEditNoteDialog_", "FleshWoundProfileManager", "FleshWoundCreateProfileDialog", "FleshWoundRenameProfileDialog" }) do
-        for k, v in pairs(_G) do
-            if type(k) == "string" and k:match(frame) and type(v) == "table" and v.Hide then
-                v:Hide()
+    button:SetText(text)
+    return button
+end
+
+function GUI:CloseAllDialogs(dialogType)
+    local dialogsToClose = {}
+
+    if dialogType == "BodyPartDialogs" then
+        -- Only close body part dialogs
+        dialogsToClose = {
+            "FleshWoundDialog_",
+        }
+    else
+        -- Close all dialogs
+        dialogsToClose = {
+            "FleshWoundDialog_",
+            "FleshWoundAddNoteDialog_",
+            "FleshWoundEditNoteDialog_",
+            "FleshWoundProfileManager",
+            "FleshWoundCreateProfileDialog",
+            "FleshWoundRenameProfileDialog",
+        }
+    end
+
+    for _, framePrefix in ipairs(dialogsToClose) do
+        for frameName, frame in pairs(_G) do
+            if type(frameName) == "string" and frameName:match("^" .. framePrefix) and type(frame) == "table" and frame.Hide then
+                frame:Hide()
             end
         end
     end
 end
+
+
+-- Initialize the GUI when the addon loads
+-- GUI:Initialize()  -- Do not call Initialize here; it should be called after the Data module is initialized
+

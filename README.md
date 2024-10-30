@@ -14,15 +14,15 @@
     - Color-coded regions reflect the severity of the wound for quick visual reference.
     
 - **Severity Levels**
-    - *Healthy* (No color)
-    - *Just-a-scratch* (Green)
-    - *Mild* (Greenish-yellow)
+    - *None* (No color)
+    - *Unknown* (Grey)
+    - *Benign* (Green)
     - *Moderate* (Yellow)
     - *Severe* (Orange)
     - *Deadly* (Red)
     
 - **Switchable Profiles**
-    - Create multiple, persistent profiles for different characters or NPCs.
+    - Create multiple, persistent profiles for each of your characters or NPCs.
     
 - **Wound Sharing**
     - Share your character's injuries with other players.
@@ -42,7 +42,7 @@
 ## Setting up your first profile
 
 1. **Open the FleshWound UI**
-    - Access the FleshWound UI from the minimap button (bandage) or via the Game Menu (press `Esc` and select FleshWound).
+    - Access the FleshWound UI from the minimap button (bandage).
 
 2. **Add a wound**
     - Click on any body region to open the wound dialog.

@@ -446,12 +446,14 @@ function GUI:OpenWoundDialog(regionName, skipCloseDialogs)
     -- Notes Entries
     dialog.NoteEntries = {}
 
-    -- Add Note Button
-    dialog.AddNoteButton = self:CreateButton(dialog, L["Add Note"], 120, 30, "BOTTOMLEFT", 15, 15)
-    dialog.AddNoteButton:SetScript("OnClick", function()
-        dialog:Hide()
-        self:OpenNoteDialog(regionName)
-    end)
+    -- Only show the Add Note button if we’re not viewing a temporary profile
+    if not self.currentTemporaryProfile then
+        dialog.AddNoteButton = self:CreateButton(dialog, L["Add Note"], 120, 30, "BOTTOMLEFT", 15, 15)
+        dialog.AddNoteButton:SetScript("OnClick", function()
+            dialog:Hide()
+            self:OpenNoteDialog(regionName)
+        end)
+    end
 
     -- Store the dialog in _G for reference
     _G[dialogName] = dialog
@@ -459,8 +461,6 @@ function GUI:OpenWoundDialog(regionName, skipCloseDialogs)
     self:PopulateWoundDialog(dialog)
     dialog:Show()
 end
-
-
 
 
 function GUI:CreateNoteEntry(parent, note, index, regionName)
@@ -479,10 +479,8 @@ function GUI:CreateNoteEntry(parent, note, index, regionName)
     entry:SetBackdropColor(color[1], color[2], color[3], 0.4)
     entry:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
 
-    -- Store regionName in entry for easy access
     entry.regionName = regionName
 
-    -- Note Text
     local noteText = entry:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     noteText:SetPoint("TOPLEFT", entry, "TOPLEFT", 10, -10)
     noteText:SetPoint("BOTTOMRIGHT", entry, "BOTTOMRIGHT", -110, 10)
@@ -490,29 +488,30 @@ function GUI:CreateNoteEntry(parent, note, index, regionName)
     noteText:SetJustifyV("TOP")
     noteText:SetText(note.text)
 
-    -- Adjust height based on text content
     local textHeight = noteText:GetStringHeight()
     entry:SetHeight(textHeight + 20)
 
-    -- Edit Button
-    local editButton = self:CreateButton(entry, L["Edit"], 70, 22, "TOPRIGHT", -80, -5)
-    editButton:SetScript("OnClick", function()
-        entry:GetParent():GetParent():Hide()
-        self:OpenNoteDialog(entry.regionName, index)
-    end)
+    -- Only show edit/delete buttons if we're viewing our own profile (i.e., not a temporary profile)
+    if not self.currentTemporaryProfile then
+        local editButton = self:CreateButton(entry, L["Edit"], 70, 22, "TOPRIGHT", -80, -5)
+        editButton:SetScript("OnClick", function()
+            entry:GetParent():GetParent():Hide()
+            self:OpenNoteDialog(entry.regionName, index)
+        end)
 
-    -- Delete Button
-    local deleteButton = self:CreateButton(entry, L["Delete"], 70, 22, "TOPRIGHT", -10, -5)
-    deleteButton:SetScript("OnClick", function()
-        if addonTable.woundData[entry.regionName] then
-            table.remove(addonTable.woundData[entry.regionName], index)
-            self:OpenWoundDialog(entry.regionName)
-            self:UpdateRegionColors()
-        end
-    end)
+        local deleteButton = self:CreateButton(entry, L["Delete"], 70, 22, "TOPRIGHT", -10, -5)
+        deleteButton:SetScript("OnClick", function()
+            if addonTable.woundData[entry.regionName] then
+                table.remove(addonTable.woundData[entry.regionName], index)
+                self:OpenWoundDialog(entry.regionName)
+                self:UpdateRegionColors()
+            end
+        end)
+    end
 
     return entry
 end
+
 function GUI:OpenNoteDialog(regionName, noteIndex)
     if not regionName then
         print("Error: regionName is nil in OpenNoteDialog")
@@ -760,7 +759,13 @@ function GUI:RestoreOriginalProfile()
     if self.tempProfileBannerFrame then
         self.tempProfileBannerFrame:Hide()
     end
+
+    -- Show the profile button again now that we're back to our own profile
+    if self.frame and self.frame.ProfileButton then
+        self.frame.ProfileButton:Show()
+    end
 end
+
 
 function GUI:PopulateProfileManager(dialog)
     local profiles = addonTable.FleshWoundData.profiles

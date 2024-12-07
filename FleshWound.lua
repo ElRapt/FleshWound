@@ -45,7 +45,6 @@ function EventHandler:OnAddonLoaded(name)
 end
 
 
--- FleshWound.lua
 function addonTable:OpenReceivedProfile(profileName, profileData)
     local originalProfile = addonTable.FleshWoundData.currentProfile
     local originalWoundData = addonTable.woundData
@@ -64,9 +63,15 @@ function addonTable:OpenReceivedProfile(profileName, profileData)
         addonTable.GUI.originalWoundData = originalWoundData
         addonTable.GUI.currentTemporaryProfile = profileName
 
+        -- Update and show the banner (already implemented previously)
         if addonTable.GUI.tempProfileBannerFrame and addonTable.GUI.tempProfileBanner then
-            addonTable.GUI.tempProfileBanner:SetText(format(L["Viewing %s's Profile"], profileName))
+            addonTable.GUI.tempProfileBanner:SetText(format(addonTable.L["Viewing %s's Profile"], profileName))
             addonTable.GUI.tempProfileBannerFrame:Show()
+        end
+
+        -- Hide the profile button when viewing another player's profile
+        if addonTable.GUI.frame and addonTable.GUI.frame.ProfileButton then
+            addonTable.GUI.frame.ProfileButton:Hide()
         end
     end
 end

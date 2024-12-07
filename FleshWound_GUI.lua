@@ -229,6 +229,31 @@ function GUI:Initialize()
     self:CreateMainFrame()
     self:CreateBodyRegions()
     self:UpdateRegionColors()
+    self:CreateTemporaryProfileBanner()
+end
+
+function GUI:CreateTemporaryProfileBanner()
+    if not self.frame then return end
+
+    -- Create a small frame to hold the banner text
+    self.tempProfileBannerFrame = CreateFrame("Frame", nil, self.frame, "BackdropTemplate")
+    self.tempProfileBannerFrame:SetSize(self.frame:GetWidth() - 20, 30)
+    self.tempProfileBannerFrame:SetPoint("TOP", self.frame, "TOP", 0, 25) -- More margin from the top
+    self.tempProfileBannerFrame:SetBackdrop({
+        bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = false,
+        tileSize = 0,
+        edgeSize = 16,
+        insets = { left = 4, right = 4, top = 4, bottom = 4 },
+    })
+    self.tempProfileBannerFrame:SetBackdropColor(0, 0, 0, 0.7)
+    self.tempProfileBannerFrame:Hide()
+
+    self.tempProfileBanner = self.tempProfileBannerFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    self.tempProfileBanner:SetPoint("CENTER", self.tempProfileBannerFrame, "CENTER", 0, 0)
+    self.tempProfileBanner:SetJustifyH("CENTER")
+    self.tempProfileBanner:SetTextColor(1, 0.8, 0, 1)
 end
 
 -- Main Frame Creation
@@ -258,6 +283,10 @@ function GUI:CreateMainFrame()
     frame.CloseButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -5, -5)
     frame.CloseButton:SetScript("OnClick", function()
         frame:Hide()
+        if GUI.currentTemporaryProfile then
+            GUI:RestoreOriginalProfile()
+            frame:Hide()
+        end
     end)
 
     -- Profile Icon Button
@@ -708,6 +737,30 @@ function GUI:OpenProfileManager()
     dialog:Show()
 end
 
+-- FleshWound_GUI.lua (RestoreOriginalProfile)
+function GUI:RestoreOriginalProfile()
+    if self.originalWoundData then
+        addonTable.woundData = self.originalWoundData
+        self.originalWoundData = nil
+    end
+
+    if self.originalProfile then
+        addonTable.FleshWoundData.currentProfile = self.originalProfile
+        self.originalProfile = nil
+    end
+
+    self.currentTemporaryProfile = nil
+    self:UpdateRegionColors()
+
+    if self.frame then
+        self.frame:Show()
+    end
+
+    -- Hide the banner since we're back to our own profile
+    if self.tempProfileBannerFrame then
+        self.tempProfileBannerFrame:Hide()
+    end
+end
 
 function GUI:PopulateProfileManager(dialog)
     local profiles = addonTable.FleshWoundData.profiles

@@ -58,3 +58,5 @@ L["Right Foot"] = "Pied droit"
 
 L["Cannot open Profile Manager while note dialog is open."] = "Impossible d'ouvrir le gestionnaire de profils pendant que la boîte de dialogue de note est ouverte."
 L["Cannot open wound dialog while Profile Manager is open."] = "Impossible d'ouvrir la boîte de dialogue de blessure pendant que le gestionnaire de profils est ouvert."
+
+L["Viewing %s's Profile"] = "Profil de %s"

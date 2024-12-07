@@ -7,7 +7,7 @@ addonTable.Comm = Comm
 local prefix = "FleshWoundComm"
 local knownAddonUsers = {}
 local pendingPings = {}
-local PING_TIMEOUT = 5
+local PING_TIMEOUT = 2
 
 -- Load AceSerializer
 local AceSerializer = LibStub("AceSerializer-3.0")
@@ -140,17 +140,27 @@ function Comm:OnChatMsgAddon(prefixMsg, msg, channel, sender)
     local player = Ambiguate(sender, "short")
 
     if msg == "PING" then
+        -- Sender definitely has the addon since they sent PING
+        knownAddonUsers[player] = true
         Comm:SendPong(player)
+        
     elseif msg == "PONG" then
+        knownAddonUsers[player] = true
         Comm:HandlePong(player)
+        
     elseif msg == "REQUEST_PROFILE" then
-        if knownAddonUsers[player] then
-            local currentProfile = addonTable.FleshWoundData.currentProfile
-            Comm:SendProfileData(player, currentProfile)
-        end
+        -- If they request a profile, they have the addon
+        knownAddonUsers[player] = true
+
+        local currentProfile = addonTable.FleshWoundData.currentProfile
+        Comm:SendProfileData(player, currentProfile)
+        
     else
         local cmd, profileName, data = strsplit(":", msg, 3)
-        if cmd == "PROFILE_DATA" and knownAddonUsers[player] then
+        if cmd == "PROFILE_DATA" then
+            -- Receiving profile data means the sender has the addon
+            knownAddonUsers[player] = true
+
             local profileData = Comm:DeserializeProfile(data)
             Comm:ShowIncomingProfilePopup(player, profileName, profileData)
         end

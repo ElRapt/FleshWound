@@ -3,6 +3,9 @@
 
 local addonName, addonTable = ...
 
+local L = addonTable.L
+
+
 -- Create an Event Handler Module
 local EventHandler = {}
 addonTable.EventHandler = EventHandler  -- Expose to addonTable
@@ -42,22 +45,32 @@ function EventHandler:OnAddonLoaded(name)
 end
 
 
+-- FleshWound.lua
 function addonTable:OpenReceivedProfile(profileName, profileData)
-    -- Save current data so we can restore it later
-    local originalProfileName = addonTable.FleshWoundData.currentProfile
+    local originalProfile = addonTable.FleshWoundData.currentProfile
     local originalWoundData = addonTable.woundData
 
-    -- Just temporarily show the received profile data
     addonTable.woundData = profileData.woundData
 
     if addonTable.GUI and addonTable.GUI.UpdateRegionColors then
         addonTable.GUI:UpdateRegionColors()
     end
-    
     if addonTable.GUI and addonTable.GUI.frame then
         addonTable.GUI.frame:Show()
     end
+
+    if addonTable.GUI then
+        addonTable.GUI.originalProfile = originalProfile
+        addonTable.GUI.originalWoundData = originalWoundData
+        addonTable.GUI.currentTemporaryProfile = profileName
+
+        if addonTable.GUI.tempProfileBannerFrame and addonTable.GUI.tempProfileBanner then
+            addonTable.GUI.tempProfileBanner:SetText(format(L["Viewing %s's Profile"], profileName))
+            addonTable.GUI.tempProfileBannerFrame:Show()
+        end
+    end
 end
+
 
 -- Create the event frame and set scripts
 EventHandler.eventFrame = CreateFrame("Frame")

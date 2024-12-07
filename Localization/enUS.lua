@@ -56,4 +56,4 @@ L["Right Foot"] = "Right Foot"
 
 L["Cannot open Profile Manager while note dialog is open."] = "Cannot open Profile Manager while note dialog is open."
 L["Cannot open wound dialog while Profile Manager is open."] = "Cannot open wound dialog while Profile Manager is open."
-
+L["Viewing %s's Profile"] = "Viewing %s's Profile"

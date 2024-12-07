@@ -123,7 +123,11 @@ requestButton:SetText("Request Profile")
 requestButton:SetSize(120, 24)
 requestButton:SetPoint("TOP", GameMenuButtonFleshWound, "BOTTOM", 0, -5)
 requestButton:SetScript("OnClick", function()
-    local targetName = "SomeOtherPlayer"
+    local targetName = UnitName("target")
+    if not targetName or targetName == "" then
+        print("No target selected.")
+        return
+    end
     addonTable.Comm:RequestProfile(targetName)
 end)
 

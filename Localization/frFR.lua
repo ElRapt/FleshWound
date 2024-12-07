@@ -60,3 +60,6 @@ L["Cannot open Profile Manager while note dialog is open."] = "Impossible d'ouvr
 L["Cannot open wound dialog while Profile Manager is open."] = "Impossible d'ouvrir la boîte de dialogue de blessure pendant que le gestionnaire de profils est ouvert."
 
 L["Viewing %s's Profile"] = "Profil de %s"
+
+L["Request Profile"] = "Afficher le profil"
+L["Click the bandage to request."] = "Cliquez sur le bandage pour afficher."

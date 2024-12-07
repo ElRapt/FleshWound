@@ -18,10 +18,18 @@ end
 
 function Comm:RequestProfile(targetPlayer)
     if not targetPlayer then return end
-    if not knownAddonUsers[targetPlayer] then
-        self:PingPlayer(targetPlayer)
-    else
+    if knownAddonUsers[targetPlayer] then
         C_ChatInfo.SendAddonMessage(prefix, "REQUEST_PROFILE", "WHISPER", targetPlayer)
+    else
+        -- Ping and wait for response, then request profile after handshake
+        self:PingPlayer(targetPlayer)
+        C_Timer.After(PING_TIMEOUT + 1, function()
+            if knownAddonUsers[targetPlayer] then
+                C_ChatInfo.SendAddonMessage(prefix, "REQUEST_PROFILE", "WHISPER", targetPlayer)
+            else
+                print(targetPlayer.." did not respond. Cannot request profile.")
+            end
+        end)
     end
 end
 
@@ -54,61 +62,9 @@ function Comm:DeserializeProfile(serialized)
         print("DeserializeProfile: Failed to deserialize data or invalid data type.")
     end
 
-    -- Debug logging
-    print("DeserializeProfile: Finished deserialization.")
-    for region, notes in pairs(profileData.woundData) do
-        print("Region:", region, "Notes Count:", #notes)
-        for idx, note in ipairs(notes) do
-            print("  Note #"..idx..": Severity:", note.severity, "Text:", note.text)
-        end
-    end
-
     return profileData
 end
 
-function Comm:ShowIncomingProfilePopup(sender, profileName, profileData)
-    if not knownAddonUsers[sender] then
-        return
-    end
-
-    if not Comm.popupFrame then
-        Comm.popupFrame = CreateFrame("Frame", "FleshWoundIncomingProfilePopup", UIParent, "BackdropTemplate")
-        Comm.popupFrame:SetSize(200, 100)
-        Comm.popupFrame:SetPoint("CENTER")
-        Comm.popupFrame:SetBackdrop({
-            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-            tile = true,
-            tileSize = 32,
-            edgeSize = 24,
-            insets = { left = 5, right = 5, top = 5, bottom = 5 },
-        })
-        Comm.popupFrame:SetFrameStrata("DIALOG")
-        Comm.popupFrame:EnableMouse(true)
-        Comm.popupFrame:SetMovable(true)
-        Comm.popupFrame:RegisterForDrag("LeftButton")
-        Comm.popupFrame:SetScript("OnDragStart", Comm.popupFrame.StartMoving)
-        Comm.popupFrame:SetScript("OnDragStop", Comm.popupFrame.StopMovingOrSizing)
-
-        Comm.popupFrame.text = Comm.popupFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        Comm.popupFrame.text:SetPoint("TOP", 0, -20)
-
-        Comm.popupFrame.button = CreateFrame("Button", nil, Comm.popupFrame, "UIPanelButtonTemplate")
-        Comm.popupFrame.button:SetSize(80, 24)
-        Comm.popupFrame.button:SetPoint("BOTTOM", 0, 15)
-
-        Comm.popupFrame.closeButton = CreateFrame("Button", nil, Comm.popupFrame, "UIPanelCloseButton")
-        Comm.popupFrame.closeButton:SetPoint("TOPRIGHT", Comm.popupFrame, "TOPRIGHT", -5, -5)
-        Comm.popupFrame.closeButton:SetScript("OnClick", function() Comm.popupFrame:Hide() end)
-    end
-    Comm.popupFrame.text:SetText(sender.." sent a profile")
-    Comm.popupFrame.button:SetText("Open")
-    Comm.popupFrame.button:SetScript("OnClick", function()
-        addonTable:OpenReceivedProfile(profileName, profileData)
-        Comm.popupFrame:Hide()
-    end)
-    Comm.popupFrame:Show()
-end
 
 function Comm:PingPlayer(targetPlayer)
     if not targetPlayer then return end
@@ -140,29 +96,28 @@ function Comm:OnChatMsgAddon(prefixMsg, msg, channel, sender)
     local player = Ambiguate(sender, "short")
 
     if msg == "PING" then
-        -- Sender definitely has the addon since they sent PING
-        knownAddonUsers[player] = true
-        Comm:SendPong(player)
-        
+        self:SendPong(player)
     elseif msg == "PONG" then
-        knownAddonUsers[player] = true
-        Comm:HandlePong(player)
-        
+        self:HandlePong(player)
     elseif msg == "REQUEST_PROFILE" then
-        -- If they request a profile, they have the addon
-        knownAddonUsers[player] = true
-
-        local currentProfile = addonTable.FleshWoundData.currentProfile
-        Comm:SendProfileData(player, currentProfile)
-        
+        if knownAddonUsers[player] then
+            local currentProfile = addonTable.FleshWoundData.currentProfile
+            self:SendProfileData(player, currentProfile)
+        else
+            -- If not known yet, we can't send. But normally we set knownAddonUsers on receiving addon messages.
+            knownAddonUsers[player] = true
+            local currentProfile = addonTable.FleshWoundData.currentProfile
+            self:SendProfileData(player, currentProfile)
+        end
     else
         local cmd, profileName, data = strsplit(":", msg, 3)
         if cmd == "PROFILE_DATA" then
-            -- Receiving profile data means the sender has the addon
+            -- Mark them as known addon user
             knownAddonUsers[player] = true
-
+            
             local profileData = Comm:DeserializeProfile(data)
-            Comm:ShowIncomingProfilePopup(player, profileName, profileData)
+            -- Directly open the received profile, no popup with a button
+            addonTable:OpenReceivedProfile(profileName, profileData)
         end
     end
 end

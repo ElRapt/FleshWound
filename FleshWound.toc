@@ -20,3 +20,4 @@ FleshWound_Utils.lua
 FleshWound_Comm.lua
 FleshWound_SlashCommands.lua
 FleshWound_GameMenu.lua
+FleshWound_TargetPopup.lua

@@ -118,6 +118,16 @@ function GameMenu:AdjustGameMenuButtons(btn)
     end
 end
 
+local requestButton = CreateFrame("Button", nil, GameMenuFrame, "UIPanelButtonTemplate")
+requestButton:SetText("Request Profile")
+requestButton:SetSize(120, 24)
+requestButton:SetPoint("TOP", GameMenuButtonFleshWound, "BOTTOM", 0, -5)
+requestButton:SetScript("OnClick", function()
+    local targetName = "SomeOtherPlayer"
+    addonTable.Comm:RequestProfile(targetName)
+end)
+
+
 -- Initialize when the addon loads
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")

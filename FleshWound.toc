@@ -1,4 +1,4 @@
-## Interface: 110002   # WoW version number (use latest)
+## Interface: 110002
 ## Title: Flesh Wound
 ## Notes: Adds a custom health UI for roleplay purposes
 ## Author: ElRapt
@@ -8,6 +8,7 @@
 Libs\LibStub\LibStub.lua
 Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
 Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
+Libs\AceSerializer-3.0\AceSerializer-3.0.lua
 
 Localization\enUS.lua
 Localization\frFR.lua
@@ -16,4 +17,6 @@ FleshWound.lua
 FleshWound_Data.lua
 FleshWound_GUI.lua
 FleshWound_Utils.lua
+FleshWound_Comm.lua
+FleshWound_SlashCommands.lua
 FleshWound_GameMenu.lua

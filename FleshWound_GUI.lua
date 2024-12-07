@@ -384,11 +384,12 @@ end
 function GUI:CreateSaveCancelButtons(parent)
     return CreateSaveCancelButtons(parent)
 end
+
 function GUI:OpenWoundDialog(regionName, skipCloseDialogs)
-    -- Check if Profile Manager is open
-    if _G["FleshWoundProfileManager"] and _G["FleshWoundProfileManager"]:IsShown() then
-        UIErrorsFrame:AddMessage(L["Cannot open wound dialog while Profile Manager is open."], 1.0, 0.0, 0.0, 53, 5)
-        return
+    local profileManager = _G["FleshWoundProfileManager"]
+    if profileManager and profileManager:IsShown() then
+        -- Close the Profile Manager before opening the wound details
+        profileManager:Hide()
     end
 
     if not skipCloseDialogs then

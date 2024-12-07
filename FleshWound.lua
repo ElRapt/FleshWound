@@ -7,7 +7,6 @@ local addonName, addonTable = ...
 local EventHandler = {}
 addonTable.EventHandler = EventHandler  -- Expose to addonTable
 
--- Handle ADDON_LOADED event
 function EventHandler:OnAddonLoaded(name)
     if name == addonName then
         -- Initialize SavedVariables
@@ -32,8 +31,31 @@ function EventHandler:OnAddonLoaded(name)
             print("GUI module not found or does not have an Initialize method.")
         end
 
+        -- Initialize Comm Module
+        if addonTable.Comm and addonTable.Comm.Initialize then
+            addonTable.Comm:Initialize()
+        end
+
         -- Unregister the event after it's handled
         self.eventFrame:UnregisterEvent("ADDON_LOADED")
+    end
+end
+
+
+function addonTable:OpenReceivedProfile(profileName, profileData)
+    -- Save current data so we can restore it later
+    local originalProfileName = addonTable.FleshWoundData.currentProfile
+    local originalWoundData = addonTable.woundData
+
+    -- Just temporarily show the received profile data
+    addonTable.woundData = profileData.woundData
+
+    if addonTable.GUI and addonTable.GUI.UpdateRegionColors then
+        addonTable.GUI:UpdateRegionColors()
+    end
+    
+    if addonTable.GUI and addonTable.GUI.frame then
+        addonTable.GUI.frame:Show()
     end
 end
 

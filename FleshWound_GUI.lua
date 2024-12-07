@@ -228,8 +228,25 @@ function GUI:Initialize()
     self.woundData = addonTable.woundData or {}
     self:CreateMainFrame()
     self:CreateBodyRegions()
-    self:UpdateRegionColors()
     self:CreateTemporaryProfileBanner()
+    self:UpdateRegionColors()
+    self:UpdateProfileBanner()
+end
+
+
+function GUI:UpdateProfileBanner()
+    if not self.frame or not self.tempProfileBannerFrame or not self.tempProfileBanner then return end
+    local currentProfileName = addonTable.FleshWoundData.currentProfile
+
+    if self.currentTemporaryProfile then
+        -- Viewing another player's profile
+        self.tempProfileBanner:SetText(format(addonTable.L["Viewing %s's Profile"], self.currentTemporaryProfile))
+    else
+        -- Viewing our own profile
+        self.tempProfileBanner:SetText(format(addonTable.L["Viewing %s's Profile"], currentProfileName))
+    end
+
+    self.tempProfileBannerFrame:Show()
 end
 
 function GUI:CreateTemporaryProfileBanner()
@@ -736,7 +753,6 @@ function GUI:OpenProfileManager()
     dialog:Show()
 end
 
--- FleshWound_GUI.lua (RestoreOriginalProfile)
 function GUI:RestoreOriginalProfile()
     if self.originalWoundData then
         addonTable.woundData = self.originalWoundData
@@ -755,10 +771,8 @@ function GUI:RestoreOriginalProfile()
         self.frame:Show()
     end
 
-    -- Hide the banner since we're back to our own profile
-    if self.tempProfileBannerFrame then
-        self.tempProfileBannerFrame:Hide()
-    end
+    -- Update the banner now that we are back to our own profile
+    self:UpdateProfileBanner()
 
     -- Show the profile button again now that we're back to our own profile
     if self.frame and self.frame.ProfileButton then

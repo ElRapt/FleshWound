@@ -63,11 +63,7 @@ function addonTable:OpenReceivedProfile(profileName, profileData)
         addonTable.GUI.originalWoundData = originalWoundData
         addonTable.GUI.currentTemporaryProfile = profileName
 
-        -- Update and show the banner (already implemented previously)
-        if addonTable.GUI.tempProfileBannerFrame and addonTable.GUI.tempProfileBanner then
-            addonTable.GUI.tempProfileBanner:SetText(format(addonTable.L["Viewing %s's Profile"], profileName))
-            addonTable.GUI.tempProfileBannerFrame:Show()
-        end
+        addonTable.GUI:UpdateProfileBanner()
 
         -- Hide the profile button when viewing another player's profile
         if addonTable.GUI.frame and addonTable.GUI.frame.ProfileButton then
@@ -75,7 +71,6 @@ function addonTable:OpenReceivedProfile(profileName, profileData)
         end
     end
 end
-
 
 -- Create the event frame and set scripts
 EventHandler.eventFrame = CreateFrame("Frame")

@@ -37,7 +37,6 @@ function Data:Initialize()
     self.woundData = addonTable.woundData -- Also store in self for convenience
 end
 
--- Function to switch profiles
 function Data:SwitchProfile(profileName)
     if not self.FleshWoundData.profiles[profileName] then
         self.FleshWoundData.profiles[profileName] = { woundData = {} }
@@ -46,13 +45,17 @@ function Data:SwitchProfile(profileName)
     addonTable.woundData = self.FleshWoundData.profiles[profileName].woundData
     self.woundData = addonTable.woundData
 
-    -- Update GUI elements
     if addonTable.GUI then
         addonTable.GUI:UpdateRegionColors()
         addonTable.GUI:CloseAllDialogs()
+
+        -- Since switching profiles means we’re on our own profile, clear any temporary profile
+        addonTable.GUI.currentTemporaryProfile = nil
+
+        -- Now update the banner to reflect the newly selected profile
+        addonTable.GUI:UpdateProfileBanner()
     end
 end
-
 -- Function to create a new profile
 function Data:CreateProfile(profileName)
     if not self.FleshWoundData.profiles[profileName] then

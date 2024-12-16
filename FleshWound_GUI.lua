@@ -227,11 +227,13 @@ end
 function GUI:Initialize()
     self.woundData = addonTable.woundData or {}
     self:CreateMainFrame()
+    self:RestoreFramePosition()  -- Restore saved position if available
     self:CreateBodyRegions()
     self:CreateTemporaryProfileBanner()
     self:UpdateRegionColors()
     self:UpdateProfileBanner()
 end
+
 
 
 function GUI:UpdateProfileBanner()
@@ -273,13 +275,12 @@ function GUI:CreateTemporaryProfileBanner()
     self.tempProfileBanner:SetTextColor(1, 0.8, 0, 1)
 end
 
--- Main Frame Creation
 function GUI:CreateMainFrame()
     local frame = CreateFrame("Frame", "FleshWoundFrame", UIParent, "BackdropTemplate")
     self.frame = frame
 
     frame:SetSize(320, 540)
-    frame:SetPoint("CENTER")
+    frame:SetPoint("CENTER") -- Default position if none saved
     frame:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
         edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
@@ -292,17 +293,23 @@ function GUI:CreateMainFrame()
     frame:EnableMouse(true)
     frame:SetMovable(true)
     frame:RegisterForDrag("LeftButton")
-    frame:SetScript("OnDragStart", frame.StartMoving)
-    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
 
-    -- Close Button
+    frame:SetScript("OnDragStart", frame.StartMoving)
+    frame:SetScript("OnDragStop", function()
+        frame:StopMovingOrSizing()
+        GUI:SaveFramePosition() -- Save position when dragging stops
+    end)
+
     frame.CloseButton = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     frame.CloseButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -5, -5)
     frame.CloseButton:SetScript("OnClick", function()
         frame:Hide()
+    end)
+
+    -- OnHide script to restore original profile if needed
+    frame:SetScript("OnHide", function()
         if GUI.currentTemporaryProfile then
             GUI:RestoreOriginalProfile()
-            frame:Hide()
         end
     end)
 
@@ -315,8 +322,8 @@ function GUI:CreateMainFrame()
     frame.ProfileButton:SetScript("OnClick", function()
         -- Check if any note dialogs are open
         local noteDialogOpen = false
-        for frameName, frame in pairs(_G) do
-            if type(frameName) == "string" and (frameName:match("^FleshWoundAddNoteDialog_") or frameName:match("^FleshWoundEditNoteDialog_")) and frame:IsShown() then
+        for frameName, frm in pairs(_G) do
+            if type(frameName) == "string" and (frameName:match("^FleshWoundAddNoteDialog_") or frameName:match("^FleshWoundEditNoteDialog_")) and frm:IsShown() then
                 noteDialogOpen = true
                 break
             end
@@ -347,6 +354,7 @@ function GUI:CreateMainFrame()
     frame.BodyImage:SetPoint("CENTER", frame, "CENTER", 0, 0)
     frame.BodyImage:SetTexture("Interface\\AddOns\\" .. addonName .. "\\Textures\\body_image.tga")
 end
+
 
 -- Body Regions Creation
 function GUI:CreateBodyRegions()
@@ -477,6 +485,40 @@ function GUI:OpenWoundDialog(regionName, skipCloseDialogs)
 
     self:PopulateWoundDialog(dialog)
     dialog:Show()
+end
+
+
+function GUI:SaveFramePosition()
+    -- Get the current anchor point details
+    local point, relativeTo, relativePoint, xOfs, yOfs = self.frame:GetPoint()
+
+    addonTable.FleshWoundData = addonTable.FleshWoundData or {}
+    addonTable.FleshWoundData.framePos = {
+        point = point,
+        relativeTo = relativeTo and relativeTo:GetName() or "UIParent",
+        relativePoint = relativePoint,
+        xOfs = xOfs,
+        yOfs = yOfs,
+    }
+end
+
+
+function GUI:RestoreFramePosition()
+    if addonTable.FleshWoundData and addonTable.FleshWoundData.framePos then
+        local pos = addonTable.FleshWoundData.framePos
+        -- Clear all points first
+        self.frame:ClearAllPoints()
+
+        local relativeFrame = UIParent
+        if pos.relativeTo and pos.relativeTo ~= "" and pos.relativeTo ~= "UIParent" then
+            local foundFrame = _G[pos.relativeTo]
+            if foundFrame then
+                relativeFrame = foundFrame
+            end
+        end
+
+        self.frame:SetPoint(pos.point, relativeFrame, pos.relativePoint, pos.xOfs, pos.yOfs)
+    end
 end
 
 
@@ -767,10 +809,6 @@ function GUI:RestoreOriginalProfile()
     self.currentTemporaryProfile = nil
     self:UpdateRegionColors()
 
-    if self.frame then
-        self.frame:Show()
-    end
-
     -- Update the banner now that we are back to our own profile
     self:UpdateProfileBanner()
 
@@ -1041,7 +1079,4 @@ function GUI:CloseAllDialogs(dialogType)
     end
 end
 
-
--- Initialize the GUI when the addon loads
--- GUI:Initialize()  -- Do not call Initialize here; it should be called after the Data module is initialized
 

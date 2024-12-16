@@ -1,13 +1,38 @@
--- FleshWound_TargetPopup.lua
 local addonName, addonTable = ...
-local L = addonTable.L -- Make sure localization is loaded and addonTable.L is defined
-
-local popupFrame
-local targetName
-
+local L = addonTable.L -- Localization
 local knownAddonUsers = addonTable.Comm:GetKnownAddonUsers() 
 local PING_TIMEOUT = 5
 local pendingTarget
+local popupFrame
+local targetName
+
+-- Function to save the popup's position
+local function SavePopupPosition()
+    if not FleshWoundData then FleshWoundData = {} end
+    FleshWoundData.popupPos = FleshWoundData.popupPos or {}
+
+    local point, _, relativePoint, xOfs, yOfs = popupFrame:GetPoint()
+    FleshWoundData.popupPos.point = point
+    FleshWoundData.popupPos.relativePoint = relativePoint
+    FleshWoundData.popupPos.xOfs = xOfs
+    FleshWoundData.popupPos.yOfs = yOfs
+end
+
+-- Function to restore the popup's saved position
+local function RestorePopupPosition()
+    if FleshWoundData and FleshWoundData.popupPos then
+        popupFrame:ClearAllPoints()
+        popupFrame:SetPoint(
+            FleshWoundData.popupPos.point,
+            UIParent,
+            FleshWoundData.popupPos.relativePoint,
+            FleshWoundData.popupPos.xOfs,
+            FleshWoundData.popupPos.yOfs
+        )
+    else
+        popupFrame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -50, 200)
+    end
+end
 
 local function HidePopup()
     if popupFrame then
@@ -19,13 +44,15 @@ local function ShowPopupForTarget(name)
     if not popupFrame then
         popupFrame = CreateFrame("Frame", "FleshWoundTargetPopup", UIParent, "BackdropTemplate")
         popupFrame:SetSize(220, 80)
-        popupFrame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -50, 200)
         popupFrame:SetFrameStrata("DIALOG")
         popupFrame:SetMovable(true)
         popupFrame:EnableMouse(true)
         popupFrame:RegisterForDrag("LeftButton")
         popupFrame:SetScript("OnDragStart", popupFrame.StartMoving)
-        popupFrame:SetScript("OnDragStop", popupFrame.StopMovingOrSizing)
+        popupFrame:SetScript("OnDragStop", function()
+            popupFrame:StopMovingOrSizing()
+            SavePopupPosition()
+        end)
 
         popupFrame:SetBackdrop({
             bgFile = "Interface\\DialogFrame\\UI-DialogBox-Gold-Background",
@@ -45,10 +72,7 @@ local function ShowPopupForTarget(name)
         icon:SetTexture("Interface\\Icons\\INV_Misc_Bandage_01")
         icon:SetAllPoints(iconButton)
 
-        -- Add hover highlight
         iconButton:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
-
-        -- Add tooltip on hover
         iconButton:SetScript("OnEnter", function()
             GameTooltip:SetOwner(iconButton, "ANCHOR_RIGHT")
             GameTooltip:AddLine(L["Request Profile"], 1, 1, 1)
@@ -57,11 +81,10 @@ local function ShowPopupForTarget(name)
         iconButton:SetScript("OnLeave", function()
             GameTooltip:Hide()
         end)
-
         iconButton:SetScript("OnClick", function()
             if targetName then
                 addonTable.Comm:RequestProfile(targetName)
-                -- Do NOT hide the popup now; leave it visible
+                -- We do not hide the popup automatically now
             end
         end)
 
@@ -78,17 +101,14 @@ local function ShowPopupForTarget(name)
         popupFrame.closeButton = CreateFrame("Button", nil, popupFrame, "UIPanelCloseButton")
         popupFrame.closeButton:SetPoint("TOPRIGHT", popupFrame, "TOPRIGHT", -5, -5)
         popupFrame.closeButton:SetScript("OnClick", HidePopup)
+
+        RestorePopupPosition() -- Restore saved position after creating the popup frame
     end
 
     targetName = name
     popupFrame:Show()
 end
 
-local function OnPingCompleted(player)
-    if player == targetName and UnitName("target") == player then
-        ShowPopupForTarget(player)
-    end
-end
 
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
@@ -109,23 +129,23 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
             else
                 pendingTarget = name
                 addonTable.Comm:PingPlayer(name)
-                C_Timer.After(PING_TIMEOUT, function()
-                    knownAddonUsers = addonTable.Comm:GetKnownAddonUsers()
-                    if knownAddonUsers[name] then
-                        if UnitName("target") == name then
-                            ShowPopupForTarget(name)
-                        end
-                    end
-                end)
+                -- We no longer rely on a timer here for showing the popup.
+                -- We'll show the popup immediately upon receiving PONG.
             end
         end
     elseif event == "CHAT_MSG_ADDON" then
         local prefixMsg, msg, channel, sender = ...
         local player = Ambiguate(sender, "short")
 
-        if prefixMsg == addonTable.Comm.prefix then
+        if prefixMsg == addonTable.Comm.GetPrefix and addonTable.Comm:GetPrefix() then
+            -- getPrefix should return "FleshWoundComm"
+            if prefixMsg ~= "FleshWoundComm" then return end
+        end
+
+        if prefixMsg == "FleshWoundComm" then
             if msg == "PONG" then
                 knownAddonUsers[player] = true
+                -- If this is the pending target and we're still targeting them, show popup right now
                 if player == pendingTarget and UnitName("target") == player then
                     ShowPopupForTarget(player)
                 end

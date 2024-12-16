@@ -12,32 +12,46 @@ addonTable.EventHandler = EventHandler  -- Expose to addonTable
 
 function EventHandler:OnAddonLoaded(name)
     if name == addonName then
-        -- Initialize SavedVariables
+        -- Ensure FleshWoundData is initialized
         if not FleshWoundData then
             FleshWoundData = {}
         end
-
-        -- Store the FleshWoundData in addonTable for access in other files
+        
+        -- Assign the global saved variable to our addonTable
         addonTable.FleshWoundData = FleshWoundData
 
-        -- Initialize Data Module
+        -- Now that addonTable.FleshWoundData is set, we can safely initialize Data
         if addonTable.Data and addonTable.Data.Initialize then
             addonTable.Data:Initialize()
         else
             print("Data module not found or does not have an Initialize method.")
         end
 
-        -- Initialize GUI Module
+        -- Initialize GUI
         if addonTable.GUI and addonTable.GUI.Initialize then
             addonTable.GUI:Initialize()
         else
             print("GUI module not found or does not have an Initialize method.")
         end
 
-        -- Initialize Comm Module
+        -- Initialize Comm
         if addonTable.Comm and addonTable.Comm.Initialize then
             addonTable.Comm:Initialize()
         end
+
+        -- Print a localized loaded message
+        -- Attempt to retrieve the version from the TOC file metadata
+        local version = "Unknown"
+        if GetAddOnMetadata then
+            version = GetAddOnMetadata(addonName, "Version") or "Unknown"
+        else
+            -- Fallback if GetAddOnMetadata is not available
+            version = "1.0.0"
+        end
+        
+        local colorizedName = "|cFF00FF00FleshWound|r"
+        print(colorizedName .. ": " .. format(L["Thank you for using FleshWound %s! Be safe out there."], version))
+        
 
         -- Unregister the event after it's handled
         self.eventFrame:UnregisterEvent("ADDON_LOADED")

@@ -63,3 +63,5 @@ L["Viewing %s's Profile"] = "Profil de %s"
 
 L["Request Profile"] = "Afficher le profil"
 L["Click the bandage to request."] = "Cliquez sur le bandage pour afficher."
+
+L["Thank you for using FleshWound %s! Be safe out there."] = "Merci d'utiliser FleshWound %s ! Soyez prudent en ces lieux."

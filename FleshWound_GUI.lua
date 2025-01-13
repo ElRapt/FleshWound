@@ -5,7 +5,6 @@ local addonName, addonTable = ...
 local L = addonTable.L
 local Utils = addonTable.Utils
 
--- Create a GUI module to encapsulate all GUI-related functionality
 local GUI = {}
 addonTable.GUI = GUI
 
@@ -25,21 +24,16 @@ local Severities = {
 
 local SeverityLevels = {}
 for index, severity in ipairs(Severities) do
-    SeverityLevels[severity.name] = index - 2  -- -1 for "None", 0 for "Unknown", 1 for "Benign", etc.
+    SeverityLevels[severity.name] = index - 2
 end
 
---[[---------------------------------------------------------------------------
-  Simple string sanitization.
----------------------------------------------------------------------------]]--
+-- Simple string sanitization
 local function SanitizeInput(text)
     text = text:match("^%s*(.-)%s*$") or ""
     text = text:gsub("[%c]", "")
     return text
 end
 
---[[---------------------------------------------------------------------------
-  Return the color for a given severity.
----------------------------------------------------------------------------]]--
 local function GetSeverityColor(severityName)
     for _, severity in ipairs(Severities) do
         if severity.name == severityName then
@@ -49,9 +43,6 @@ local function GetSeverityColor(severityName)
     return {0, 0, 0, 0.0}
 end
 
---[[---------------------------------------------------------------------------
-  Return the highest severity name among the notes for regionName.
----------------------------------------------------------------------------]]--
 local function GetHighestSeverity(regionName)
     local woundData = addonTable.woundData or {}
     local notes = woundData[regionName]
@@ -72,9 +63,37 @@ local function GetHighestSeverity(regionName)
     return highestSeverity
 end
 
---[[---------------------------------------------------------------------------
-  Create a standard "dialog" frame with a backdrop, close button, etc.
----------------------------------------------------------------------------]]--
+--------------------------------------------------------------------------------
+-- ANCHOR SAVING/RESTORING FOR ANY WINDOW
+--------------------------------------------------------------------------------
+
+-- Save a frame's position in FleshWoundData.positions[frameName]
+function GUI:SaveWindowPosition(frameName, frame)
+    addonTable.FleshWoundData.positions = addonTable.FleshWoundData.positions or {}
+    local pos = addonTable.FleshWoundData.positions
+
+    local point, _, relativePoint, xOfs, yOfs = frame:GetPoint()
+    pos[frameName] = {
+        point = point,
+        relativePoint = relativePoint,
+        xOfs = xOfs,
+        yOfs = yOfs,
+    }
+end
+
+-- Restore a frame's position from FleshWoundData.positions[frameName]
+function GUI:RestoreWindowPosition(frameName, frame)
+    local pos = addonTable.FleshWoundData.positions and addonTable.FleshWoundData.positions[frameName]
+    if pos then
+        frame:ClearAllPoints()
+        frame:SetPoint(pos.point, UIParent, pos.relativePoint, pos.xOfs, pos.yOfs)
+    else
+        frame:SetPoint("CENTER")
+    end
+end
+
+--------------------------------------------------------------------------------
+
 local function CreateDialog(name, titleText, width, height)
     local dialog = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
     dialog:SetSize(width, height)
@@ -82,14 +101,16 @@ local function CreateDialog(name, titleText, width, height)
     dialog:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
         edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true, tileSize = 32, edgeSize = 24,
+        tile = true,
+        tileSize = 32,
+        edgeSize = 24,
         insets = { left = 5, right = 5, top = 5, bottom = 5 },
     })
     dialog:SetFrameStrata("DIALOG")
     dialog:EnableMouse(true)
 
-    -- Use the utility function to make the frame draggable:
-    Utils.MakeFrameDraggable(dialog, nil) -- We'll override in certain cases
+    -- We'll rely on MakeFrameDraggable, then override OnDragStop
+    Utils.MakeFrameDraggable(dialog, nil)
 
     dialog.CloseButton = CreateFrame("Button", nil, dialog, "UIPanelCloseButton")
     dialog.CloseButton:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -5, -5)
@@ -97,7 +118,6 @@ local function CreateDialog(name, titleText, width, height)
         dialog:Hide()
     end)
 
-    -- Bind to ESC if it has a unique name
     if name and name ~= "" then
         table.insert(UISpecialFrames, name)
     end
@@ -115,9 +135,6 @@ local function CreateDialog(name, titleText, width, height)
     return dialog
 end
 
---[[---------------------------------------------------------------------------
-  Create a severity dropdown label + menu.
----------------------------------------------------------------------------]]--
 local function CreateSeverityDropdown(parent)
     local severityLabel = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     severityLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", 15, -60)
@@ -144,9 +161,6 @@ local function CreateSeverityDropdown(parent)
     return severityLabel, severityDropdown
 end
 
---[[---------------------------------------------------------------------------
-  Create a multiline edit box with a scroll bar and a character-count label.
----------------------------------------------------------------------------]]--
 local function CreateEditBoxWithCounter(parent, maxChars)
     local scrollFrame = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
     scrollFrame:SetPoint("TOPLEFT", parent.SeverityLabel, "BOTTOMLEFT", 0, -20)
@@ -162,7 +176,9 @@ local function CreateEditBoxWithCounter(parent, maxChars)
     editBox:SetBackdrop({
         bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
         edgeFile = nil,
-        tile = false, tileSize = 0, edgeSize = 0,
+        tile = false,
+        tileSize = 0,
+        edgeSize = 0,
         insets = { left = 0, right = 0, top = 0, bottom = 0 },
     })
     editBox:SetBackdropColor(0, 0, 0, 0.5)
@@ -179,9 +195,6 @@ local function CreateEditBoxWithCounter(parent, maxChars)
     return scrollFrame, editBox, charCountLabel
 end
 
---[[---------------------------------------------------------------------------
-  Create Save and Cancel buttons side by side at the bottom of a dialog.
----------------------------------------------------------------------------]]--
 local function CreateSaveCancelButtons(parent)
     local saveButton = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     saveButton:SetSize(80, 24)
@@ -196,9 +209,6 @@ local function CreateSaveCancelButtons(parent)
     return saveButton, cancelButton
 end
 
---[[---------------------------------------------------------------------------
-  Create a single-line edit box with a char counter underneath.
----------------------------------------------------------------------------]]--
 local function CreateSingleLineEditBoxWithCounter(parent, maxChars)
     local editBox = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
     editBox:SetAutoFocus(true)
@@ -218,23 +228,21 @@ local function CreateSingleLineEditBoxWithCounter(parent, maxChars)
     return editBox, charCountLabel
 end
 
---[[---------------------------------------------------------------------------
-  Initialize the main GUI once data is ready.
----------------------------------------------------------------------------]]--
+--------------------------------------------------------------------------------
+-- MAIN GUI INITIALIZATION
+--------------------------------------------------------------------------------
+
 function GUI:Initialize()
     self.woundData = addonTable.woundData or {}
 
-    self:CreateMainFrame()
-    self:RestoreMainFramePosition()
+    self:CreateMainFrame()            -- The main 320x540 frame
+    self:RestoreWindowPosition("FleshWoundFrame", self.frame)
     self:CreateBodyRegions()
     self:CreateTemporaryProfileBanner()
     self:UpdateRegionColors()
     self:UpdateProfileBanner()
 end
 
---[[---------------------------------------------------------------------------
-  Update the text in the top banner to show current or temporary profile.
----------------------------------------------------------------------------]]--
 function GUI:UpdateProfileBanner()
     if not self.frame or not self.tempProfileBannerFrame or not self.tempProfileBanner then return end
 
@@ -242,14 +250,13 @@ function GUI:UpdateProfileBanner()
     if self.currentTemporaryProfile then
         self.tempProfileBanner:SetText(string.format(L["Viewing %s's Profile"], self.currentTemporaryProfile))
     else
+        -- e.g. "Profile of X" or "Viewing X's Profile"
+        -- If you want a different phrasing, change below:
         self.tempProfileBanner:SetText(string.format(L["Viewing %s's Profile"], currentProfileName))
     end
     self.tempProfileBannerFrame:Show()
 end
 
---[[---------------------------------------------------------------------------
-  Create the small banner frame above the main frame for profile info.
----------------------------------------------------------------------------]]--
 function GUI:CreateTemporaryProfileBanner()
     if not self.frame then return end
 
@@ -274,9 +281,6 @@ function GUI:CreateTemporaryProfileBanner()
     self.tempProfileBanner = bannerText
 end
 
---[[---------------------------------------------------------------------------
-  Create the main (320x540) window. 
----------------------------------------------------------------------------]]--
 function GUI:CreateMainFrame()
     local frame = CreateFrame("Frame", "FleshWoundFrame", UIParent, "BackdropTemplate")
     self.frame = frame
@@ -286,13 +290,17 @@ function GUI:CreateMainFrame()
     frame:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
         edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true, tileSize = 32, edgeSize = 32,
+        tile = true,
+        tileSize = 32,
+        edgeSize = 32,
         insets = { left = 11, right = 12, top = 12, bottom = 11 },
     })
     frame:SetFrameStrata("DIALOG")
 
-    -- Make it draggable with our helper, saving the position on stop:
-    Utils.MakeFrameDraggable(frame, function(f) GUI:SaveMainFramePosition() end)
+    -- Make draggable, saving anchor on drag stop:
+    Utils.MakeFrameDraggable(frame, function(f)
+        self:SaveWindowPosition("FleshWoundFrame", f)
+    end)
 
     frame.CloseButton = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     frame.CloseButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -5, -5)
@@ -300,14 +308,12 @@ function GUI:CreateMainFrame()
         frame:Hide()
     end)
 
-    -- If we’re viewing another player's profile, restore to our own on hide:
     frame:SetScript("OnHide", function()
         if GUI.currentTemporaryProfile then
             GUI:RestoreOriginalProfile()
         end
     end)
 
-    -- A profile manager button
     frame.ProfileButton = CreateFrame("Button", nil, frame)
     frame.ProfileButton:SetSize(35, 35)
     frame.ProfileButton:SetPoint("TOPLEFT", frame, "TOPLEFT", 15, -15)
@@ -316,9 +322,9 @@ function GUI:CreateMainFrame()
     frame.ProfileButton:SetScript("OnClick", function()
         -- If a note dialog is open, block opening the profile manager
         for frameName, frm in pairs(_G) do
-            if type(frameName) == "string" and
-               (frameName:match("^FleshWoundAddNoteDialog_") or frameName:match("^FleshWoundEditNoteDialog_")) and
-               frm:IsShown()
+            if type(frameName) == "string"
+               and (frameName:match("^FleshWoundAddNoteDialog_") or frameName:match("^FleshWoundEditNoteDialog_"))
+               and frm:IsShown()
             then
                 UIErrorsFrame:AddMessage(L["Cannot open Profile Manager while note dialog is open."], 1.0, 0.0, 0.0, 5)
                 return
@@ -329,16 +335,12 @@ function GUI:CreateMainFrame()
 
     table.insert(UISpecialFrames, frame:GetName())
 
-    -- The body silhouette
     frame.BodyImage = frame:CreateTexture(nil, "BACKGROUND")
     frame.BodyImage:SetSize(300, 500)
     frame.BodyImage:SetPoint("CENTER", frame, "CENTER", 0, 0)
     frame.BodyImage:SetTexture("Interface\\AddOns\\" .. addonName .. "\\Textures\\body_image.tga")
 end
 
---[[---------------------------------------------------------------------------
-  Build clickable regions for each body part. 
----------------------------------------------------------------------------]]--
 function GUI:CreateBodyRegions()
     local frame = self.frame
     frame.BodyRegions = {}
@@ -361,9 +363,6 @@ function GUI:CreateBodyRegions()
     end
 end
 
---[[---------------------------------------------------------------------------
-  Build each clickable body-part region with highlight overlays.
----------------------------------------------------------------------------]]--
 function GUI:CreateBodyRegion(frame, region)
     local btn = CreateFrame("Button", nil, frame)
     btn:SetSize(region.width, region.height)
@@ -389,9 +388,6 @@ function GUI:CreateBodyRegion(frame, region)
     frame.BodyRegions[region.name] = btn
 end
 
---[[---------------------------------------------------------------------------
-  Update the overlay color for each region based on highest severity.
----------------------------------------------------------------------------]]--
 function GUI:UpdateRegionColors()
     local frame = self.frame
     if not frame or not frame.BodyRegions then return end
@@ -403,65 +399,38 @@ function GUI:UpdateRegionColors()
     end
 end
 
---[[---------------------------------------------------------------------------
-  Save the main frame's position in FleshWoundData.positions.main
----------------------------------------------------------------------------]]--
-function GUI:SaveMainFramePosition()
-    addonTable.FleshWoundData.positions = addonTable.FleshWoundData.positions or {}
-    local pos = addonTable.FleshWoundData.positions
+--------------------------------------------------------------------------------
+--  WINDOW CREATION HELPERS
+--------------------------------------------------------------------------------
 
-    local point, _, relativePoint, xOfs, yOfs = self.frame:GetPoint()
-    pos.main = {
-        point = point,
-        relativePoint = relativePoint,
-        xOfs = xOfs,
-        yOfs = yOfs,
-    }
+function GUI:CreateScrollFrame(parent, left, top, right, bottom)
+    local scrollFrame = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", left, top)
+    scrollFrame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", right, bottom)
+
+    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    scrollChild:SetSize(scrollFrame:GetWidth(), 1)
+    scrollFrame:SetScrollChild(scrollChild)
+
+    return scrollFrame, scrollChild
 end
 
---[[---------------------------------------------------------------------------
-  Restore the main frame's position from FleshWoundData.positions.main
----------------------------------------------------------------------------]]--
-function GUI:RestoreMainFramePosition()
-    local pos = addonTable.FleshWoundData.positions and addonTable.FleshWoundData.positions.main
-    if pos then
-        self.frame:ClearAllPoints()
-        self.frame:SetPoint(pos.point, UIParent, pos.relativePoint, pos.xOfs, yOfs)
-    end
-end
-
---[[---------------------------------------------------------------------------
-  Save a universal "wound dialog" position in FleshWoundData.positions.woundDialog
----------------------------------------------------------------------------]]--
-function GUI:SaveWoundDialogPosition(dialog)
-    addonTable.FleshWoundData.positions = addonTable.FleshWoundData.positions or {}
-    local pos = addonTable.FleshWoundData.positions
-
-    local point, _, relativePoint, xOfs, yOfs = dialog:GetPoint()
-    pos.woundDialog = {
-        point = point,
-        relativePoint = relativePoint,
-        xOfs = xOfs,
-        yOfs = yOfs,
-    }
-end
-
---[[---------------------------------------------------------------------------
-  Restore a universal "wound dialog" position from FleshWoundData.positions.woundDialog
----------------------------------------------------------------------------]]--
-function GUI:RestoreWoundDialogPosition(dialog)
-    local pos = addonTable.FleshWoundData.positions and addonTable.FleshWoundData.positions.woundDialog
-    if pos then
-        dialog:ClearAllPoints()
-        dialog:SetPoint(pos.point, UIParent, pos.relativePoint, pos.xOfs, pos.yOfs)
+function GUI:CreateButton(parent, text, width, height, point, relativeTo, offsetX, offsetY)
+    local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    button:SetSize(width, height)
+    if type(relativeTo) == "string" then
+        button:SetPoint(point, parent, relativeTo, offsetX, offsetY)
     else
-        dialog:SetPoint("CENTER")
+        button:SetPoint(point, relativeTo, offsetX, offsetY)
     end
+    button:SetText(text)
+    return button
 end
 
---[[---------------------------------------------------------------------------
-  Open a wound dialog for regionName, close other body dialogs unless skipCloseDialogs is true.
----------------------------------------------------------------------------]]--
+--------------------------------------------------------------------------------
+--  WOUND DIALOGS
+--------------------------------------------------------------------------------
+
 function GUI:OpenWoundDialog(regionName, skipCloseDialogs)
     if _G["FleshWoundProfileManager"] and _G["FleshWoundProfileManager"]:IsShown() then
         _G["FleshWoundProfileManager"]:Hide()
@@ -478,13 +447,13 @@ function GUI:OpenWoundDialog(regionName, skipCloseDialogs)
     local dialog = CreateDialog(dialogName, dialogTitle, 550, 500)
     dialog.regionName = regionName
 
-    -- Override the drag stop to unify storing position:
+    -- Override drag stop to save position
     dialog:SetScript("OnDragStop", function(f)
         f:StopMovingOrSizing()
-        self:SaveWoundDialogPosition(f)
+        self:SaveWindowPosition(dialogName, f)
     end)
-
-    self:RestoreWoundDialogPosition(dialog)
+    -- Restore last position
+    self:RestoreWindowPosition(dialogName, dialog)
 
     dialog.ScrollFrame, dialog.ScrollChild = self:CreateScrollFrame(dialog, 15, -60, -35, 60)
     dialog.NoteEntries = {}
@@ -503,39 +472,6 @@ function GUI:OpenWoundDialog(regionName, skipCloseDialogs)
     dialog:Show()
 end
 
---[[---------------------------------------------------------------------------
-  Create a scroll frame inside a parent at the given offsets.
----------------------------------------------------------------------------]]--
-function GUI:CreateScrollFrame(parent, left, top, right, bottom)
-    local scrollFrame = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", left, top)
-    scrollFrame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", right, bottom)
-
-    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
-    scrollChild:SetSize(scrollFrame:GetWidth(), 1)
-    scrollFrame:SetScrollChild(scrollChild)
-
-    return scrollFrame, scrollChild
-end
-
---[[---------------------------------------------------------------------------
-  Create a standard button with text, placed relative to something else.
----------------------------------------------------------------------------]]--
-function GUI:CreateButton(parent, text, width, height, point, relativeTo, offsetX, offsetY)
-    local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-    button:SetSize(width, height)
-    if type(relativeTo) == "string" then
-        button:SetPoint(point, parent, relativeTo, offsetX, offsetY)
-    else
-        button:SetPoint(point, relativeTo, offsetX, offsetY)
-    end
-    button:SetText(text)
-    return button
-end
-
---[[---------------------------------------------------------------------------
-  Populate the wound dialog with existing notes from the region.
----------------------------------------------------------------------------]]--
 function GUI:PopulateWoundDialog(dialog)
     local woundData = addonTable.woundData or {}
     local notes = woundData[dialog.regionName]
@@ -568,9 +504,6 @@ function GUI:PopulateWoundDialog(dialog)
     end
 end
 
---[[---------------------------------------------------------------------------
-  Create a single note entry in the wound dialog.
----------------------------------------------------------------------------]]--
 function GUI:CreateNoteEntry(parent, note, index, regionName)
     local entry = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     entry:SetWidth(parent:GetWidth() - 20)
@@ -597,7 +530,6 @@ function GUI:CreateNoteEntry(parent, note, index, regionName)
     local textHeight = noteText:GetStringHeight()
     entry:SetHeight(textHeight + 20)
 
-    -- Only show edit/delete if viewing our own profile
     if not self.currentTemporaryProfile then
         local editButton = self:CreateButton(entry, L["Edit"], 70, 22, "TOPRIGHT", -80, -5)
         editButton:SetScript("OnClick", function()
@@ -618,9 +550,6 @@ function GUI:CreateNoteEntry(parent, note, index, regionName)
     return entry
 end
 
---[[---------------------------------------------------------------------------
-  Open a note dialog for adding/editing a note on regionName.
----------------------------------------------------------------------------]]--
 function GUI:OpenNoteDialog(regionName, noteIndex)
     if not regionName then
         Utils.FW_Print("Error: regionName is nil in OpenNoteDialog", true)
@@ -638,15 +567,17 @@ function GUI:OpenNoteDialog(regionName, noteIndex)
     local baseName = isEdit and "FleshWoundEditNoteDialog" or "FleshWoundAddNoteDialog"
     local displayRegionName = L[regionName] or regionName
     local dialogTitle = isEdit and string.format(L["Edit Note - %s"], displayRegionName)
-                                   or string.format(L["Add Note - %s"], displayRegionName)
+                                 or string.format(L["Add Note - %s"], displayRegionName)
     local frameName = baseName .. "_" .. regionName
 
     local dialog = CreateDialog(frameName, dialogTitle, 400, 370)
     dialog.regionName = regionName
 
-    dialog:EnableMouseWheel(true)
-    dialog:SetFrameStrata("DIALOG")
-    dialog:SetToplevel(true)
+    -- Make it draggable individually
+    Utils.MakeFrameDraggable(dialog, function(f)
+        self:SaveWindowPosition(frameName, f)
+    end)
+    self:RestoreWindowPosition(frameName, dialog)
 
     dialog.SeverityLabel, dialog.SeverityDropdown = CreateSeverityDropdown(dialog)
     dialog.ScrollFrame, dialog.EditBox, dialog.CharCountLabel = CreateEditBoxWithCounter(dialog, MAX_NOTE_LENGTH)
@@ -658,9 +589,6 @@ function GUI:OpenNoteDialog(regionName, noteIndex)
     dialog.EditBox:SetFocus()
 end
 
---[[---------------------------------------------------------------------------
-  Populate the note dialog with data if editing, or set defaults if adding.
----------------------------------------------------------------------------]]--
 function GUI:PopulateNoteDialog(dialog, noteIndex)
     local isEdit = (noteIndex ~= nil)
     local woundData = addonTable.woundData or {}
@@ -748,9 +676,10 @@ function GUI:PopulateNoteDialog(dialog, noteIndex)
     end)
 end
 
---[[---------------------------------------------------------------------------
-  Opens the profile manager. Closes other dialogs first.
----------------------------------------------------------------------------]]--
+--------------------------------------------------------------------------------
+--  PROFILE MANAGER WINDOW
+--------------------------------------------------------------------------------
+
 function GUI:OpenProfileManager()
     self:CloseAllDialogs()
 
@@ -761,6 +690,12 @@ function GUI:OpenProfileManager()
     dialog:EnableMouseWheel(true)
     dialog:SetFrameStrata("DIALOG")
     dialog:SetToplevel(true)
+
+    -- Make draggable, save/restore anchor
+    Utils.MakeFrameDraggable(dialog, function(f)
+        self:SaveWindowPosition(frameName, f)
+    end)
+    self:RestoreWindowPosition(frameName, dialog)
 
     dialog.ScrollFrame, dialog.ScrollChild = self:CreateScrollFrame(dialog, 15, -60, -35, 100)
     dialog.ProfileEntries = {}
@@ -782,32 +717,6 @@ function GUI:OpenProfileManager()
     dialog:Show()
 end
 
---[[---------------------------------------------------------------------------
-  Restore our original profile if we were looking at a remote player's.
----------------------------------------------------------------------------]]--
-function GUI:RestoreOriginalProfile()
-    if self.originalWoundData then
-        addonTable.woundData = self.originalWoundData
-        self.originalWoundData = nil
-    end
-
-    if self.originalProfile then
-        addonTable.FleshWoundData.currentProfile = self.originalProfile
-        self.originalProfile = nil
-    end
-
-    self.currentTemporaryProfile = nil
-    self:UpdateRegionColors()
-    self:UpdateProfileBanner()
-
-    if self.frame and self.frame.ProfileButton then
-        self.frame.ProfileButton:Show()
-    end
-end
-
---[[---------------------------------------------------------------------------
-  Populate the profile manager dialog with a list of existing profiles.
----------------------------------------------------------------------------]]--
 function GUI:PopulateProfileManager(dialog)
     local profiles = addonTable.FleshWoundData.profiles
     local currentProfile = addonTable.FleshWoundData.currentProfile
@@ -834,10 +743,6 @@ function GUI:PopulateProfileManager(dialog)
     dialog.ScrollChild:SetHeight(-yOffset)
 end
 
---[[---------------------------------------------------------------------------
-  Create a single row in the profile manager listing a profile name
-  plus select, delete, rename buttons.
----------------------------------------------------------------------------]]--
 function GUI:CreateProfileEntry(parent, profileName, currentProfile)
     local entry = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     entry:SetWidth(parent:GetWidth() - 20)
@@ -884,9 +789,10 @@ function GUI:CreateProfileEntry(parent, profileName, currentProfile)
     return entry
 end
 
---[[---------------------------------------------------------------------------
-  Open a dialog to create a new profile.
----------------------------------------------------------------------------]]--
+--------------------------------------------------------------------------------
+--  CREATE PROFILE DIALOG
+--------------------------------------------------------------------------------
+
 function GUI:OpenCreateProfileDialog()
     self:CloseAllDialogs()
 
@@ -897,6 +803,12 @@ function GUI:OpenCreateProfileDialog()
     dialog:EnableMouseWheel(true)
     dialog:SetFrameStrata("DIALOG")
     dialog:SetToplevel(true)
+
+    -- Make draggable, save/restore anchor
+    Utils.MakeFrameDraggable(dialog, function(f)
+        self:SaveWindowPosition(frameName, f)
+    end)
+    self:RestoreWindowPosition(frameName, dialog)
 
     local nameLabel = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     nameLabel:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
@@ -917,9 +829,6 @@ function GUI:OpenCreateProfileDialog()
     dialog.nameEditBox:SetFocus()
 end
 
---[[---------------------------------------------------------------------------
-  Setup logic for the create-profile dialog.
----------------------------------------------------------------------------]]--
 function GUI:PopulateCreateProfileDialog(dialog)
     local function UpdateCreateButtonState()
         local profileName = SanitizeInput(dialog.nameEditBox:GetText())
@@ -949,9 +858,10 @@ function GUI:PopulateCreateProfileDialog(dialog)
     end)
 end
 
---[[---------------------------------------------------------------------------
-  Open a dialog to rename an existing profile.
----------------------------------------------------------------------------]]--
+--------------------------------------------------------------------------------
+--  RENAME PROFILE DIALOG
+--------------------------------------------------------------------------------
+
 function GUI:OpenRenameProfileDialog(oldProfileName)
     local frameName = "FleshWoundRenameProfileDialog"
     local dialogTitle = L["Rename Profile"]
@@ -959,6 +869,11 @@ function GUI:OpenRenameProfileDialog(oldProfileName)
     local dialog = _G[frameName]
     if not dialog then
         dialog = CreateDialog(frameName, dialogTitle, 300, 200)
+
+        -- Make draggable, but do it after creation:
+        Utils.MakeFrameDraggable(dialog, function(f)
+            self:SaveWindowPosition(frameName, f)
+        end)
 
         local nameLabel = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         nameLabel:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -60)
@@ -975,14 +890,14 @@ function GUI:OpenRenameProfileDialog(oldProfileName)
         _G[frameName] = dialog
     end
 
+    -- Restore position each time we open it
+    self:RestoreWindowPosition(frameName, dialog)
+
     self:PopulateRenameProfileDialog(dialog, oldProfileName)
     dialog:Show()
     dialog.nameEditBox:SetFocus()
 end
 
---[[---------------------------------------------------------------------------
-  Populate the rename dialog, ensuring we disable the save button if invalid.
----------------------------------------------------------------------------]]--
 function GUI:PopulateRenameProfileDialog(dialog, oldProfileName)
     local function UpdateRenameButtonState()
         local newProfileName = SanitizeInput(dialog.nameEditBox:GetText())
@@ -1013,10 +928,10 @@ function GUI:PopulateRenameProfileDialog(dialog, oldProfileName)
     end)
 end
 
---[[---------------------------------------------------------------------------
-  Close existing dialogs. pass "BodyPartDialogs" to close only wound dialogs,
-  or omit to close everything.
----------------------------------------------------------------------------]]--
+--------------------------------------------------------------------------------
+--  CLOSE ALL DIALOGS
+--------------------------------------------------------------------------------
+
 function GUI:CloseAllDialogs(dialogType)
     local dialogsToClose = {}
 
@@ -1036,14 +951,16 @@ function GUI:CloseAllDialogs(dialogType)
     for _, framePrefix in ipairs(dialogsToClose) do
         for frameName, frameObj in pairs(_G) do
             if type(frameName) == "string"
-                and frameName:match("^" .. framePrefix)
-                and type(frameObj) == "table"
-                and frameObj.Hide
+               and frameName:match("^" .. framePrefix)
+               and type(frameObj) == "table"
+               and frameObj.Hide
             then
                 frameObj:Hide()
             end
         end
     end
 end
+
+--------------------------------------------------------------------------------
 
 return GUI

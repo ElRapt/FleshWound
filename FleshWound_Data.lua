@@ -7,11 +7,8 @@ local Utils = addonTable.Utils
 local Data = {}
 addonTable.Data = Data
 
---[[---------------------------------------------------------------------------
-  Initialize is called on ADDON_LOADED. We set up profiles and character-to-profile
-  assignments. Old migration code removed for clarity, assuming all players have
-  the new format by now.
----------------------------------------------------------------------------]]--
+-- Initialize is called on ADDON_LOADED. We set up profiles and character-to-profile
+-- assignments. Removed old migration code for clarity.
 function Data:Initialize()
     self.FleshWoundData = addonTable.FleshWoundData
 
@@ -24,7 +21,7 @@ function Data:Initialize()
     end
 
     -- Also unify positions in a single table, if not present
-    -- { main = {}, woundDialog = {}, ... }
+    -- { main = {}, woundDialog = {}, [anyWindowName] = { ... } }
     self.FleshWoundData.positions = self.FleshWoundData.positions or {}
 
     local playerName = UnitName("player")
@@ -45,10 +42,8 @@ function Data:Initialize()
     Utils.FW_Print("Data initialized. Current Profile: " .. assignedProfile, false)
 end
 
---[[---------------------------------------------------------------------------
-  Switch to the specified profile, create if missing, then update UI and wipe any
-  temporary profile state.
----------------------------------------------------------------------------]]--
+-- Switch to the specified profile, create if missing, then update UI and wipe any
+-- temporary profile state.
 function Data:SwitchProfile(profileName)
     if not self.FleshWoundData.profiles[profileName] then
         self.FleshWoundData.profiles[profileName] = { woundData = {} }
@@ -65,9 +60,7 @@ function Data:SwitchProfile(profileName)
     end
 end
 
---[[---------------------------------------------------------------------------
-  Create an empty profile if one does not exist already.
----------------------------------------------------------------------------]]--
+-- Create an empty profile if one does not exist already.
 function Data:CreateProfile(profileName)
     if not self.FleshWoundData.profiles[profileName] then
         self.FleshWoundData.profiles[profileName] = { woundData = {} }
@@ -77,9 +70,7 @@ function Data:CreateProfile(profileName)
     end
 end
 
---[[---------------------------------------------------------------------------
-  Delete a named profile if it isn't the current one.
----------------------------------------------------------------------------]]--
+-- Delete a named profile if it isn't the current one.
 function Data:DeleteProfile(profileName)
     local profiles = self.FleshWoundData.profiles
     if profiles[profileName] then
@@ -94,9 +85,8 @@ function Data:DeleteProfile(profileName)
     end
 end
 
---[[---------------------------------------------------------------------------
-  Rename an existing profile to a new name, if it doesn't already exist.
----------------------------------------------------------------------------]]--
+-- Rename an existing profile to a new name, if it doesn't already exist.
+-- Now also updates the profile banner if the renamed profile is the current one.
 function Data:RenameProfile(oldName, newName)
     local profiles = self.FleshWoundData.profiles
     if profiles[oldName] then
@@ -105,8 +95,13 @@ function Data:RenameProfile(oldName, newName)
         else
             profiles[newName] = profiles[oldName]
             profiles[oldName] = nil
+            -- If we were on oldName, switch currentProfile to newName
             if self.FleshWoundData.currentProfile == oldName then
                 self.FleshWoundData.currentProfile = newName
+                -- Force an immediate label update
+                if addonTable.GUI and addonTable.GUI.UpdateProfileBanner then
+                    addonTable.GUI:UpdateProfileBanner()
+                end
             end
             Utils.FW_Print("Renamed profile '"..oldName.."' to '"..newName.."'.", false)
         end
@@ -114,3 +109,4 @@ function Data:RenameProfile(oldName, newName)
         Utils.FW_Print("Profile '" .. oldName .. "' does not exist.", true)
     end
 end
+

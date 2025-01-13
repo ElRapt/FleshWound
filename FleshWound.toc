@@ -13,10 +13,11 @@ Libs\AceSerializer-3.0\AceSerializer-3.0.lua
 Localization\enUS.lua
 Localization\frFR.lua
 
+
+FleshWound_Utils.lua
 FleshWound.lua
 FleshWound_Data.lua
 FleshWound_GUI.lua
-FleshWound_Utils.lua
 FleshWound_Comm.lua
 FleshWound_SlashCommands.lua
 FleshWound_GameMenu.lua

@@ -1,37 +1,35 @@
 -- FleshWound_Data.lua
--- Handles data persistence and wound data structures
+-- Handles data persistence and wound data structures for FleshWound.
 
 local addonName, addonTable = ...
-local Data = {}
-addonTable.Data = Data  -- Expose the Data module to addonTable
+local Utils = addonTable.Utils
 
--- Initialize woundData and profiles
+local Data = {}
+addonTable.Data = Data
+
+--[[---------------------------------------------------------------------------
+  Initialize is called on ADDON_LOADED. We set up profiles and character-to-profile
+  assignments. Old migration code removed for clarity, assuming all players have
+  the new format by now.
+---------------------------------------------------------------------------]]--
 function Data:Initialize()
-    -- self.FleshWoundData should point to the saved variable table
     self.FleshWoundData = addonTable.FleshWoundData
 
-    -- Migrate old data format to new profiles format (if needed)
-    if self.FleshWoundData.woundData then
-        local defaultProfileName = UnitName("player")
-        self.FleshWoundData.profiles = self.FleshWoundData.profiles or {}
-        self.FleshWoundData.profiles[defaultProfileName] = { woundData = self.FleshWoundData.woundData }
-        -- Remove old data
-        self.FleshWoundData.woundData = nil
-        -- (We don’t set self.FleshWoundData.currentProfile here, see below.)
-    end
-
-    -- Ensure profiles table exists
+    -- Ensure we have a table of profiles
     self.FleshWoundData.profiles = self.FleshWoundData.profiles or {}
 
-    -- NEW: Ensure we have a table for per-character assignments
+    -- Ensure we have a table for per-character assignments
     if not self.FleshWoundData.charProfiles then
         self.FleshWoundData.charProfiles = {}
     end
 
-    -- Build a unique char key for this login
+    -- Also unify positions in a single table, if not present
+    -- { main = {}, woundDialog = {}, ... }
+    self.FleshWoundData.positions = self.FleshWoundData.positions or {}
+
     local playerName = UnitName("player")
-    local realmName  = GetRealmName()
-    local charKey    = playerName .. "-" .. realmName
+    local realmName = GetRealmName()
+    local charKey = playerName.."-"..realmName
 
     -- If this char is unassigned, create (or reuse) a profile named after the character
     if not self.FleshWoundData.charProfiles[charKey] then
@@ -41,13 +39,16 @@ function Data:Initialize()
         self.FleshWoundData.charProfiles[charKey] = playerName
     end
 
-    -- Now switch to whichever profile is assigned for this char
+    -- Switch to whichever profile is assigned for this char
     local assignedProfile = self.FleshWoundData.charProfiles[charKey]
     self:SwitchProfile(assignedProfile)
-
-    -- All done!
+    Utils.FW_Print("Data initialized. Current Profile: " .. assignedProfile, false)
 end
 
+--[[---------------------------------------------------------------------------
+  Switch to the specified profile, create if missing, then update UI and wipe any
+  temporary profile state.
+---------------------------------------------------------------------------]]--
 function Data:SwitchProfile(profileName)
     if not self.FleshWoundData.profiles[profileName] then
         self.FleshWoundData.profiles[profileName] = { woundData = {} }
@@ -59,50 +60,57 @@ function Data:SwitchProfile(profileName)
     if addonTable.GUI then
         addonTable.GUI:UpdateRegionColors()
         addonTable.GUI:CloseAllDialogs()
-
-        -- Since switching profiles means we’re on our own profile, clear any temporary profile
         addonTable.GUI.currentTemporaryProfile = nil
-
-        -- Now update the banner to reflect the newly selected profile
         addonTable.GUI:UpdateProfileBanner()
     end
 end
 
--- Function to create a new profile
+--[[---------------------------------------------------------------------------
+  Create an empty profile if one does not exist already.
+---------------------------------------------------------------------------]]--
 function Data:CreateProfile(profileName)
     if not self.FleshWoundData.profiles[profileName] then
         self.FleshWoundData.profiles[profileName] = { woundData = {} }
+        Utils.FW_Print("Created new profile: " .. profileName, false)
     else
-        print(format("Profile '%s' already exists.", profileName))
+        Utils.FW_Print("Profile '" .. profileName .. "' already exists.", true)
     end
 end
 
--- Function to delete a profile
+--[[---------------------------------------------------------------------------
+  Delete a named profile if it isn't the current one.
+---------------------------------------------------------------------------]]--
 function Data:DeleteProfile(profileName)
-    if self.FleshWoundData.profiles[profileName] then
+    local profiles = self.FleshWoundData.profiles
+    if profiles[profileName] then
         if profileName == self.FleshWoundData.currentProfile then
-            print("Cannot delete the current profile.")
+            Utils.FW_Print("Cannot delete the current profile.", true)
         else
-            self.FleshWoundData.profiles[profileName] = nil
+            profiles[profileName] = nil
+            Utils.FW_Print("Deleted profile '" .. profileName .. "'.", false)
         end
     else
-        print(format("Profile '%s' does not exist.", profileName))
+        Utils.FW_Print("Profile '" .. profileName .. "' does not exist.", true)
     end
 end
 
--- Function to rename a profile
+--[[---------------------------------------------------------------------------
+  Rename an existing profile to a new name, if it doesn't already exist.
+---------------------------------------------------------------------------]]--
 function Data:RenameProfile(oldName, newName)
-    if self.FleshWoundData.profiles[oldName] then
-        if self.FleshWoundData.profiles[newName] then
-            print(format("Profile '%s' already exists.", newName))
+    local profiles = self.FleshWoundData.profiles
+    if profiles[oldName] then
+        if profiles[newName] then
+            Utils.FW_Print("Profile '"..newName.."' already exists.", true)
         else
-            self.FleshWoundData.profiles[newName] = self.FleshWoundData.profiles[oldName]
-            self.FleshWoundData.profiles[oldName] = nil
+            profiles[newName] = profiles[oldName]
+            profiles[oldName] = nil
             if self.FleshWoundData.currentProfile == oldName then
                 self.FleshWoundData.currentProfile = newName
             end
+            Utils.FW_Print("Renamed profile '"..oldName.."' to '"..newName.."'.", false)
         end
     else
-        print(format("Profile '%s' does not exist.", oldName))
+        Utils.FW_Print("Profile '" .. oldName .. "' does not exist.", true)
     end
 end

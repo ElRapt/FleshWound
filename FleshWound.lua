@@ -1,37 +1,36 @@
 -- FleshWound.lua
--- Main addon file that initializes the addon and handles events
+-- The main addon file that initializes the addon's modules on ADDON_LOADED.
 
 local addonName, addonTable = ...
-
 local L = addonTable.L
+local Utils = addonTable.Utils
 
-
--- Create an Event Handler Module
+--[[---------------------------------------------------------------------------
+  EventHandler: A small module to handle ADDON_LOADED and set up the addon.
+---------------------------------------------------------------------------]]--
 local EventHandler = {}
-addonTable.EventHandler = EventHandler  -- Expose to addonTable
+addonTable.EventHandler = EventHandler
 
-function EventHandler:OnAddonLoaded(name)
-    if name == addonName then
-        -- Ensure FleshWoundData is initialized
+function EventHandler:OnAddonLoaded(loadedName)
+    if loadedName == addonName then
+        -- Ensure global SV is present
         if not FleshWoundData then
             FleshWoundData = {}
         end
-        
-        -- Assign the global saved variable to our addonTable
         addonTable.FleshWoundData = FleshWoundData
 
-        -- Now that addonTable.FleshWoundData is set, we can safely initialize Data
+        -- Initialize Data
         if addonTable.Data and addonTable.Data.Initialize then
             addonTable.Data:Initialize()
         else
-            print("Data module not found or does not have an Initialize method.")
+            Utils.FW_Print("Data module not found or missing Initialize method.", true)
         end
 
         -- Initialize GUI
         if addonTable.GUI and addonTable.GUI.Initialize then
             addonTable.GUI:Initialize()
         else
-            print("GUI module not found or does not have an Initialize method.")
+            Utils.FW_Print("GUI module not found or missing Initialize method.", true)
         end
 
         -- Initialize Comm
@@ -39,26 +38,19 @@ function EventHandler:OnAddonLoaded(name)
             addonTable.Comm:Initialize()
         end
 
-        -- Print a localized loaded message
-        -- Attempt to retrieve the version from the TOC file metadata
-        local version = "Unknown"
-        if GetAddOnMetadata then
-            version = GetAddOnMetadata(addonName, "Version") or "Unknown"
-        else
-            -- Fallback if GetAddOnMetadata is not available
-            version = "1.0.0"
-        end
-        
-        local colorizedName = "|cFF00FF00FleshWound|r"
-        print(colorizedName .. ": " .. format(L["Thank you for using FleshWound %s! Be safe out there."], version))
-        
+        -- Attempt to retrieve the version from the TOC
+        local version = GetAddOnMetadata and GetAddOnMetadata(addonName, "Version") or "Unknown"
 
-        -- Unregister the event after it's handled
+        Utils.FW_Print(string.format(L["Thank you for using FleshWound %s! Be safe out there."], version), false)
+
         self.eventFrame:UnregisterEvent("ADDON_LOADED")
     end
 end
 
-
+--[[---------------------------------------------------------------------------
+  Called when we receive a remote profile. Temporarily display that data until
+  the user closes or reverts to their own profile.
+---------------------------------------------------------------------------]]--
 function addonTable:OpenReceivedProfile(profileName, profileData)
     local originalProfile = addonTable.FleshWoundData.currentProfile
     local originalWoundData = addonTable.woundData
@@ -76,17 +68,16 @@ function addonTable:OpenReceivedProfile(profileName, profileData)
         addonTable.GUI.originalProfile = originalProfile
         addonTable.GUI.originalWoundData = originalWoundData
         addonTable.GUI.currentTemporaryProfile = profileName
-
         addonTable.GUI:UpdateProfileBanner()
 
-        -- Hide the profile button when viewing another player's profile
+        -- Hide the profile button while viewing a remote profile
         if addonTable.GUI.frame and addonTable.GUI.frame.ProfileButton then
             addonTable.GUI.frame.ProfileButton:Hide()
         end
     end
 end
 
--- Create the event frame and set scripts
+-- Set up an event frame to handle ADDON_LOADED
 EventHandler.eventFrame = CreateFrame("Frame")
 EventHandler.eventFrame:RegisterEvent("ADDON_LOADED")
 EventHandler.eventFrame:SetScript("OnEvent", function(_, event, ...)

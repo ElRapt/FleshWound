@@ -4,7 +4,6 @@ local addonName, addonTable = ...
 local L = addonTable.L or {}
 addonTable.L = L
 
-
 -- English localization
 L["Profiles"] = "Profiles"
 L["Profile Manager"] = "Profile Manager"
@@ -34,6 +33,7 @@ L["A note with this content already exists."] = "A note with this content alread
 L["Error: %s"] = "Error: %s"
 L["Character Limit Exceeded"] = "Character Limit Exceeded"
 L["%d / %d"] = "%d / %d"
+
 -- Severities
 L["None"] = "None"
 L["Unknown"] = "Unknown"
@@ -42,6 +42,7 @@ L["Moderate"] = "Moderate"
 L["Severe"] = "Severe"
 L["Critical"] = "Critical"
 L["Deadly"] = "Deadly"
+
 -- Body Parts
 L["Head"] = "Head"
 L["Torso"] = "Torso"
@@ -56,6 +57,7 @@ L["Right Foot"] = "Right Foot"
 
 L["Cannot open Profile Manager while note dialog is open."] = "Cannot open Profile Manager while note dialog is open."
 L["Cannot open wound dialog while Profile Manager is open."] = "Cannot open wound dialog while Profile Manager is open."
+
 L["Viewing %s's Profile"] = "Viewing %s's Profile"
 
 L["Request Profile"] = "Request Profile"

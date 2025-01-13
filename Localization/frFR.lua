@@ -35,6 +35,7 @@ L["A note with this content already exists."] = "Une note avec ce contenu existe
 L["Error: %s"] = "Erreur : %s"
 L["Character Limit Exceeded"] = "Limite de caractères dépassée"
 L["%d / %d"] = "%d / %d"
+
 -- Severities
 L["None"] = "Aucune"
 L["Unknown"] = "Inconnue"
@@ -43,6 +44,7 @@ L["Moderate"] = "Modérée"
 L["Severe"] = "Sévère"
 L["Critical"] = "Critique"
 L["Deadly"] = "Mortelle"
+
 -- Body Parts
 L["Head"] = "Tête"
 L["Torso"] = "Torse"
@@ -54,7 +56,6 @@ L["Left Leg"] = "Jambe gauche"
 L["Right Leg"] = "Jambe droite"
 L["Left Foot"] = "Pied gauche"
 L["Right Foot"] = "Pied droit"
-
 
 L["Cannot open Profile Manager while note dialog is open."] = "Impossible d'ouvrir le gestionnaire de profils pendant que la boîte de dialogue de note est ouverte."
 L["Cannot open wound dialog while Profile Manager is open."] = "Impossible d'ouvrir la boîte de dialogue de blessure pendant que le gestionnaire de profils est ouvert."

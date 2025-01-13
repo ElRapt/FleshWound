@@ -104,7 +104,7 @@ function GameMenu:AddToGameMenu()
     requestButton:SetScript("OnClick", function()
         local targetName = UnitName("target")
         if not targetName or targetName == "" then
-            UIErrorsFrame:AddMessage("No target selected.", 1.0, 0.0, 0.0, 53, 5)
+            UIErrorsFrame:AddMessage("No target selected.", 1.0, 0.0, 0.0, 5)
             return
         end
         addonTable.Comm:RequestProfile(targetName)

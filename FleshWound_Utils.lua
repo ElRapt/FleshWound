@@ -16,7 +16,7 @@
     ---------------------------------------------------------------------------]]--
     function Utils.FW_Print(msg, isError)
         if isError then
-            UIErrorsFrame:AddMessage(prefixColor .. msg, 1.0, 0.0, 0.0, 53, 5)
+            UIErrorsFrame:AddMessage(prefixColor .. msg, 1.0, 0.0, 0.0, 5)
         else
             print(prefixColor .. msg)
         end

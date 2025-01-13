@@ -10,31 +10,42 @@ function Data:Initialize()
     -- self.FleshWoundData should point to the saved variable table
     self.FleshWoundData = addonTable.FleshWoundData
 
-    -- Migrate old data format to new profiles format
+    -- Migrate old data format to new profiles format (if needed)
     if self.FleshWoundData.woundData then
         local defaultProfileName = UnitName("player")
         self.FleshWoundData.profiles = self.FleshWoundData.profiles or {}
         self.FleshWoundData.profiles[defaultProfileName] = { woundData = self.FleshWoundData.woundData }
-        self.FleshWoundData.currentProfile = defaultProfileName
-        self.FleshWoundData.woundData = nil -- Remove old data
+        -- Remove old data
+        self.FleshWoundData.woundData = nil
+        -- (We don’t set self.FleshWoundData.currentProfile here, see below.)
     end
 
     -- Ensure profiles table exists
     self.FleshWoundData.profiles = self.FleshWoundData.profiles or {}
 
-    -- Ensure currentProfile is set
-    if not self.FleshWoundData.currentProfile then
-        self.FleshWoundData.currentProfile = UnitName("player") -- Default profile name is character name
+    -- NEW: Ensure we have a table for per-character assignments
+    if not self.FleshWoundData.charProfiles then
+        self.FleshWoundData.charProfiles = {}
     end
 
-    -- If currentProfile does not exist in profiles, create it
-    if not self.FleshWoundData.profiles[self.FleshWoundData.currentProfile] then
-        self.FleshWoundData.profiles[self.FleshWoundData.currentProfile] = { woundData = {} }
+    -- Build a unique char key for this login
+    local playerName = UnitName("player")
+    local realmName  = GetRealmName()
+    local charKey    = playerName .. "-" .. realmName
+
+    -- If this char is unassigned, create (or reuse) a profile named after the character
+    if not self.FleshWoundData.charProfiles[charKey] then
+        if not self.FleshWoundData.profiles[playerName] then
+            self:CreateProfile(playerName)
+        end
+        self.FleshWoundData.charProfiles[charKey] = playerName
     end
 
-    -- Set addonTable.woundData to the woundData of the current profile
-    addonTable.woundData = self.FleshWoundData.profiles[self.FleshWoundData.currentProfile].woundData
-    self.woundData = addonTable.woundData -- Also store in self for convenience
+    -- Now switch to whichever profile is assigned for this char
+    local assignedProfile = self.FleshWoundData.charProfiles[charKey]
+    self:SwitchProfile(assignedProfile)
+
+    -- All done!
 end
 
 function Data:SwitchProfile(profileName)
@@ -56,6 +67,7 @@ function Data:SwitchProfile(profileName)
         addonTable.GUI:UpdateProfileBanner()
     end
 end
+
 -- Function to create a new profile
 function Data:CreateProfile(profileName)
     if not self.FleshWoundData.profiles[profileName] then

@@ -309,6 +309,26 @@ function GUI:CreateTemporaryProfileBanner()
     self.tempProfileBanner = bannerText
 end
 
+function GUI:RestoreOriginalProfile()
+    if self.originalWoundData then
+        addonTable.woundData = self.originalWoundData
+        self.originalWoundData = nil
+    end
+
+    if self.originalProfile then
+        addonTable.FleshWoundData.currentProfile = self.originalProfile
+        self.originalProfile = nil
+    end
+
+    self.currentTemporaryProfile = nil
+    self:UpdateRegionColors()
+    self:UpdateProfileBanner()
+
+    if self.frame and self.frame.ProfileButton then
+        self.frame.ProfileButton:Show()
+    end
+end
+
 function GUI:CreateMainFrame()
     local frame = CreateFrame("Frame", "FleshWoundFrame", UIParent, "BackdropTemplate")
     self.frame = frame

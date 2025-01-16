@@ -765,6 +765,27 @@ function GUI:CreateProfileEntry(parent, profileName, currentProfile)
     nameText:SetPoint("LEFT", entry, "LEFT", 10, 0)
     nameText:SetText(profileName)
 
+    -- Calculate number of characters using this profile
+    local charProfiles = addonTable.FleshWoundData.charProfiles or {}
+    local usageCount = 0
+    for _, pName in pairs(charProfiles) do
+        if pName == profileName then
+            usageCount = usageCount + 1
+        end
+    end
+
+    -- Create an icon for character count
+    local iconSize = 16
+    local iconTexture = entry:CreateTexture(nil, "ARTWORK")
+    iconTexture:SetSize(iconSize, iconSize)
+    iconTexture:SetTexture("Interface\\Icons\\INV_Misc_Bandage_01")  -- Choose an appropriate icon
+    iconTexture:SetPoint("LEFT", nameText, "RIGHT", 10, 0)
+
+    -- Create a label next to the icon showing the usage count
+    local countText = entry:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    countText:SetPoint("LEFT", iconTexture, "RIGHT", 2, 0)
+    countText:SetText(tostring(usageCount))
+
     local selectButton = self:CreateButton(entry, L["Select"], 80, 24, "RIGHT", -10, 0)
     selectButton:SetScript("OnClick", function()
         addonTable.Data:SwitchProfile(profileName)
@@ -788,6 +809,7 @@ function GUI:CreateProfileEntry(parent, profileName, currentProfile)
 
     return entry
 end
+
 
 --------------------------------------------------------------------------------
 --  CREATE PROFILE DIALOG

@@ -67,3 +67,11 @@ L["Thank you for using FleshWound %s! Be safe out there."] = "Thank you for usin
 
 
 L["Delete profile confirmation"] = "Are you sure you want to delete the profile '%s'?"
+L["Data initialized. Current Profile: %s"] = "Data initialized. Current Profile: %s"
+
+L["Created new profile: %s"] = "Created new profile: %s"
+L["Profile '%s' already exists."] = "Profile '%s' already exists."
+L["Cannot delete the current profile."] = "Cannot delete the current profile."
+L["Deleted profile '%s'."] = "Deleted profile '%s'."
+L["Profile '%s' does not exist."] = "Profile '%s' does not exist."
+L["Renamed profile '%s' to '%s'."] = "Renamed profile '%s' to '%s'."

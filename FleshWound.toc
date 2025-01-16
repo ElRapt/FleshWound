@@ -1,5 +1,5 @@
 ## Interface: 110002
-## Title: Flesh Wound
+## Title: FleshWound
 ## Notes: Adds a custom health UI for roleplay purposes
 ## Author: ElRapt
 ## Version: 1.0.0

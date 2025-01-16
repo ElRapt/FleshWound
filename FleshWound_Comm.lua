@@ -30,22 +30,17 @@ end
 ---------------------------------------------------------------------------]]--
 function Comm:RequestProfile(targetPlayer)
     if not targetPlayer or targetPlayer == "" then
-        Utils.FW_Print("Cannot request profile: no target specified.", true)
         return
     end
 
     if knownAddonUsers[targetPlayer] then
         C_ChatInfo.SendAddonMessage(self.PREFIX, "REQUEST_PROFILE", "WHISPER", targetPlayer)
-        Utils.FW_Print("Sending profile request to " .. targetPlayer .. ".", false)
     else
         -- Ping first, wait, then try again
         self:PingPlayer(targetPlayer)
         C_Timer.After(self.PING_TIMEOUT + 1, function()
             if knownAddonUsers[targetPlayer] then
                 C_ChatInfo.SendAddonMessage(self.PREFIX, "REQUEST_PROFILE", "WHISPER", targetPlayer)
-                Utils.FW_Print("Sending profile request to " .. targetPlayer .. " after ping.", false)
-            else
-                Utils.FW_Print("No ping response from " .. targetPlayer .. "; cannot request profile.", true)
             end
         end)
     end
@@ -62,7 +57,6 @@ function Comm:SendProfileData(targetPlayer, profileName)
 
     local serialized = self:SerializeProfile(data)
     C_ChatInfo.SendAddonMessage(self.PREFIX, "PROFILE_DATA:"..profileName..":"..serialized, "WHISPER", targetPlayer)
-    Utils.FW_Print("Sending profile data '"..profileName.."' to " .. targetPlayer .. ".", false)
 end
 
 --[[---------------------------------------------------------------------------
@@ -80,15 +74,13 @@ end
 function Comm:DeserializeProfile(serialized)
     local profileData = { woundData = {} }
     if serialized == "" then
-        Utils.FW_Print("DeserializeProfile: Empty data, returning empty profile.", true)
         return profileData
     end
 
     local success, woundData = AceSerializer:Deserialize(serialized)
     if success and type(woundData) == "table" then
         profileData.woundData = woundData
-    else
-        Utils.FW_Print("Failed to deserialize or invalid data type.", true)
+
     end
 
     return profileData
@@ -108,7 +100,6 @@ function Comm:PingPlayer(targetPlayer)
         if pendingPings[targetPlayer] and (time() - pendingPings[targetPlayer]) >= self.PING_TIMEOUT then
             pendingPings[targetPlayer] = nil
             knownAddonUsers[targetPlayer] = nil
-            Utils.FW_Print("Ping to " .. targetPlayer .. " timed out.", false)
         end
     end)
 end
@@ -126,7 +117,6 @@ end
 function Comm:HandlePong(sender)
     pendingPings[sender] = nil
     knownAddonUsers[sender] = true
-    Utils.FW_Print("Received PONG from " .. sender .. ".", false)
 end
 
 --[[---------------------------------------------------------------------------

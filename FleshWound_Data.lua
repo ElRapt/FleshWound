@@ -3,6 +3,7 @@
 
 local addonName, addonTable = ...
 local Utils = addonTable.Utils
+local L = addonTable.L
 
 local Data = {}
 addonTable.Data = Data
@@ -30,7 +31,9 @@ function Data:Initialize()
     end
 
     self:SwitchProfile(assignedProfile)
-    Utils.FW_Print("Data initialized. Current Profile: " .. assignedProfile, false)
+    Utils.FW_Print(string.format(L["Data initialized. Current Profile: %s"], "|cffff0000" .. assignedProfile .. "|r"), false)
+
+
 end
 
 
@@ -63,33 +66,35 @@ end
 function Data:CreateProfile(profileName)
     if not self.FleshWoundData.profiles[profileName] then
         self.FleshWoundData.profiles[profileName] = { woundData = {} }
-        Utils.FW_Print("Created new profile: " .. profileName, false)
+        Utils.FW_Print(string.format(L["Created new profile: %s"], "|cffff0000" .. profileName .. "|r"), false)
     else
-        Utils.FW_Print("Profile '" .. profileName .. "' already exists.", true)
+        Utils.FW_Print(string.format(L["Profile '%s' already exists."], "|cffff0000" .. profileName .. "|r"), true)
     end
 end
+
 
 -- Delete a named profile if it isn't the current one.
 function Data:DeleteProfile(profileName)
     local profiles = self.FleshWoundData.profiles
     if profiles[profileName] then
         if profileName == self.FleshWoundData.currentProfile then
-            Utils.FW_Print("Cannot delete the current profile.", true)
+            Utils.FW_Print(L["Cannot delete the current profile."], true)
         else
             profiles[profileName] = nil
-            Utils.FW_Print("Deleted profile '" .. profileName .. "'.", false)
+            Utils.FW_Print(string.format(L["Deleted profile '%s'."], "|cffff0000" .. profileName .. "|r"), false)
         end
     else
-        Utils.FW_Print("Profile '" .. profileName .. "' does not exist.", true)
+        Utils.FW_Print(string.format(L["Profile '%s' does not exist."], "|cffff0000" .. profileName .. "|r"), true)
     end
 end
+
 
 function Data:RenameProfile(oldName, newName)
     local profiles = self.FleshWoundData.profiles
     local charProfiles = self.FleshWoundData.charProfiles
     if profiles[oldName] then
         if profiles[newName] then
-            Utils.FW_Print("Profile '"..newName.."' already exists.", true)
+            Utils.FW_Print(string.format(L["Profile '%s' already exists."], "|cffff0000" .. newName .. "|r"), true)
         else
             profiles[newName] = profiles[oldName]
             profiles[oldName] = nil
@@ -107,10 +112,12 @@ function Data:RenameProfile(oldName, newName)
                     addonTable.GUI:UpdateProfileBanner()
                 end
             end
-            Utils.FW_Print("Renamed profile '"..oldName.."' to '"..newName.."'.", false)
+            Utils.FW_Print(string.format(L["Renamed profile '%s' to '%s'."], 
+                "|cffff0000" .. oldName .. "|r", 
+                "|cffff0000" .. newName .. "|r"), false)
         end
     else
-        Utils.FW_Print("Profile '" .. oldName .. "' does not exist.", true)
+        Utils.FW_Print(string.format(L["Profile '%s' does not exist."], "|cffff0000" .. oldName .. "|r"), true)
     end
 end
 

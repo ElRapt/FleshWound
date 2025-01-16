@@ -210,8 +210,16 @@ local function CreateEditBoxWithCounter(parent, maxChars)
     charCountLabel:SetPoint("TOPLEFT", scrollFrame, "BOTTOMLEFT", 0, -10)
     charCountLabel:SetText(string.format(L["%d / %d"], 0, maxChars))
 
+    -- Attach OnTextChanged hook for dynamic updates
+    editBox:HookScript("OnTextChanged", function(self)
+        local text = self:GetText()
+        local length = strlenutf8(text)
+        charCountLabel:SetText(string.format(L["%d / %d"], length, maxChars))
+    end)
+
     return scrollFrame, editBox, charCountLabel
 end
+
 
 local function CreateSaveCancelButtons(parent)
     local saveButton = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -245,6 +253,8 @@ local function CreateSingleLineEditBoxWithCounter(parent, maxChars)
 
     return editBox, charCountLabel
 end
+
+
 
 --------------------------------------------------------------------------------
 -- MAIN GUI INITIALIZATION
@@ -871,7 +881,13 @@ end
 
 function GUI:PopulateCreateProfileDialog(dialog)
     local function UpdateCreateButtonState()
-        local profileName = SanitizeInput(dialog.nameEditBox:GetText())
+        local text = dialog.nameEditBox:GetText()
+        local profileName = SanitizeInput(text)
+        local length = strlenutf8(text)
+
+        -- Update character count dynamically
+        dialog.charCountLabel:SetText(string.format(L["%d / %d"], length, MAX_PROFILE_NAME_LENGTH))
+
         if profileName == "" or addonTable.FleshWoundData.profiles[profileName] then
             dialog.SaveButton:Disable()
         else
@@ -883,6 +899,7 @@ function GUI:PopulateCreateProfileDialog(dialog)
     dialog.charCountLabel:SetText(string.format(L["%d / %d"], 0, MAX_PROFILE_NAME_LENGTH))
     dialog.SaveButton:Disable()
 
+    -- Attach combined update function to OnTextChanged
     dialog.nameEditBox:SetScript("OnTextChanged", UpdateCreateButtonState)
 
     dialog.SaveButton:SetScript("OnClick", function()
@@ -940,7 +957,13 @@ end
 
 function GUI:PopulateRenameProfileDialog(dialog, oldProfileName)
     local function UpdateRenameButtonState()
-        local newProfileName = SanitizeInput(dialog.nameEditBox:GetText())
+        local text = dialog.nameEditBox:GetText()
+        local newProfileName = SanitizeInput(text)
+        local length = strlenutf8(text)
+        
+        -- Update character count dynamically
+        dialog.charCountLabel:SetText(string.format(L["%d / %d"], length, MAX_PROFILE_NAME_LENGTH))
+        
         if newProfileName == "" or addonTable.FleshWoundData.profiles[newProfileName] or newProfileName == oldProfileName then
             dialog.SaveButton:Disable()
         else
@@ -953,6 +976,7 @@ function GUI:PopulateRenameProfileDialog(dialog, oldProfileName)
     dialog.charCountLabel:SetText(string.format(L["%d / %d"], initialLength, MAX_PROFILE_NAME_LENGTH))
     dialog.SaveButton:Disable()
 
+    -- Attach our combined update function to OnTextChanged
     dialog.nameEditBox:SetScript("OnTextChanged", UpdateRenameButtonState)
 
     dialog.SaveButton:SetScript("OnClick", function()
@@ -967,6 +991,7 @@ function GUI:PopulateRenameProfileDialog(dialog, oldProfileName)
         self:OpenProfileManager()
     end)
 end
+
 
 --------------------------------------------------------------------------------
 --  CLOSE ALL DIALOGS

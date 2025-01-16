@@ -78,3 +78,5 @@ L["Cannot delete the current profile."] = "Impossible de supprimer le profil cou
 L["Deleted profile '%s'."] = "Profil '%s' supprimé."
 L["Profile '%s' does not exist."] = "Le profil '%s' n'existe pas."
 L["Renamed profile '%s' to '%s'."] = "Profil '%s' renommé en '%s'."
+
+L["%d / %d"] = "%d / %d"

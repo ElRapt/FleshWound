@@ -7,49 +7,47 @@ local Utils = addonTable.Utils
 local Data = {}
 addonTable.Data = Data
 
--- Initialize is called on ADDON_LOADED. We set up profiles and character-to-profile
--- assignments. Removed old migration code for clarity.
 function Data:Initialize()
-    self.FleshWoundData = addonTable.FleshWoundData
+    self.FleshWoundData = addonTable.FleshWoundData or {}
+    local data = self.FleshWoundData
 
-    -- Ensure we have a table of profiles
-    self.FleshWoundData.profiles = self.FleshWoundData.profiles or {}
-
-    -- Ensure we have a table for per-character assignments
-    if not self.FleshWoundData.charProfiles then
-        self.FleshWoundData.charProfiles = {}
-    end
-
-    -- Also unify positions in a single table, if not present
-    -- { main = {}, woundDialog = {}, [anyWindowName] = { ... } }
-    self.FleshWoundData.positions = self.FleshWoundData.positions or {}
+    data.profiles = data.profiles or {}
+    data.charProfiles = data.charProfiles or {}
+    data.positions = data.positions or {}
 
     local playerName = UnitName("player")
     local realmName = GetRealmName()
-    local charKey = playerName.."-"..realmName
+    local charKey = playerName .. "-" .. realmName
 
-    -- If this char is unassigned, create (or reuse) a profile named after the character
-    if not self.FleshWoundData.charProfiles[charKey] then
-        if not self.FleshWoundData.profiles[playerName] then
+    local assignedProfile = data.charProfiles[charKey]
+
+    if not assignedProfile then
+        if not data.profiles[playerName] then
             self:CreateProfile(playerName)
         end
-        self.FleshWoundData.charProfiles[charKey] = playerName
+        assignedProfile = playerName
+        data.charProfiles[charKey] = assignedProfile
     end
 
-    -- Switch to whichever profile is assigned for this char
-    local assignedProfile = self.FleshWoundData.charProfiles[charKey]
     self:SwitchProfile(assignedProfile)
     Utils.FW_Print("Data initialized. Current Profile: " .. assignedProfile, false)
 end
 
--- Switch to the specified profile, create if missing, then update UI and wipe any
--- temporary profile state.
+
+
 function Data:SwitchProfile(profileName)
-    if not self.FleshWoundData.profiles[profileName] then
-        self.FleshWoundData.profiles[profileName] = { woundData = {} }
+    local data = self.FleshWoundData
+    local playerName = UnitName("player")
+    local realmName = GetRealmName()
+    local charKey = playerName .. "-" .. realmName
+
+    if not data.profiles[profileName] then
+        data.profiles[profileName] = { woundData = {} }
     end
-    self.FleshWoundData.currentProfile = profileName
-    addonTable.woundData = self.FleshWoundData.profiles[profileName].woundData
+
+    data.currentProfile = profileName
+    data.charProfiles[charKey] = profileName  -- Persist the new assignment
+    addonTable.woundData = data.profiles[profileName].woundData
     self.woundData = addonTable.woundData
 
     if addonTable.GUI then
@@ -59,6 +57,7 @@ function Data:SwitchProfile(profileName)
         addonTable.GUI:UpdateProfileBanner()
     end
 end
+
 
 -- Create an empty profile if one does not exist already.
 function Data:CreateProfile(profileName)
@@ -85,20 +84,25 @@ function Data:DeleteProfile(profileName)
     end
 end
 
--- Rename an existing profile to a new name, if it doesn't already exist.
--- Now also updates the profile banner if the renamed profile is the current one.
 function Data:RenameProfile(oldName, newName)
     local profiles = self.FleshWoundData.profiles
+    local charProfiles = self.FleshWoundData.charProfiles
     if profiles[oldName] then
         if profiles[newName] then
             Utils.FW_Print("Profile '"..newName.."' already exists.", true)
         else
             profiles[newName] = profiles[oldName]
             profiles[oldName] = nil
-            -- If we were on oldName, switch currentProfile to newName
+
+            -- Update charProfiles mapping for any characters using oldName
+            for charKey, profileName in pairs(charProfiles) do
+                if profileName == oldName then
+                    charProfiles[charKey] = newName
+                end
+            end
+
             if self.FleshWoundData.currentProfile == oldName then
                 self.FleshWoundData.currentProfile = newName
-                -- Force an immediate label update
                 if addonTable.GUI and addonTable.GUI.UpdateProfileBanner then
                     addonTable.GUI:UpdateProfileBanner()
                 end
@@ -109,4 +113,5 @@ function Data:RenameProfile(oldName, newName)
         Utils.FW_Print("Profile '" .. oldName .. "' does not exist.", true)
     end
 end
+
 

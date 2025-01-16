@@ -64,3 +64,6 @@ L["Request Profile"] = "Request Profile"
 L["Click the bandage to request.\nDrag anywhere else to move."] = "Click the bandage to request.\nDrag anywhere else to move."
 
 L["Thank you for using FleshWound %s! Be safe out there."] = "Thank you for using FleshWound %s! Be safe out there."
+
+
+L["Delete profile confirmation"] = "Are you sure you want to delete the profile '%s'?"

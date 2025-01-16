@@ -11,6 +11,24 @@ addonTable.GUI = GUI
 local MAX_NOTE_LENGTH = 125
 local MAX_PROFILE_NAME_LENGTH = 50
 
+StaticPopupDialogs["FW_DELETE_PROFILE_CONFIRM"] = {
+    text = L["Delete profile confirmation"],
+    button1 = YES,
+    button2 = NO,
+    OnAccept = function(self)
+        local profileName = self.data
+        addonTable.Data:DeleteProfile(profileName)
+        if addonTable.GUI and addonTable.GUI.OpenProfileManager then
+            addonTable.GUI:OpenProfileManager()
+        end
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+
 -- Severity definitions
 local Severities = {
     { name = L["None"],     color = {0, 0, 0, 0.0} },
@@ -795,8 +813,7 @@ function GUI:CreateProfileEntry(parent, profileName, currentProfile)
 
     local deleteButton = self:CreateButton(entry, L["Delete"], 80, 24, "RIGHT", selectButton, "LEFT", -5, 0)
     deleteButton:SetScript("OnClick", function()
-        addonTable.Data:DeleteProfile(profileName)
-        self:OpenProfileManager()
+        StaticPopup_Show("FW_DELETE_PROFILE_CONFIRM", profileName, nil, profileName)
     end)
     if profileName == currentProfile then
         deleteButton:Disable()
@@ -809,6 +826,7 @@ function GUI:CreateProfileEntry(parent, profileName, currentProfile)
 
     return entry
 end
+
 
 
 --------------------------------------------------------------------------------

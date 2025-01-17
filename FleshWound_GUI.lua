@@ -368,18 +368,20 @@ function GUI:CreateMainFrame()
     frame.ProfileButton:SetNormalTexture("Interface\\ICONS\\INV_Misc_Book_09")
     frame.ProfileButton:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
     frame.ProfileButton:SetScript("OnClick", function()
-        -- If a note dialog is open, block opening the profile manager
+        -- If a note dialog is open, close it before opening the Profile Manager
         for frameName, frm in pairs(_G) do
             if type(frameName) == "string"
                and (frameName:match("^FleshWoundAddNoteDialog_") or frameName:match("^FleshWoundEditNoteDialog_"))
                and frm:IsShown()
             then
-                UIErrorsFrame:AddMessage(L["Cannot open Profile Manager while note dialog is open."], 1.0, 0.0, 0.0, 5)
-                return
+                frm:Hide()  -- Close the note dialog
             end
         end
+        
+        -- Now open the profile manager
         self:OpenProfileManager()
     end)
+    
 
     table.insert(UISpecialFrames, frame:GetName())
 

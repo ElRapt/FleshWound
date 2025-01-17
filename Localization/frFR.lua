@@ -91,3 +91,5 @@ L["Burn"] = "Brûlure"
 L["Scarred"] = "Cicatrice"
 L["Poisoned"] = "Empoisonné"
 L["Infected"] = "Infecté"
+
+L["Left-click to show/hide the health frame."] = "Clic gauche pour afficher/masquer l'interface de santé."

@@ -4,6 +4,7 @@
 local addonName, addonTable = ...
 local GameMenu = {}
 addonTable.GameMenu = GameMenu
+local L = addonTable.L
 
 local LDB = LibStub("LibDataBroker-1.1")
 local Icon = LibStub("LibDBIcon-1.0")
@@ -49,7 +50,7 @@ function GameMenu:CreateMinimapIcon()
         end,
         OnTooltipShow = function(tooltip)
             tooltip:AddLine("FleshWound")
-            tooltip:AddLine("Left-click to show/hide the health frame.")
+            tooltip:AddLine(L["Left-click to show/hide the health frame."])
         end,
     })
 

@@ -87,3 +87,5 @@ L["Burn"] = "Burn"
 L["Scarred"] = "Scarred"
 L["Poisoned"] = "Poisoned"
 L["Infected"] = "Infected"
+
+L["Left-click to show/hide the health frame."] = "Left-click to show/hide the health frame."

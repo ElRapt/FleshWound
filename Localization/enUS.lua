@@ -77,3 +77,11 @@ L["Profile '%s' does not exist."] = "Profile '%s' does not exist."
 L["Renamed profile '%s' to '%s'."] = "Renamed profile '%s' to '%s'."
 
 L["%d / %d"] = "%d / %d"
+
+L["Status:"] = "Status:"
+L["None"] = "None"
+L["Bandaged"] = "Bandaged"
+L["Bleeding"] = "Bleeding"
+L["Broken bone"] = "Broken bone"
+L["Burn"] = "Burn"
+L["Scarred"] = "Scarred"

@@ -45,6 +45,28 @@ for index, severity in ipairs(Severities) do
     SeverityLevels[severity.name] = index - 2
 end
 
+
+-- Define available statuses and associated icons
+local Statuses = {
+    { name = L["None"],       icon = nil },
+    { name = L["Bandaged"],   icon = "Interface\\Icons\\INV_Misc_Bandage_01" },
+    { name = L["Bleeding"],   icon = "Interface\\Icons\\Spell_Druid_Bloodythrash" },  -- Example icon
+    { name = L["Broken bone"],icon = "Interface\\Icons\\INV_Misc_Bone_01" },            -- Example icon
+    { name = L["Burn"],       icon = "Interface\\Icons\\Spell_Fire_Immolation" },
+    { name = L["Scarred"],    icon = "Interface\\Icons\\Spell_Misc_Petheal" },   -- Example icon
+}
+
+-- Utility to fetch icon for a given status name
+local function GetStatusIcon(statusName)
+    for _, status in ipairs(Statuses) do
+        if status.name == statusName then
+            return status.icon
+        end
+    end
+    return nil
+end
+
+
 -- Simple string sanitization
 local function SanitizeInput(text)
     text = text:match("^%s*(.-)%s*$") or ""
@@ -80,6 +102,8 @@ local function GetHighestSeverity(regionName)
     end
     return highestSeverity
 end
+
+
 
 --------------------------------------------------------------------------------
 -- ANCHOR SAVING/RESTORING FOR ANY WINDOW
@@ -179,9 +203,37 @@ local function CreateSeverityDropdown(parent)
     return severityLabel, severityDropdown
 end
 
+local function CreateStatusDropdown(parent)
+    local statusLabel = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    statusLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", 15, -100)  -- Adjust position as needed
+    statusLabel:SetText(L["Status:"])
+
+    local statusDropdown = CreateFrame("Frame", nil, parent, "UIDropDownMenuTemplate")
+    statusDropdown:SetPoint("LEFT", statusLabel, "RIGHT", -10, -3)
+    UIDropDownMenu_SetWidth(statusDropdown, 150)
+
+    statusDropdown.initialize = function(self, level)
+        for _, stat in ipairs(Statuses) do
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = stat.name
+            info.arg1 = stat.name
+            info.func = function(_, arg1)
+                UIDropDownMenu_SetSelectedName(statusDropdown, arg1)
+                parent.selectedStatus = arg1
+            end
+            info.checked = (stat.name == (parent.selectedStatus or L["None"]))
+            UIDropDownMenu_AddButton(info)
+        end
+    end
+
+    return statusLabel, statusDropdown
+end
+
+
 local function CreateEditBoxWithCounter(parent, maxChars)
     local scrollFrame = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", parent.SeverityLabel, "BOTTOMLEFT", 0, -20)
+    -- Anchor the top left of the scroll frame below the StatusLabel instead of SeverityLabel
+    scrollFrame:SetPoint("TOPLEFT", parent.StatusLabel, "BOTTOMLEFT", 0, -20)
     scrollFrame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -35, 80)
 
     local editBox = CreateFrame("EditBox", nil, scrollFrame, "BackdropTemplate")
@@ -570,9 +622,27 @@ function GUI:CreateNoteEntry(parent, note, index, regionName)
 
     entry.regionName = regionName
 
+    local iconSpacing = 4      -- Space between the icon and the text
+    local iconSize = 16        -- Icon dimensions
+
+    -- Create and position the status icon if available
+    local statusIconTexture = GetStatusIcon(note.status or L["None"])
+    local statusIcon
+    if statusIconTexture then
+        statusIcon = entry:CreateTexture(nil, "OVERLAY")
+        statusIcon:SetSize(iconSize, iconSize)
+        statusIcon:SetTexture(statusIconTexture)
+        statusIcon:SetPoint("TOPLEFT", entry, "TOPLEFT", 10, -10)
+    end
+
+    -- Create the note text and position it relative to the icon
     local noteText = entry:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    noteText:SetPoint("TOPLEFT", entry, "TOPLEFT", 10, -10)
-    noteText:SetPoint("BOTTOMRIGHT", entry, "BOTTOMRIGHT", -110, 10)
+    if statusIcon then
+        noteText:SetPoint("LEFT", statusIcon, "RIGHT", iconSpacing, 0)
+    else
+        noteText:SetPoint("LEFT", entry, "LEFT", 10, 0)
+    end
+    noteText:SetPoint("RIGHT", entry, "RIGHT", -110, 10)
     noteText:SetJustifyH("LEFT")
     noteText:SetJustifyV("TOP")
     noteText:SetText(note.text)
@@ -599,6 +669,9 @@ function GUI:CreateNoteEntry(parent, note, index, regionName)
 
     return entry
 end
+
+
+
 
 function GUI:OpenNoteDialog(regionName, noteIndex)
     if not regionName then
@@ -630,6 +703,8 @@ function GUI:OpenNoteDialog(regionName, noteIndex)
     self:RestoreWindowPosition(frameName, dialog)
 
     dialog.SeverityLabel, dialog.SeverityDropdown = CreateSeverityDropdown(dialog)
+    dialog.StatusLabel, dialog.StatusDropdown = CreateStatusDropdown(dialog)  -- Added status dropdown
+
     dialog.ScrollFrame, dialog.EditBox, dialog.CharCountLabel = CreateEditBoxWithCounter(dialog, MAX_NOTE_LENGTH)
     dialog.SaveButton, dialog.CancelButton = CreateSaveCancelButtons(dialog)
 
@@ -639,21 +714,30 @@ function GUI:OpenNoteDialog(regionName, noteIndex)
     dialog.EditBox:SetFocus()
 end
 
+
 function GUI:PopulateNoteDialog(dialog, noteIndex)
     local isEdit = (noteIndex ~= nil)
     local woundData = addonTable.woundData or {}
     local notes = woundData[dialog.regionName]
     dialog.noteIndex = noteIndex
     dialog.selectedSeverity = L["Unknown"]
+    dialog.selectedStatus = L["None"]  -- Default status
 
     UIDropDownMenu_SetSelectedName(dialog.SeverityDropdown, dialog.selectedSeverity)
     UIDropDownMenu_Initialize(dialog.SeverityDropdown, dialog.SeverityDropdown.initialize)
+
+    UIDropDownMenu_SetSelectedName(dialog.StatusDropdown, dialog.selectedStatus)
+    UIDropDownMenu_Initialize(dialog.StatusDropdown, dialog.StatusDropdown.initialize)
 
     if isEdit and notes and notes[noteIndex] then
         local note = notes[noteIndex]
         dialog.EditBox:SetText(note.text or "")
         dialog.selectedSeverity = note.severity or L["Unknown"]
+        dialog.selectedStatus = note.status or L["None"]
         UIDropDownMenu_SetSelectedName(dialog.SeverityDropdown, dialog.selectedSeverity)
+        UIDropDownMenu_Initialize(dialog.SeverityDropdown, dialog.SeverityDropdown.initialize)
+        UIDropDownMenu_SetSelectedName(dialog.StatusDropdown, dialog.selectedStatus)
+        UIDropDownMenu_Initialize(dialog.StatusDropdown, dialog.StatusDropdown.initialize)
 
         local initialLen = strlenutf8(note.text or "")
         dialog.CharCountLabel:SetText(string.format(L["%d / %d"], initialLen, MAX_NOTE_LENGTH))
@@ -702,13 +786,15 @@ function GUI:PopulateNoteDialog(dialog, noteIndex)
     dialog.SaveButton:SetScript("OnClick", function()
         local text = SanitizeInput(dialog.EditBox:GetText())
         local severity = dialog.selectedSeverity or L["Unknown"]
+        local status = dialog.selectedStatus or L["None"]
         if text and text ~= "" then
             woundData[dialog.regionName] = woundData[dialog.regionName] or {}
             if isEdit and notes and notes[noteIndex] then
                 notes[noteIndex].text = text
                 notes[noteIndex].severity = severity
+                notes[noteIndex].status = status
             else
-                table.insert(woundData[dialog.regionName], { text = text, severity = severity })
+                table.insert(woundData[dialog.regionName], { text = text, severity = severity, status = status })
             end
             self:UpdateRegionColors()
             dialog.EditBox:SetText("")
@@ -725,6 +811,7 @@ function GUI:PopulateNoteDialog(dialog, noteIndex)
         self:OpenWoundDialog(dialog.regionName, true)
     end)
 end
+
 
 --------------------------------------------------------------------------------
 --  PROFILE MANAGER WINDOW

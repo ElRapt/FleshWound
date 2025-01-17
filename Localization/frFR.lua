@@ -80,3 +80,12 @@ L["Profile '%s' does not exist."] = "Le profil '%s' n'existe pas."
 L["Renamed profile '%s' to '%s'."] = "Profil '%s' renommé en '%s'."
 
 L["%d / %d"] = "%d / %d"
+
+L["Status:"] = "État:"
+
+L["None"] = "Aucun"
+L["Bandaged"] = "Bandé"
+L["Bleeding"] = "Saignement"
+L["Broken bone"] = "Fracture"
+L["Burn"] = "Brûlure"
+L["Scarred"] = "Cicatrice"

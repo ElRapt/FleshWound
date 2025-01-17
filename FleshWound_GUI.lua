@@ -54,6 +54,8 @@ local Statuses = {
     { name = L["Broken bone"],icon = "Interface\\Icons\\INV_Misc_Bone_01" },            -- Example icon
     { name = L["Burn"],       icon = "Interface\\Icons\\Spell_Fire_Immolation" },
     { name = L["Scarred"],    icon = "Interface\\Icons\\Spell_Misc_Petheal" },   -- Example icon
+    { name = L["Poisoned"], icon = "Interface\\Icons\\Ability_Rogue_Deviouspoisons"},
+    { name = L["Infected"], icon = "Interface\\Icons\\Ability_Druid_Infectedwound"}
 }
 
 -- Utility to fetch icon for a given status name

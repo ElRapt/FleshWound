@@ -2,7 +2,7 @@
 
 ## Description
 
-**FleshWound** is a RolePlay addon designed to help you easily manage and track the wounds, scars, and injuries of your characters. For each body region, you can create detailed entries including descriptions, severity levels of your wounds. The addon provides a visual interface with a body graphic to track the status of each region, making medical roleplay more immersive and easier to manage.
+**FleshWound** is a RolePlay addon designed to help you easily manage and track the wounds, scars, and injuries of your characters. For each body region, you can create detailed entries including descriptions, severity levels of your wounds, and status (bleeding, burned, etc.). The addon provides a visual interface with a body graphic to track the status of each region, making medical roleplay more immersive and easier to manage.
 
 **Shareable Profiles**: Your character's wounds can be shared with other players, allowing for more coordinated and detailed medical roleplay. Keep track of the injuries of your peers in real-time for richer, deeper roleplay experiences.
 
@@ -21,6 +21,15 @@
     - *Severe* (Orange) : Suitable for tracking injuries that are crippling but not immediately life-threatening (i.e., broken bones, deep cuts).
     - *Critical* (Red) : Suitable for tracking injuries that could be life-threatening if not treated immediately (i.e., deep wounds, internal bleeding).
     - *Deadly* (Purple) : Suitable for tracking injuries which you do not usually survive from (i.e., severed limbs, organ damage, etc).
+
+- **Status Effects**
+    - Bandaged : The wound is bandaged.
+    - Bleeding : The wound is actively bleeding.
+    - Broken bone : The wound is a broken bone.
+    - Burned : The wound is a burn.
+    - Infected : The wound is infected.
+    - Poisoned : The wound is poisoned.
+    - Scarred : This indicates a scar.
     
 - **Switchable Profiles**
     - Create multiple, persistent profiles for each of your characters or NPCs.

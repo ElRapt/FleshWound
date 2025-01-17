@@ -205,37 +205,75 @@ local function CreateSeverityDropdown(parent)
     return severityLabel, severityDropdown
 end
 
-local function CreateStatusDropdown(parent)
-    local statusLabel = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    statusLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", 15, -100)  -- Adjust position as needed
-    statusLabel:SetText(L["Status:"])
+local function CreateStatusSelection(parent)
+    local frame = CreateFrame("Frame", nil, parent)
+    local numStatuses = #Statuses
+    local height = 30 * (numStatuses + 1)  -- Estimate height based on number of statuses
+    frame:SetSize(400, height)  -- Adjust width as needed
+    frame:SetPoint("TOPLEFT", parent, "TOPLEFT", 15, -100)
 
-    local statusDropdown = CreateFrame("Frame", nil, parent, "UIDropDownMenuTemplate")
-    statusDropdown:SetPoint("LEFT", statusLabel, "RIGHT", -10, -3)
-    UIDropDownMenu_SetWidth(statusDropdown, 150)
+    local label = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    label:SetPoint("TOPLEFT", frame, "TOPLEFT")
+    label:SetText(L["Status:"])
 
-    statusDropdown.initialize = function(self, level)
-        for _, stat in ipairs(Statuses) do
-            local info = UIDropDownMenu_CreateInfo()
-            info.text = stat.name
-            info.arg1 = stat.name
-            info.func = function(_, arg1)
-                UIDropDownMenu_SetSelectedName(statusDropdown, arg1)
-                parent.selectedStatus = arg1
+    frame.checkboxes = {}
+    frame.selectedStatuses = {}
+
+    local yOffset = -20  -- Start below the label
+    for _, status in ipairs(Statuses) do
+        local cb = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+        cb:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, yOffset)
+        cb.text:SetText(status.name)
+
+        cb:SetScript("OnClick", function(self)
+            if status.name == L["None"] then
+                if self:GetChecked() then
+                    -- Select "None" exclusively
+                    frame.selectedStatuses = {}
+                    frame.selectedStatuses[status.name] = true
+                    for sName, checkbox in pairs(frame.checkboxes) do
+                        if sName ~= status.name then
+                            checkbox:SetChecked(false)
+                        end
+                    end
+                else
+                    frame.selectedStatuses[status.name] = nil
+                end
+            else
+                if self:GetChecked() then
+                    frame.selectedStatuses[status.name] = true
+                    local noneCb = frame.checkboxes[L["None"]]
+                    if noneCb and noneCb:GetChecked() then
+                        noneCb:SetChecked(false)
+                        frame.selectedStatuses[L["None"]] = nil
+                    end
+                else
+                    frame.selectedStatuses[status.name] = nil
+                end
             end
-            info.checked = (stat.name == (parent.selectedStatus or L["None"]))
-            UIDropDownMenu_AddButton(info)
-        end
+        end)
+
+        frame.checkboxes[status.name] = cb
+        yOffset = yOffset - 20  -- Move down for the next checkbox
     end
 
-    return statusLabel, statusDropdown
+    return frame
 end
+
 
 
 local function CreateEditBoxWithCounter(parent, maxChars)
     local scrollFrame = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
-    -- Anchor the top left of the scroll frame below the StatusLabel instead of SeverityLabel
-    scrollFrame:SetPoint("TOPLEFT", parent.StatusLabel, "BOTTOMLEFT", 0, -20)
+    
+    -- Determine a top anchor: use StatusLabel if it exists, otherwise use StatusSelection
+    local topAnchor = parent.StatusLabel or parent.StatusSelection
+    if topAnchor then
+        scrollFrame:SetPoint("TOPLEFT", topAnchor, "BOTTOMLEFT", 0, -20)
+    else
+        -- Fallback if neither exists
+        scrollFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", 15, -120)
+    end
+    
     scrollFrame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -35, 80)
 
     local editBox = CreateFrame("EditBox", nil, scrollFrame, "BackdropTemplate")
@@ -261,7 +299,7 @@ local function CreateEditBoxWithCounter(parent, maxChars)
     scrollFrame:SetScrollChild(editBox)
 
     local charCountLabel = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    charCountLabel:SetPoint("TOPLEFT", scrollFrame, "BOTTOMLEFT", 0, -10)
+    charCountLabel:SetPoint("TOPLEFT", scrollFrame, "BOTTOMLEFT", 0, 50)
     charCountLabel:SetText(string.format(L["%d / %d"], 0, maxChars))
 
     -- Attach OnTextChanged hook for dynamic updates
@@ -273,7 +311,6 @@ local function CreateEditBoxWithCounter(parent, maxChars)
 
     return scrollFrame, editBox, charCountLabel
 end
-
 
 local function CreateSaveCancelButtons(parent)
     local saveButton = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -624,23 +661,27 @@ function GUI:CreateNoteEntry(parent, note, index, regionName)
 
     entry.regionName = regionName
 
-    local iconSpacing = 4      -- Space between the icon and the text
-    local iconSize = 16        -- Icon dimensions
+    local iconSpacing = 4
+    local iconSize = 16
+    local xOffset = 10
 
-    -- Create and position the status icon if available
-    local statusIconTexture = GetStatusIcon(note.status or L["None"])
-    local statusIcon
-    if statusIconTexture then
-        statusIcon = entry:CreateTexture(nil, "OVERLAY")
-        statusIcon:SetSize(iconSize, iconSize)
-        statusIcon:SetTexture(statusIconTexture)
-        statusIcon:SetPoint("TOPLEFT", entry, "TOPLEFT", 10, -10)
+    -- Create and position multiple status icons if available
+    if type(note.status) == "table" then
+        for _, statusName in ipairs(note.status) do
+            local statusIconTexture = GetStatusIcon(statusName)
+            if statusIconTexture then
+                local statusIcon = entry:CreateTexture(nil, "OVERLAY")
+                statusIcon:SetSize(iconSize, iconSize)
+                statusIcon:SetTexture(statusIconTexture)
+                statusIcon:SetPoint("TOPLEFT", entry, "TOPLEFT", xOffset, -10)
+                xOffset = xOffset + iconSize + iconSpacing
+            end
+        end
     end
 
-    -- Create the note text and position it relative to the icon
     local noteText = entry:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    if statusIcon then
-        noteText:SetPoint("LEFT", statusIcon, "RIGHT", iconSpacing, 0)
+    if xOffset > 10 then
+        noteText:SetPoint("LEFT", entry, "LEFT", xOffset + iconSpacing, 0)
     else
         noteText:SetPoint("LEFT", entry, "LEFT", 10, 0)
     end
@@ -698,16 +739,22 @@ function GUI:OpenNoteDialog(regionName, noteIndex)
     local dialog = CreateDialog(frameName, dialogTitle, 400, 370)
     dialog.regionName = regionName
 
-    -- Make it draggable individually
+    -- Make the dialog draggable
     Utils.MakeFrameDraggable(dialog, function(f)
         self:SaveWindowPosition(frameName, f)
     end)
     self:RestoreWindowPosition(frameName, dialog)
 
+    -- Create Severity Dropdown
     dialog.SeverityLabel, dialog.SeverityDropdown = CreateSeverityDropdown(dialog)
-    dialog.StatusLabel, dialog.StatusDropdown = CreateStatusDropdown(dialog)  -- Added status dropdown
+    
+    -- Create multi-select status checkboxes
+    dialog.StatusSelection = CreateStatusSelection(dialog)
 
+    -- Create EditBox with character counter
     dialog.ScrollFrame, dialog.EditBox, dialog.CharCountLabel = CreateEditBoxWithCounter(dialog, MAX_NOTE_LENGTH)
+    
+    -- Create Save and Cancel buttons
     dialog.SaveButton, dialog.CancelButton = CreateSaveCancelButtons(dialog)
 
     _G[frameName] = dialog
@@ -723,29 +770,39 @@ function GUI:PopulateNoteDialog(dialog, noteIndex)
     local notes = woundData[dialog.regionName]
     dialog.noteIndex = noteIndex
     dialog.selectedSeverity = L["Unknown"]
-    dialog.selectedStatus = L["None"]  -- Default status
 
+    -- Initialize Severity Dropdown
     UIDropDownMenu_SetSelectedName(dialog.SeverityDropdown, dialog.selectedSeverity)
     UIDropDownMenu_Initialize(dialog.SeverityDropdown, dialog.SeverityDropdown.initialize)
-
-    UIDropDownMenu_SetSelectedName(dialog.StatusDropdown, dialog.selectedStatus)
-    UIDropDownMenu_Initialize(dialog.StatusDropdown, dialog.StatusDropdown.initialize)
 
     if isEdit and notes and notes[noteIndex] then
         local note = notes[noteIndex]
         dialog.EditBox:SetText(note.text or "")
         dialog.selectedSeverity = note.severity or L["Unknown"]
-        dialog.selectedStatus = note.status or L["None"]
         UIDropDownMenu_SetSelectedName(dialog.SeverityDropdown, dialog.selectedSeverity)
         UIDropDownMenu_Initialize(dialog.SeverityDropdown, dialog.SeverityDropdown.initialize)
-        UIDropDownMenu_SetSelectedName(dialog.StatusDropdown, dialog.selectedStatus)
-        UIDropDownMenu_Initialize(dialog.StatusDropdown, dialog.StatusDropdown.initialize)
+
+        -- Pre-check status checkboxes if editing an existing note
+        if type(note.status) == "table" then
+            for _, statusName in ipairs(note.status) do
+                local cb = dialog.StatusSelection.checkboxes[statusName]
+                if cb then
+                    cb:SetChecked(true)
+                    dialog.StatusSelection.selectedStatuses[statusName] = true
+                end
+            end
+        end
 
         local initialLen = strlenutf8(note.text or "")
         dialog.CharCountLabel:SetText(string.format(L["%d / %d"], initialLen, MAX_NOTE_LENGTH))
     else
         dialog.EditBox:SetText("")
         dialog.CharCountLabel:SetText(string.format(L["%d / %d"], 0, MAX_NOTE_LENGTH))
+        -- Ensure no checkboxes are pre-checked
+        for _, cb in pairs(dialog.StatusSelection.checkboxes) do
+            cb:SetChecked(false)
+        end
+        dialog.StatusSelection.selectedStatuses = {}
     end
 
     local function UpdateSaveButtonState()
@@ -788,15 +845,21 @@ function GUI:PopulateNoteDialog(dialog, noteIndex)
     dialog.SaveButton:SetScript("OnClick", function()
         local text = SanitizeInput(dialog.EditBox:GetText())
         local severity = dialog.selectedSeverity or L["Unknown"]
-        local status = dialog.selectedStatus or L["None"]
+        
+        -- Gather selected statuses from checkboxes
+        local selectedStatuses = {}
+        for statusName, _ in pairs(dialog.StatusSelection.selectedStatuses) do
+            table.insert(selectedStatuses, statusName)
+        end
+
         if text and text ~= "" then
             woundData[dialog.regionName] = woundData[dialog.regionName] or {}
             if isEdit and notes and notes[noteIndex] then
                 notes[noteIndex].text = text
                 notes[noteIndex].severity = severity
-                notes[noteIndex].status = status
+                notes[noteIndex].status = selectedStatuses
             else
-                table.insert(woundData[dialog.regionName], { text = text, severity = severity, status = status })
+                table.insert(woundData[dialog.regionName], { text = text, severity = severity, status = selectedStatuses })
             end
             self:UpdateRegionColors()
             dialog.EditBox:SetText("")
@@ -813,7 +876,6 @@ function GUI:PopulateNoteDialog(dialog, noteIndex)
         self:OpenWoundDialog(dialog.regionName, true)
     end)
 end
-
 
 --------------------------------------------------------------------------------
 --  PROFILE MANAGER WINDOW

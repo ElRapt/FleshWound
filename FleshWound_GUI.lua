@@ -945,6 +945,11 @@ function GUI:OpenRenameProfileDialog(oldProfileName)
     local frameName = "FleshWoundRenameProfileDialog"
     local dialogTitle = L["Rename Profile"]
 
+    -- Hide the Profile Manager if it's open, so the rename dialog appears on top
+    if _G["FleshWoundProfileManager"] and _G["FleshWoundProfileManager"]:IsShown() then
+        _G["FleshWoundProfileManager"]:Hide()
+    end
+
     local dialog = _G[frameName]
     if not dialog then
         dialog = CreateDialog(frameName, dialogTitle, 300, 200)
@@ -976,6 +981,7 @@ function GUI:OpenRenameProfileDialog(oldProfileName)
     dialog:Show()
     dialog.nameEditBox:SetFocus()
 end
+
 
 function GUI:PopulateRenameProfileDialog(dialog, oldProfileName)
     local function UpdateRenameButtonState()

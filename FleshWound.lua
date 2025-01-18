@@ -137,6 +137,37 @@ function addonTable:OpenReceivedProfile(profileName, profileData)
     end
 end
 
+function addonTable:OpenReceivedProfile(profileName, profileData)
+    local originalProfile = addonTable.FleshWoundData.currentProfile
+    local originalWoundData = addonTable.woundData
+
+    -- Temporarily overwrite your local data with the remote player's data
+    addonTable.woundData = profileData.woundData
+
+    -- Force your GUI to pick up the new severities/statuses
+    if addonTable.GUI and addonTable.GUI.UpdateRegionColors then
+        addonTable.GUI:UpdateRegionColors()
+    end
+
+    -- Optionally open/show the main GUI so user can see it
+    if addonTable.GUI and addonTable.GUI.frame then
+        addonTable.GUI.frame:Show()
+    end
+
+    -- Track the original data, so we can restore it when the user closes or changes profile
+    if addonTable.GUI then
+        addonTable.GUI.originalProfile = originalProfile
+        addonTable.GUI.originalWoundData = originalWoundData
+        addonTable.GUI.currentTemporaryProfile = profileName
+        addonTable.GUI:UpdateProfileBanner()
+
+        -- Hide your “Profile” button while looking at someone else’s data
+        if addonTable.GUI.frame and addonTable.GUI.frame.ProfileButton then
+            addonTable.GUI.frame.ProfileButton:Hide()
+        end
+    end
+end
+
 -- Set up an event frame to handle ADDON_LOADED
 EventHandler.eventFrame = CreateFrame("Frame")
 EventHandler.eventFrame:RegisterEvent("ADDON_LOADED")
@@ -145,3 +176,5 @@ EventHandler.eventFrame:SetScript("OnEvent", function(_, event, ...)
         EventHandler:OnAddonLoaded(...)
     end
 end)
+
+

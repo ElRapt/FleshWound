@@ -1,12 +1,16 @@
+-- FleshWound_TargetPopup.lua
+
 local addonName, addonTable = ...
 local L = addonTable.L -- Localization
-local knownAddonUsers = addonTable.Comm:GetKnownAddonUsers() 
+local knownAddonUsers = addonTable.Comm:GetKnownAddonUsers()
 local PING_TIMEOUT = 5
 local pendingTarget
 local popupFrame
 local targetName
 
--- Function to save the popup's position
+---------------------------------------------------
+-- Save/restore the popup's position
+---------------------------------------------------
 local function SavePopupPosition()
     if not FleshWoundData then FleshWoundData = {} end
     FleshWoundData.popupPos = FleshWoundData.popupPos or {}
@@ -18,7 +22,6 @@ local function SavePopupPosition()
     FleshWoundData.popupPos.yOfs = yOfs
 end
 
--- Function to restore the popup's saved position
 local function RestorePopupPosition()
     if FleshWoundData and FleshWoundData.popupPos then
         popupFrame:ClearAllPoints()
@@ -34,6 +37,9 @@ local function RestorePopupPosition()
     end
 end
 
+---------------------------------------------------
+-- Hide/show the popup
+---------------------------------------------------
 local function HidePopup()
     if popupFrame then
         popupFrame:Hide()
@@ -64,6 +70,7 @@ local function ShowPopupForTarget(name)
         })
         popupFrame:SetBackdropColor(1, 1, 1, 0.9)
 
+        -- An icon button for requesting profiles
         local iconButton = CreateFrame("Button", nil, popupFrame, "BackdropTemplate")
         iconButton:SetSize(32, 32)
         iconButton:SetPoint("TOPLEFT", popupFrame, "TOPLEFT", 15, -15)
@@ -81,10 +88,11 @@ local function ShowPopupForTarget(name)
         iconButton:SetScript("OnLeave", function()
             GameTooltip:Hide()
         end)
+
         iconButton:SetScript("OnClick", function()
             if targetName then
                 addonTable.Comm:RequestProfile(targetName)
-                -- We do not hide the popup automatically now
+                -- Optionally hide the popup here if you want.
             end
         end)
 
@@ -102,20 +110,26 @@ local function ShowPopupForTarget(name)
         popupFrame.closeButton:SetPoint("TOPRIGHT", popupFrame, "TOPRIGHT", -5, -5)
         popupFrame.closeButton:SetScript("OnClick", HidePopup)
 
-        RestorePopupPosition() -- Restore saved position after creating the popup frame
+        -- Restore the saved position (if any) after creating the frame
+        RestorePopupPosition()
     end
 
     targetName = name
     popupFrame:Show()
 end
 
-
+---------------------------------------------------
+-- Event frame that checks when you change target
+-- or when we receive an addon message
+---------------------------------------------------
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
 eventFrame:RegisterEvent("CHAT_MSG_ADDON")
+
 eventFrame:SetScript("OnEvent", function(_, event, ...)
     if event == "PLAYER_TARGET_CHANGED" then
         HidePopup()
+
         local unit = "target"
         if UnitExists(unit) and UnitIsPlayer(unit) and UnitIsFriend("player", unit) then
             local name, realm = UnitName(unit)
@@ -124,34 +138,38 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
             end
 
             knownAddonUsers = addonTable.Comm:GetKnownAddonUsers()
+
+            -- If we already know this target has FleshWound, show popup immediately
             if knownAddonUsers[name] then
                 ShowPopupForTarget(name)
             else
+                -- Otherwise send a ping and wait for PONG before showing
                 pendingTarget = name
                 addonTable.Comm:PingPlayer(name)
-                -- We no longer rely on a timer here for showing the popup.
-                -- We'll show the popup immediately upon receiving PONG.
             end
         end
+
     elseif event == "CHAT_MSG_ADDON" then
         local prefixMsg, msg, channel, sender = ...
         local player = Ambiguate(sender, "short")
 
-        if prefixMsg == addonTable.Comm.GetPrefix and addonTable.Comm:GetPrefix() then
-            -- getPrefix should return "FleshWoundComm"
-            if prefixMsg ~= "FleshWoundComm" then return end
+        -- Make sure it's our prefix before proceeding
+        if prefixMsg ~= "FleshWoundComm" then
+            return
         end
 
-        if prefixMsg == "FleshWoundComm" then
-            if msg == "PONG" then
-                knownAddonUsers[player] = true
-                -- If this is the pending target and we're still targeting them, show popup right now
-                if player == pendingTarget and UnitName("target") == player then
-                    ShowPopupForTarget(player)
-                end
-            elseif msg == "REQUEST_PROFILE" or msg:match("^PROFILE_DATA:") then
-                knownAddonUsers[player] = true
+        -- If we got a PONG from someone, mark them as known
+        if msg == "PONG" then
+            knownAddonUsers[player] = true
+
+            -- If the player we pinged is the current target, show the popup
+            if player == pendingTarget and UnitName("target") == player then
+                ShowPopupForTarget(player)
             end
+
+        -- If we see these messages, also mark them known
+        elseif msg == "REQUEST_PROFILE" or msg:match("^PROFILE_DATA:") then
+            knownAddonUsers[player] = true
         end
     end
 end)

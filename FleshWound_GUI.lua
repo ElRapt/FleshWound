@@ -5,12 +5,31 @@ local addonName, addonTable = ...
 local L = addonTable.L
 local Utils = addonTable.Utils
 
+--------------------------------------------------------------------------------
+-- CREATE OUR MODULE
+--------------------------------------------------------------------------------
 local GUI = {}
 addonTable.GUI = GUI
 
+--------------------------------------------------------------------------------
+-- GLOBAL CONSTANTS / LIMITS
+--------------------------------------------------------------------------------
 local MAX_NOTE_LENGTH = 125
 local MAX_PROFILE_NAME_LENGTH = 50
 
+--------------------------------------------------------------------------------
+-- MISSING FUNCTION: SIMPLE STRING SANITIZATION
+--------------------------------------------------------------------------------
+local function SanitizeInput(text)
+    text = text or ""
+    text = text:match("^%s*(.-)%s*$") or ""
+    text = text:gsub("[%c]", "")
+    return text
+end
+
+--------------------------------------------------------------------------------
+-- POPUP FOR DELETING A PROFILE
+--------------------------------------------------------------------------------
 StaticPopupDialogs["FW_DELETE_PROFILE_CONFIRM"] = {
     text = L["Delete profile confirmation"],
     button1 = YES,
@@ -29,89 +48,138 @@ StaticPopupDialogs["FW_DELETE_PROFILE_CONFIRM"] = {
 }
 
 
--- Severity definitions
+--------------------------------------------------------------------------------
+-- REVISED: SEVERITIES WITH NUMERIC ID
+--------------------------------------------------------------------------------
 local Severities = {
-    { name = L["None"],     color = {0, 0, 0, 0.0} },
-    { name = L["Unknown"],  color = {0.5, 0.5, 0.5, 0.4} },
-    { name = L["Benign"],   color = {0, 1, 0, 0.4} },
-    { name = L["Moderate"], color = {1, 1, 0, 0.4} },
-    { name = L["Severe"],   color = {1, 0.5, 0, 0.4} },
-    { name = L["Critical"], color = {1, 0, 0, 0.4} },
-    { name = L["Deadly"],   color = {0.6, 0, 0.6, 0.4} },
+    {
+        id = 1,
+        displayName = L["None"],
+        color = {0, 0, 0, 0.0}, -- fully transparent
+    },
+    {
+        id = 2,
+        displayName = L["Unknown"],
+        color = {0.5, 0.5, 0.5, 0.4},
+    },
+    {
+        id = 3,
+        displayName = L["Benign"],
+        color = {0, 1, 0, 0.4},
+    },
+    {
+        id = 4,
+        displayName = L["Moderate"],
+        color = {1, 1, 0, 0.4},
+    },
+    {
+        id = 5,
+        displayName = L["Severe"],
+        color = {1, 0.5, 0, 0.4},
+    },
+    {
+        id = 6,
+        displayName = L["Critical"],
+        color = {1, 0, 0, 0.4},
+    },
+    {
+        id = 7,
+        displayName = L["Deadly"],
+        color = {0.6, 0, 0.6, 0.4},
+    },
 }
-
-local SeverityLevels = {}
-for index, severity in ipairs(Severities) do
-    SeverityLevels[severity.name] = index - 2
+local SeveritiesByID = {}
+for _, sev in ipairs(Severities) do
+    SeveritiesByID[sev.id] = sev
 end
 
-
--- Define available statuses and associated icons
+--------------------------------------------------------------------------------
+-- REVISED: STATUSES WITH NUMERIC ID
+--------------------------------------------------------------------------------
 local Statuses = {
-    { name = L["None"],       icon = nil },
-    { name = L["Bandaged"],   icon = "Interface\\Icons\\INV_Misc_Bandage_01" },
-    { name = L["Bleeding"],   icon = "Interface\\Icons\\Spell_Druid_Bloodythrash" },  -- Example icon
-    { name = L["Broken bone"],icon = "Interface\\Icons\\INV_Misc_Bone_01" },            -- Example icon
-    { name = L["Burn"],       icon = "Interface\\Icons\\Spell_Fire_Immolation" },
-    { name = L["Scarred"],    icon = "Interface\\Icons\\Spell_Misc_Petheal" },   -- Example icon
-    { name = L["Poisoned"], icon = "Interface\\Icons\\Ability_Rogue_Deviouspoisons"},
-    { name = L["Infected"], icon = "Interface\\Icons\\Ability_Druid_Infectedwound"}
+    {
+        id = 1,
+        displayName = L["None"],
+        icon = nil,
+    },
+    {
+        id = 2,
+        displayName = L["Bandaged"],
+        icon = "Interface\\Icons\\INV_Misc_Bandage_01",
+    },
+    {
+        id = 3,
+        displayName = L["Bleeding"],
+        icon = "Interface\\Icons\\Spell_Druid_Bloodythrash",  -- Example icon
+    },
+    {
+        id = 4,
+        displayName = L["Broken bone"],
+        icon = "Interface\\Icons\\INV_Misc_Bone_01",
+    },
+    {
+        id = 5,
+        displayName = L["Burn"],
+        icon = "Interface\\Icons\\Spell_Fire_Immolation",
+    },
+    {
+        id = 6,
+        displayName = L["Scarred"],
+        icon = "Interface\\Icons\\Spell_Misc_Petheal",   -- Example icon
+    },
+    {
+        id = 7,
+        displayName = L["Poisoned"],
+        icon = "Interface\\Icons\\Ability_Rogue_Deviouspoisons",
+    },
+    {
+        id = 8,
+        displayName = L["Infected"],
+        icon = "Interface\\Icons\\Ability_Druid_Infectedwound",
+    },
 }
+local StatusesByID = {}
+for _, st in ipairs(Statuses) do
+    StatusesByID[st.id] = st
+end
 
--- Utility to fetch icon for a given status name
-local function GetStatusIcon(statusName)
-    for _, status in ipairs(Statuses) do
-        if status.name == statusName then
-            return status.icon
-        end
+--------------------------------------------------------------------------------
+-- HELPER: GET SEVERITY COLOR BY ID
+--------------------------------------------------------------------------------
+local function GetSeverityColorByID(severityID)
+    local sev = SeveritiesByID[severityID]
+    if not sev then
+        -- fallback: "None"
+        return 0, 0, 0, 0
     end
-    return nil
+    local c = sev.color
+    return c[1], c[2], c[3], c[4]
 end
 
-
--- Simple string sanitization
-local function SanitizeInput(text)
-    text = text:match("^%s*(.-)%s*$") or ""
-    text = text:gsub("[%c]", "")
-    return text
-end
-
-local function GetSeverityColor(severityName)
-    for _, severity in ipairs(Severities) do
-        if severity.name == severityName then
-            return severity.color
-        end
-    end
-    return {0, 0, 0, 0.0}
-end
-
-local function GetHighestSeverity(regionName)
+--------------------------------------------------------------------------------
+-- HELPER: FIND HIGHEST SEVERITY ID IN A REGION
+--------------------------------------------------------------------------------
+local function GetHighestSeverityID(regionName)
     local woundData = addonTable.woundData or {}
     local notes = woundData[regionName]
     if not notes or #notes == 0 then
-        return L["None"]
+        return 1  -- severityID=1 => "None"
     end
 
-    local highestLevel = -1
-    local highestSeverity = L["None"]
-
+    local highestID = 1
     for _, note in ipairs(notes) do
-        local level = SeverityLevels[note.severity] or 0
-        if level > highestLevel then
-            highestLevel = level
-            highestSeverity = note.severity
+        local sevID = note.severityID or 1
+        if sevID > highestID then
+            highestID = sevID
         end
     end
-    return highestSeverity
+    return highestID
 end
-
 
 
 --------------------------------------------------------------------------------
 -- ANCHOR SAVING/RESTORING FOR ANY WINDOW
 --------------------------------------------------------------------------------
-
--- Save a frame's position in FleshWoundData.positions[frameName]
 function GUI:SaveWindowPosition(frameName, frame)
     addonTable.FleshWoundData.positions = addonTable.FleshWoundData.positions or {}
     local pos = addonTable.FleshWoundData.positions
@@ -125,7 +193,6 @@ function GUI:SaveWindowPosition(frameName, frame)
     }
 end
 
--- Restore a frame's position from FleshWoundData.positions[frameName]
 function GUI:RestoreWindowPosition(frameName, frame)
     local pos = addonTable.FleshWoundData.positions and addonTable.FleshWoundData.positions[frameName]
     if pos then
@@ -136,8 +203,10 @@ function GUI:RestoreWindowPosition(frameName, frame)
     end
 end
 
---------------------------------------------------------------------------------
 
+--------------------------------------------------------------------------------
+-- CREATE/HELPER: GENERIC DIALOG FRAME
+--------------------------------------------------------------------------------
 local function CreateDialog(name, titleText, width, height)
     local dialog = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
     dialog:SetSize(width, height)
@@ -153,7 +222,6 @@ local function CreateDialog(name, titleText, width, height)
     dialog:SetFrameStrata("DIALOG")
     dialog:EnableMouse(true)
 
-    -- We'll rely on MakeFrameDraggable, then override OnDragStop
     Utils.MakeFrameDraggable(dialog, nil)
 
     dialog.CloseButton = CreateFrame("Button", nil, dialog, "UIPanelCloseButton")
@@ -179,6 +247,9 @@ local function CreateDialog(name, titleText, width, height)
     return dialog
 end
 
+--------------------------------------------------------------------------------
+-- CREATE/HELPER: SEVERITY DROPDOWN
+--------------------------------------------------------------------------------
 local function CreateSeverityDropdown(parent)
     local severityLabel = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     severityLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", 15, -60)
@@ -188,28 +259,38 @@ local function CreateSeverityDropdown(parent)
     severityDropdown:SetPoint("LEFT", severityLabel, "RIGHT", -10, -3)
     UIDropDownMenu_SetWidth(severityDropdown, 150)
 
-    severityDropdown.initialize = function(self, level)
+    severityDropdown.initialize = function(dropdown, level)
         for _, sev in ipairs(Severities) do
             local info = UIDropDownMenu_CreateInfo()
-            info.text = sev.name
-            info.arg1 = sev.name
-            info.func = function(_, arg1)
-                UIDropDownMenu_SetSelectedName(severityDropdown, arg1)
-                parent.selectedSeverity = arg1
+            info.text = sev.displayName
+            info.arg1 = sev.id
+            info.func = function(_, chosenID)
+                UIDropDownMenu_SetSelectedValue(dropdown, chosenID)
+                parent.selectedSeverityID = chosenID
             end
-            info.checked = (sev.name == (parent.selectedSeverity or L["Unknown"]))
+
+            info.checked = (sev.id == (parent.selectedSeverityID or 1))
             UIDropDownMenu_AddButton(info)
         end
+    end
+
+    -- Helper to programmatically set a severity
+    function severityDropdown:SetSeverityID(id)
+        parent.selectedSeverityID = id
+        UIDropDownMenu_SetSelectedValue(severityDropdown, id)
     end
 
     return severityLabel, severityDropdown
 end
 
+--------------------------------------------------------------------------------
+-- CREATE/HELPER: STATUS CHECKBOXES
+--------------------------------------------------------------------------------
 local function CreateStatusSelection(parent)
     local frame = CreateFrame("Frame", nil, parent)
     local numStatuses = #Statuses
-    local height = 30 * (numStatuses + 1)  -- Estimate height based on number of statuses
-    frame:SetSize(400, height)  -- Adjust width as needed
+    local height = 30 * (numStatuses + 1)
+    frame:SetSize(400, height)
     frame:SetPoint("TOPLEFT", parent, "TOPLEFT", 15, -100)
 
     local label = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -217,63 +298,108 @@ local function CreateStatusSelection(parent)
     label:SetText(L["Status:"])
 
     frame.checkboxes = {}
-    frame.selectedStatuses = {}
+    frame.selectedStatusIDs = {}
 
-    local yOffset = -20  -- Start below the label
-    for _, status in ipairs(Statuses) do
+    local yOffset = -20
+    for _, st in ipairs(Statuses) do
         local cb = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
         cb:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, yOffset)
-        cb.text:SetText(status.name)
+        cb.text:SetText(st.displayName)
 
         cb:SetScript("OnClick", function(self)
-            if status.name == L["None"] then
+            if st.id == 1 then
+                -- "None" => uncheck everything else
                 if self:GetChecked() then
-                    -- Select "None" exclusively
-                    frame.selectedStatuses = {}
-                    frame.selectedStatuses[status.name] = true
-                    for sName, checkbox in pairs(frame.checkboxes) do
-                        if sName ~= status.name then
-                            checkbox:SetChecked(false)
+                    wipe(frame.selectedStatusIDs)
+                    frame.selectedStatusIDs[1] = true
+                    for otherID, otherCb in pairs(frame.checkboxes) do
+                        if otherID ~= 1 then
+                            otherCb:SetChecked(false)
                         end
                     end
                 else
-                    frame.selectedStatuses[status.name] = nil
+                    frame.selectedStatusIDs[1] = nil
                 end
             else
                 if self:GetChecked() then
-                    frame.selectedStatuses[status.name] = true
-                    local noneCb = frame.checkboxes[L["None"]]
-                    if noneCb and noneCb:GetChecked() then
-                        noneCb:SetChecked(false)
-                        frame.selectedStatuses[L["None"]] = nil
+                    frame.selectedStatusIDs[st.id] = true
+                    -- If "None" was checked, uncheck it
+                    if frame.checkboxes[1] and frame.checkboxes[1]:GetChecked() then
+                        frame.checkboxes[1]:SetChecked(false)
+                        frame.selectedStatusIDs[1] = nil
                     end
                 else
-                    frame.selectedStatuses[status.name] = nil
+                    frame.selectedStatusIDs[st.id] = nil
                 end
             end
         end)
 
-        frame.checkboxes[status.name] = cb
-        yOffset = yOffset - 20  -- Move down for the next checkbox
+        frame.checkboxes[st.id] = cb
+        yOffset = yOffset - 20
+    end
+
+    function frame:SetStatusIDs(idTable)
+        for id, cb in pairs(frame.checkboxes) do
+            cb:SetChecked(false)
+        end
+        wipe(frame.selectedStatusIDs)
+
+        if idTable then
+            for _, stID in ipairs(idTable) do
+                if frame.checkboxes[stID] then
+                    frame.checkboxes[stID]:SetChecked(true)
+                    frame.selectedStatusIDs[stID] = true
+                end
+            end
+        end
     end
 
     return frame
 end
 
+--------------------------------------------------------------------------------
+-- CREATE/HELPER: SCROLL FRAME
+--------------------------------------------------------------------------------
+function GUI:CreateScrollFrame(parent, left, top, right, bottom)
+    local scrollFrame = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", left, top)
+    scrollFrame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", right, bottom)
 
+    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    scrollChild:SetSize(scrollFrame:GetWidth(), 1)
+    scrollFrame:SetScrollChild(scrollChild)
 
+    return scrollFrame, scrollChild
+end
+
+--------------------------------------------------------------------------------
+-- CREATE/HELPER: BUTTON
+--------------------------------------------------------------------------------
+function GUI:CreateButton(parent, text, width, height, point, relativeTo, offsetX, offsetY)
+    local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    button:SetSize(width, height)
+    if type(relativeTo) == "string" then
+        button:SetPoint(point, parent, relativeTo, offsetX, offsetY)
+    else
+        button:SetPoint(point, relativeTo, offsetX, offsetY)
+    end
+    button:SetText(text)
+    return button
+end
+
+--------------------------------------------------------------------------------
+-- CREATE/HELPER: EDITBOX WITH COUNTER
+--------------------------------------------------------------------------------
 local function CreateEditBoxWithCounter(parent, maxChars)
     local scrollFrame = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
-    
-    -- Determine a top anchor: use StatusLabel if it exists, otherwise use StatusSelection
+
     local topAnchor = parent.StatusLabel or parent.StatusSelection
     if topAnchor then
         scrollFrame:SetPoint("TOPLEFT", topAnchor, "BOTTOMLEFT", 0, -20)
     else
-        -- Fallback if neither exists
         scrollFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", 15, -120)
     end
-    
+
     scrollFrame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -35, 80)
 
     local editBox = CreateFrame("EditBox", nil, scrollFrame, "BackdropTemplate")
@@ -302,7 +428,6 @@ local function CreateEditBoxWithCounter(parent, maxChars)
     charCountLabel:SetPoint("TOPLEFT", scrollFrame, "BOTTOMLEFT", 0, 50)
     charCountLabel:SetText(string.format(L["%d / %d"], 0, maxChars))
 
-    -- Attach OnTextChanged hook for dynamic updates
     editBox:HookScript("OnTextChanged", function(self)
         local text = self:GetText()
         local length = strlenutf8(text)
@@ -312,6 +437,9 @@ local function CreateEditBoxWithCounter(parent, maxChars)
     return scrollFrame, editBox, charCountLabel
 end
 
+--------------------------------------------------------------------------------
+-- CREATE/HELPER: SAVE/CANCEL BUTTONS
+--------------------------------------------------------------------------------
 local function CreateSaveCancelButtons(parent)
     local saveButton = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     saveButton:SetSize(80, 24)
@@ -326,6 +454,9 @@ local function CreateSaveCancelButtons(parent)
     return saveButton, cancelButton
 end
 
+--------------------------------------------------------------------------------
+-- CREATE/HELPER: SINGLE-LINE EDITBOX WITH COUNTER
+--------------------------------------------------------------------------------
 local function CreateSingleLineEditBoxWithCounter(parent, maxChars)
     local editBox = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
     editBox:SetAutoFocus(true)
@@ -345,16 +476,13 @@ local function CreateSingleLineEditBoxWithCounter(parent, maxChars)
     return editBox, charCountLabel
 end
 
-
-
 --------------------------------------------------------------------------------
 -- MAIN GUI INITIALIZATION
 --------------------------------------------------------------------------------
-
 function GUI:Initialize()
     self.woundData = addonTable.woundData or {}
 
-    self:CreateMainFrame()            -- The main 320x540 frame
+    self:CreateMainFrame() -- The main 320x540 frame
     self:RestoreWindowPosition("FleshWoundFrame", self.frame)
     self:CreateBodyRegions()
     self:CreateTemporaryProfileBanner()
@@ -369,8 +497,6 @@ function GUI:UpdateProfileBanner()
     if self.currentTemporaryProfile then
         self.tempProfileBanner:SetText(string.format(L["Viewing %s's Profile"], self.currentTemporaryProfile))
     else
-        -- e.g. "Profile of X" or "Viewing X's Profile"
-        -- If you want a different phrasing, change below:
         self.tempProfileBanner:SetText(string.format(L["Viewing %s's Profile"], currentProfileName))
     end
     self.tempProfileBannerFrame:Show()
@@ -436,7 +562,7 @@ function GUI:CreateMainFrame()
     })
     frame:SetFrameStrata("DIALOG")
 
-    -- Make draggable, saving anchor on drag stop:
+    -- Make draggable, saving anchor on drag stop
     Utils.MakeFrameDraggable(frame, function(f)
         self:SaveWindowPosition("FleshWoundFrame", f)
     end)
@@ -463,16 +589,13 @@ function GUI:CreateMainFrame()
         for frameName, frm in pairs(_G) do
             if type(frameName) == "string"
                and (frameName:match("^FleshWoundAddNoteDialog_") or frameName:match("^FleshWoundEditNoteDialog_"))
-               and frm:IsShown()
+               and frm.IsShown and frm:IsShown()
             then
-                frm:Hide()  -- Close the note dialog
+                frm:Hide()
             end
         end
-        
-        -- Now open the profile manager
         self:OpenProfileManager()
     end)
-    
 
     table.insert(UISpecialFrames, frame:GetName())
 
@@ -482,6 +605,9 @@ function GUI:CreateMainFrame()
     frame.BodyImage:SetTexture("Interface\\AddOns\\" .. addonName .. "\\Textures\\body_image.tga")
 end
 
+--------------------------------------------------------------------------------
+-- CREATE BODY REGIONS
+--------------------------------------------------------------------------------
 function GUI:CreateBodyRegions()
     local frame = self.frame
     frame.BodyRegions = {}
@@ -529,49 +655,23 @@ function GUI:CreateBodyRegion(frame, region)
     frame.BodyRegions[region.name] = btn
 end
 
+--------------------------------------------------------------------------------
+-- UPDATE REGION COLORS (USING HIGHEST SEVERITY ID)
+--------------------------------------------------------------------------------
 function GUI:UpdateRegionColors()
     local frame = self.frame
     if not frame or not frame.BodyRegions then return end
 
     for regionName, btn in pairs(frame.BodyRegions) do
-        local highestSeverity = GetHighestSeverity(regionName)
-        local color = GetSeverityColor(highestSeverity)
-        btn.overlay:SetColorTexture(unpack(color))
+        local highestID = GetHighestSeverityID(regionName)
+        local r,g,b,a = GetSeverityColorByID(highestID)
+        btn.overlay:SetColorTexture(r, g, b, a)
     end
 end
 
 --------------------------------------------------------------------------------
---  WINDOW CREATION HELPERS
+-- WOUND DIALOGS
 --------------------------------------------------------------------------------
-
-function GUI:CreateScrollFrame(parent, left, top, right, bottom)
-    local scrollFrame = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", left, top)
-    scrollFrame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", right, bottom)
-
-    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
-    scrollChild:SetSize(scrollFrame:GetWidth(), 1)
-    scrollFrame:SetScrollChild(scrollChild)
-
-    return scrollFrame, scrollChild
-end
-
-function GUI:CreateButton(parent, text, width, height, point, relativeTo, offsetX, offsetY)
-    local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-    button:SetSize(width, height)
-    if type(relativeTo) == "string" then
-        button:SetPoint(point, parent, relativeTo, offsetX, offsetY)
-    else
-        button:SetPoint(point, relativeTo, offsetX, offsetY)
-    end
-    button:SetText(text)
-    return button
-end
-
---------------------------------------------------------------------------------
---  WOUND DIALOGS
---------------------------------------------------------------------------------
-
 function GUI:OpenWoundDialog(regionName, skipCloseDialogs)
     if _G["FleshWoundProfileManager"] and _G["FleshWoundProfileManager"]:IsShown() then
         _G["FleshWoundProfileManager"]:Hide()
@@ -588,12 +688,10 @@ function GUI:OpenWoundDialog(regionName, skipCloseDialogs)
     local dialog = CreateDialog(dialogName, dialogTitle, 550, 500)
     dialog.regionName = regionName
 
-    -- Override drag stop to save position
     dialog:SetScript("OnDragStop", function(f)
         f:StopMovingOrSizing()
         self:SaveWindowPosition(dialogName, f)
     end)
-    -- Restore last position
     self:RestoreWindowPosition(dialogName, dialog)
 
     dialog.ScrollFrame, dialog.ScrollChild = self:CreateScrollFrame(dialog, 15, -60, -35, 60)
@@ -655,8 +753,9 @@ function GUI:CreateNoteEntry(parent, note, index, regionName)
         insets = { left = 4, right = 4, top = 4, bottom = 4 },
     })
 
-    local color = GetSeverityColor(note.severity or L["None"])
-    entry:SetBackdropColor(color[1], color[2], color[3], 0.4)
+    local severityID = note.severityID or 1
+    local r,g,b,a = GetSeverityColorByID(severityID)
+    entry:SetBackdropColor(r, g, b, a)
     entry:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
 
     entry.regionName = regionName
@@ -665,14 +764,13 @@ function GUI:CreateNoteEntry(parent, note, index, regionName)
     local iconSize = 16
     local xOffset = 10
 
-    -- Create and position multiple status icons if available
-    if type(note.status) == "table" then
-        for _, statusName in ipairs(note.status) do
-            local statusIconTexture = GetStatusIcon(statusName)
-            if statusIconTexture then
+    if type(note.statusIDs) == "table" then
+        for _, stID in ipairs(note.statusIDs) do
+            local st = StatusesByID[stID]
+            if st and st.icon then
                 local statusIcon = entry:CreateTexture(nil, "OVERLAY")
                 statusIcon:SetSize(iconSize, iconSize)
-                statusIcon:SetTexture(statusIconTexture)
+                statusIcon:SetTexture(st.icon)
                 statusIcon:SetPoint("TOPLEFT", entry, "TOPLEFT", xOffset, -10)
                 xOffset = xOffset + iconSize + iconSpacing
             end
@@ -713,9 +811,9 @@ function GUI:CreateNoteEntry(parent, note, index, regionName)
     return entry
 end
 
-
-
-
+--------------------------------------------------------------------------------
+-- OPEN NOTE DIALOG (ADD/EDIT)
+--------------------------------------------------------------------------------
 function GUI:OpenNoteDialog(regionName, noteIndex)
     if not regionName then
         Utils.FW_Print("Error: regionName is nil in OpenNoteDialog", true)
@@ -739,22 +837,14 @@ function GUI:OpenNoteDialog(regionName, noteIndex)
     local dialog = CreateDialog(frameName, dialogTitle, 400, 370)
     dialog.regionName = regionName
 
-    -- Make the dialog draggable
     Utils.MakeFrameDraggable(dialog, function(f)
         self:SaveWindowPosition(frameName, f)
     end)
     self:RestoreWindowPosition(frameName, dialog)
 
-    -- Create Severity Dropdown
     dialog.SeverityLabel, dialog.SeverityDropdown = CreateSeverityDropdown(dialog)
-    
-    -- Create multi-select status checkboxes
     dialog.StatusSelection = CreateStatusSelection(dialog)
-
-    -- Create EditBox with character counter
     dialog.ScrollFrame, dialog.EditBox, dialog.CharCountLabel = CreateEditBoxWithCounter(dialog, MAX_NOTE_LENGTH)
-    
-    -- Create Save and Cancel buttons
     dialog.SaveButton, dialog.CancelButton = CreateSaveCancelButtons(dialog)
 
     _G[frameName] = dialog
@@ -763,50 +853,39 @@ function GUI:OpenNoteDialog(regionName, noteIndex)
     dialog.EditBox:SetFocus()
 end
 
-
 function GUI:PopulateNoteDialog(dialog, noteIndex)
     local isEdit = (noteIndex ~= nil)
     local woundData = addonTable.woundData or {}
     local notes = woundData[dialog.regionName]
     dialog.noteIndex = noteIndex
-    dialog.selectedSeverity = L["Unknown"]
 
-    -- Initialize Severity Dropdown
-    UIDropDownMenu_SetSelectedName(dialog.SeverityDropdown, dialog.selectedSeverity)
-    UIDropDownMenu_Initialize(dialog.SeverityDropdown, dialog.SeverityDropdown.initialize)
+    -- Default severity is 2 => "Unknown"
+    dialog.selectedSeverityID = 2
 
     if isEdit and notes and notes[noteIndex] then
         local note = notes[noteIndex]
-        dialog.EditBox:SetText(note.text or "")
-        dialog.selectedSeverity = note.severity or L["Unknown"]
-        UIDropDownMenu_SetSelectedName(dialog.SeverityDropdown, dialog.selectedSeverity)
-        UIDropDownMenu_Initialize(dialog.SeverityDropdown, dialog.SeverityDropdown.initialize)
+        local severityID = note.severityID or 2
+        dialog.SeverityDropdown:SetSeverityID(severityID)
 
-        -- Pre-check status checkboxes if editing an existing note
-        if type(note.status) == "table" then
-            for _, statusName in ipairs(note.status) do
-                local cb = dialog.StatusSelection.checkboxes[statusName]
-                if cb then
-                    cb:SetChecked(true)
-                    dialog.StatusSelection.selectedStatuses[statusName] = true
-                end
-            end
+        -- Pre-check status checkboxes
+        if type(note.statusIDs) == "table" then
+            dialog.StatusSelection:SetStatusIDs(note.statusIDs)
+        else
+            dialog.StatusSelection:SetStatusIDs({})
         end
 
+        dialog.EditBox:SetText(note.text or "")
         local initialLen = strlenutf8(note.text or "")
         dialog.CharCountLabel:SetText(string.format(L["%d / %d"], initialLen, MAX_NOTE_LENGTH))
     else
+        dialog.SeverityDropdown:SetSeverityID(2)
+        dialog.StatusSelection:SetStatusIDs({})
         dialog.EditBox:SetText("")
         dialog.CharCountLabel:SetText(string.format(L["%d / %d"], 0, MAX_NOTE_LENGTH))
-        -- Ensure no checkboxes are pre-checked
-        for _, cb in pairs(dialog.StatusSelection.checkboxes) do
-            cb:SetChecked(false)
-        end
-        dialog.StatusSelection.selectedStatuses = {}
     end
 
     local function UpdateSaveButtonState()
-        local text = SanitizeInput(dialog.EditBox:GetText())
+        local text = SanitizeInput(dialog.EditBox:GetText() or "")
         local length = strlenutf8(text)
         dialog.CharCountLabel:SetText(string.format(L["%d / %d"], length, MAX_NOTE_LENGTH))
 
@@ -843,23 +922,27 @@ function GUI:PopulateNoteDialog(dialog, noteIndex)
     UpdateSaveButtonState()
 
     dialog.SaveButton:SetScript("OnClick", function()
-        local text = SanitizeInput(dialog.EditBox:GetText())
-        local severity = dialog.selectedSeverity or L["Unknown"]
-        
-        -- Gather selected statuses from checkboxes
-        local selectedStatuses = {}
-        for statusName, _ in pairs(dialog.StatusSelection.selectedStatuses) do
-            table.insert(selectedStatuses, statusName)
+        local text = SanitizeInput(dialog.EditBox:GetText() or "")
+        local severityID = dialog.selectedSeverityID or 2
+
+        -- Gather chosen statuses
+        local chosenStatuses = {}
+        for stID in pairs(dialog.StatusSelection.selectedStatusIDs) do
+            table.insert(chosenStatuses, stID)
         end
 
-        if text and text ~= "" then
+        if text ~= "" then
             woundData[dialog.regionName] = woundData[dialog.regionName] or {}
             if isEdit and notes and notes[noteIndex] then
                 notes[noteIndex].text = text
-                notes[noteIndex].severity = severity
-                notes[noteIndex].status = selectedStatuses
+                notes[noteIndex].severityID = severityID
+                notes[noteIndex].statusIDs = chosenStatuses
             else
-                table.insert(woundData[dialog.regionName], { text = text, severity = severity, status = selectedStatuses })
+                table.insert(woundData[dialog.regionName], {
+                    text = text,
+                    severityID = severityID,
+                    statusIDs = chosenStatuses,
+                })
             end
             self:UpdateRegionColors()
             dialog.EditBox:SetText("")
@@ -878,9 +961,8 @@ function GUI:PopulateNoteDialog(dialog, noteIndex)
 end
 
 --------------------------------------------------------------------------------
---  PROFILE MANAGER WINDOW
+-- PROFILE MANAGER WINDOW
 --------------------------------------------------------------------------------
-
 function GUI:OpenProfileManager()
     self:CloseAllDialogs()
 
@@ -892,7 +974,6 @@ function GUI:OpenProfileManager()
     dialog:SetFrameStrata("DIALOG")
     dialog:SetToplevel(true)
 
-    -- Make draggable, save/restore anchor
     Utils.MakeFrameDraggable(dialog, function(f)
         self:SaveWindowPosition(frameName, f)
     end)
@@ -966,7 +1047,6 @@ function GUI:CreateProfileEntry(parent, profileName, currentProfile)
     nameText:SetPoint("LEFT", entry, "LEFT", 10, 0)
     nameText:SetText(profileName)
 
-    -- Calculate number of characters using this profile
     local charProfiles = addonTable.FleshWoundData.charProfiles or {}
     local usageCount = 0
     for _, pName in pairs(charProfiles) do
@@ -975,14 +1055,12 @@ function GUI:CreateProfileEntry(parent, profileName, currentProfile)
         end
     end
 
-    -- Create an icon for character count
     local iconSize = 16
     local iconTexture = entry:CreateTexture(nil, "ARTWORK")
     iconTexture:SetSize(iconSize, iconSize)
-    iconTexture:SetTexture("Interface\\Icons\\INV_Misc_Bandage_01")  -- Choose an appropriate icon
+    iconTexture:SetTexture("Interface\\Icons\\INV_Misc_Bandage_01")
     iconTexture:SetPoint("LEFT", nameText, "RIGHT", 10, 0)
 
-    -- Create a label next to the icon showing the usage count
     local countText = entry:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     countText:SetPoint("LEFT", iconTexture, "RIGHT", 2, 0)
     countText:SetText(tostring(usageCount))
@@ -1010,12 +1088,9 @@ function GUI:CreateProfileEntry(parent, profileName, currentProfile)
     return entry
 end
 
-
-
 --------------------------------------------------------------------------------
---  CREATE PROFILE DIALOG
+-- CREATE PROFILE DIALOG
 --------------------------------------------------------------------------------
-
 function GUI:OpenCreateProfileDialog()
     self:CloseAllDialogs()
 
@@ -1027,7 +1102,6 @@ function GUI:OpenCreateProfileDialog()
     dialog:SetFrameStrata("DIALOG")
     dialog:SetToplevel(true)
 
-    -- Make draggable, save/restore anchor
     Utils.MakeFrameDraggable(dialog, function(f)
         self:SaveWindowPosition(frameName, f)
     end)
@@ -1047,18 +1121,10 @@ function GUI:OpenCreateProfileDialog()
 
     _G[frameName] = dialog
 
-    self:PopulateCreateProfileDialog(dialog)
-    dialog:Show()
-    dialog.nameEditBox:SetFocus()
-end
-
-function GUI:PopulateCreateProfileDialog(dialog)
     local function UpdateCreateButtonState()
         local text = dialog.nameEditBox:GetText()
         local profileName = SanitizeInput(text)
         local length = strlenutf8(text)
-
-        -- Update character count dynamically
         dialog.charCountLabel:SetText(string.format(L["%d / %d"], length, MAX_PROFILE_NAME_LENGTH))
 
         if profileName == "" or addonTable.FleshWoundData.profiles[profileName] then
@@ -1072,7 +1138,6 @@ function GUI:PopulateCreateProfileDialog(dialog)
     dialog.charCountLabel:SetText(string.format(L["%d / %d"], 0, MAX_PROFILE_NAME_LENGTH))
     dialog.SaveButton:Disable()
 
-    -- Attach combined update function to OnTextChanged
     dialog.nameEditBox:SetScript("OnTextChanged", UpdateCreateButtonState)
 
     dialog.SaveButton:SetScript("OnClick", function()
@@ -1086,17 +1151,17 @@ function GUI:PopulateCreateProfileDialog(dialog)
         dialog:Hide()
         self:OpenProfileManager()
     end)
+
+    dialog:Show()
 end
 
 --------------------------------------------------------------------------------
---  RENAME PROFILE DIALOG
+-- RENAME PROFILE DIALOG
 --------------------------------------------------------------------------------
-
 function GUI:OpenRenameProfileDialog(oldProfileName)
     local frameName = "FleshWoundRenameProfileDialog"
     local dialogTitle = L["Rename Profile"]
 
-    -- Hide the Profile Manager if it's open, so the rename dialog appears on top
     if _G["FleshWoundProfileManager"] and _G["FleshWoundProfileManager"]:IsShown() then
         _G["FleshWoundProfileManager"]:Hide()
     end
@@ -1105,7 +1170,6 @@ function GUI:OpenRenameProfileDialog(oldProfileName)
     if not dialog then
         dialog = CreateDialog(frameName, dialogTitle, 300, 200)
 
-        -- Make draggable, but do it after creation:
         Utils.MakeFrameDraggable(dialog, function(f)
             self:SaveWindowPosition(frameName, f)
         end)
@@ -1125,24 +1189,14 @@ function GUI:OpenRenameProfileDialog(oldProfileName)
         _G[frameName] = dialog
     end
 
-    -- Restore position each time we open it
     self:RestoreWindowPosition(frameName, dialog)
 
-    self:PopulateRenameProfileDialog(dialog, oldProfileName)
-    dialog:Show()
-    dialog.nameEditBox:SetFocus()
-end
-
-
-function GUI:PopulateRenameProfileDialog(dialog, oldProfileName)
     local function UpdateRenameButtonState()
         local text = dialog.nameEditBox:GetText()
         local newProfileName = SanitizeInput(text)
         local length = strlenutf8(text)
-        
-        -- Update character count dynamically
         dialog.charCountLabel:SetText(string.format(L["%d / %d"], length, MAX_PROFILE_NAME_LENGTH))
-        
+
         if newProfileName == "" or addonTable.FleshWoundData.profiles[newProfileName] or newProfileName == oldProfileName then
             dialog.SaveButton:Disable()
         else
@@ -1155,7 +1209,6 @@ function GUI:PopulateRenameProfileDialog(dialog, oldProfileName)
     dialog.charCountLabel:SetText(string.format(L["%d / %d"], initialLength, MAX_PROFILE_NAME_LENGTH))
     dialog.SaveButton:Disable()
 
-    -- Attach our combined update function to OnTextChanged
     dialog.nameEditBox:SetScript("OnTextChanged", UpdateRenameButtonState)
 
     dialog.SaveButton:SetScript("OnClick", function()
@@ -1169,13 +1222,13 @@ function GUI:PopulateRenameProfileDialog(dialog, oldProfileName)
         dialog:Hide()
         self:OpenProfileManager()
     end)
+
+    dialog:Show()
 end
 
-
 --------------------------------------------------------------------------------
---  CLOSE ALL DIALOGS
+-- CLOSE ALL DIALOGS
 --------------------------------------------------------------------------------
-
 function GUI:CloseAllDialogs(dialogType)
     local dialogsToClose = {}
 
@@ -1206,5 +1259,6 @@ function GUI:CloseAllDialogs(dialogType)
 end
 
 --------------------------------------------------------------------------------
-
+-- RETURN MODULE
+--------------------------------------------------------------------------------
 return GUI

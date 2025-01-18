@@ -93,3 +93,13 @@ L["Poisoned"] = "Empoisonné"
 L["Infected"] = "Infecté"
 
 L["Left-click to show/hide the health frame."] = "Clic gauche pour afficher/masquer l'interface de santé."
+
+L["FLESHWOUND_FIRST_RELEASE_POPUP"] = [[
+Merci d'avoir téléchargé la première version de FleshWound !
+
+Attendez-vous à des changements d'interface, des mises à jour visuelles et de nouvelles fonctionnalités à l'avenir.
+
+Vous pouvez également rencontrer des erreurs, merci de les signaler sur Discord lorsqu'elles se produisent.
+
+Vos commentaires sont précieux et aideront à façonner l'avenir de FleshWound. Merci pour votre soutien !
+]]

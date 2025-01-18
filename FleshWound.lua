@@ -5,6 +5,60 @@ local addonName, addonTable = ...
 local L = addonTable.L
 local Utils = addonTable.Utils
 
+-- Create a custom welcome frame for first-time use.
+local function ShowWelcomeFrame()
+    -- Basic check to avoid re-showing if already done
+    if FleshWoundData and FleshWoundData.hasShownWelcome then
+        return
+    end
+
+    -- Main frame
+    local welcomeFrame = CreateFrame("Frame", "FleshWoundWelcomeFrame", UIParent, "BackdropTemplate")
+    welcomeFrame:SetSize(400, 220)
+    welcomeFrame:SetPoint("CENTER")
+    welcomeFrame:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true, tileSize = 32, edgeSize = 32,
+        insets = { left = 8, right = 8, top = 8, bottom = 8 }
+    })
+    welcomeFrame:SetMovable(true)
+    welcomeFrame:EnableMouse(true)
+    welcomeFrame:RegisterForDrag("LeftButton")
+    welcomeFrame:SetScript("OnDragStart", function(self)
+        self:StartMoving()
+    end)
+    welcomeFrame:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+    end)
+
+    -- Title
+    local title = welcomeFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("TOP", 0, -16)
+    -- You can localize this text as needed
+    title:SetText("FleshWound - v.0.1.0")
+
+    -- Body Text
+    local text = welcomeFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    text:SetWidth(350)
+    text:SetPoint("TOP", title, "BOTTOM", 0, -12)
+    text:SetText(L["FLESHWOUND_FIRST_RELEASE_POPUP"])
+
+    -- Close Button
+    local closeButton = CreateFrame("Button", nil, welcomeFrame, "UIPanelButtonTemplate")
+    closeButton:SetSize(80, 22)
+    closeButton:SetPoint("BOTTOM", 0, 16)
+    closeButton:SetText("OK")
+    closeButton:SetScript("OnClick", function()
+        -- Hide and set flag so we don't show again
+        welcomeFrame:Hide()
+        FleshWoundData.hasShownWelcome = true
+    end)
+
+    welcomeFrame:Show()
+end
+
+
 --[[---------------------------------------------------------------------------
   EventHandler: A small module to handle ADDON_LOADED and set up the addon.
 ---------------------------------------------------------------------------]]--
@@ -40,12 +94,18 @@ function EventHandler:OnAddonLoaded(loadedName)
 
         -- Attempt to retrieve the version from the TOC
         local version = GetAddOnMetadata and GetAddOnMetadata(addonName, "Version") or "v1.0.0"
-
         Utils.FW_Print(string.format(L["Thank you for using FleshWound %s! Be safe out there."], version), false)
 
+        ----------------------------------------------------------------------
+        -- Show the custom welcome frame if not shown yet
+        ----------------------------------------------------------------------
+        ShowWelcomeFrame()
+
+        -- Unregister the event to avoid re-initialization
         self.eventFrame:UnregisterEvent("ADDON_LOADED")
     end
 end
+
 
 --[[---------------------------------------------------------------------------
   Called when we receive a remote profile. Temporarily display that data until

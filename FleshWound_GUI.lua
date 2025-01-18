@@ -768,14 +768,37 @@ function GUI:CreateNoteEntry(parent, note, index, regionName)
         for _, stID in ipairs(note.statusIDs) do
             local st = StatusesByID[stID]
             if st and st.icon then
-                local statusIcon = entry:CreateTexture(nil, "OVERLAY")
-                statusIcon:SetSize(iconSize, iconSize)
+                
+                -- Create a small Button to hold the icon
+                local iconButton = CreateFrame("Button", nil, entry, "BackdropTemplate")
+                iconButton:SetSize(iconSize, iconSize)
+                iconButton:SetPoint("TOPLEFT", entry, "TOPLEFT", xOffset, -10)
+    
+                -- The actual texture goes on that Button
+                local statusIcon = iconButton:CreateTexture(nil, "ARTWORK")
+                statusIcon:SetAllPoints(iconButton)
                 statusIcon:SetTexture(st.icon)
-                statusIcon:SetPoint("TOPLEFT", entry, "TOPLEFT", xOffset, -10)
+    
+                -- Show tooltip on mouseover
+                iconButton:SetScript("OnEnter", function(self)
+                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                    -- The main line of the tooltip:
+                    GameTooltip:AddLine(st.displayName, 1, 1, 1)
+                    -- Optionally add more lines if you want more info:
+                    -- GameTooltip:AddLine("Extra detail here", 1, 0.8, 0)
+                    GameTooltip:Show()
+                end)
+    
+                -- Hide tooltip when the mouse leaves
+                iconButton:SetScript("OnLeave", function()
+                    GameTooltip:Hide()
+                end)
+    
                 xOffset = xOffset + iconSize + iconSpacing
             end
         end
     end
+    
 
     local noteText = entry:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     if xOffset > 10 then

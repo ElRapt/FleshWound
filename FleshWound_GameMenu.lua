@@ -38,6 +38,7 @@ end
 --[[---------------------------------------------------------------------------
   Create the minimap icon using LibDataBroker + LibDBIcon.
 ---------------------------------------------------------------------------]]--
+
 function GameMenu:CreateMinimapIcon()
     local ldb = LDB:NewDataObject("FleshWound", {
         type = "launcher",
@@ -55,7 +56,7 @@ function GameMenu:CreateMinimapIcon()
     })
 
     FleshWoundDB = FleshWoundDB or {}
-    Icon:Register("FleshWound", ldb, FleshWoundDB)
+    Icon:Register("FleshWound", ldb, FleshWoundData)
 end
 
 --[[---------------------------------------------------------------------------

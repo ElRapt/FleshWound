@@ -44,7 +44,7 @@
 ## Installation
 
 1. **Download the addon**
-    - [Download the latest release](#).
+    - [Download the latest release](#) or [download from CurseForge](#).
     
 2. **Extract the addon files**
     - Extract the `FleshWound` folder into your `World of Warcraft/Interface/AddOns/` directory.

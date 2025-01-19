@@ -899,9 +899,12 @@ function GUI:PopulateNoteDialog(dialog, noteIndex)
     local notes = woundData[dialog.regionName]
     dialog.noteIndex = noteIndex
 
-    -- Default severity is 2 => "Unknown"
+    -- Default to "Unknown" severity if adding a brand-new note
     dialog.selectedSeverityID = 2
 
+    --------------------------------------------------------------------------------
+    -- 1) Pre-fill the dialog if we are editing an existing note
+    --------------------------------------------------------------------------------
     if isEdit and notes and notes[noteIndex] then
         local note = notes[noteIndex]
         local severityID = note.severityID or 2
@@ -924,19 +927,28 @@ function GUI:PopulateNoteDialog(dialog, noteIndex)
         dialog.CharCountLabel:SetText(string.format(L["%d / %d"], 0, MAX_NOTE_LENGTH))
     end
 
+    --------------------------------------------------------------------------------
+    -- 2) Enable/disable the Save button based on empty/duplicate text
+    --------------------------------------------------------------------------------
     local function UpdateSaveButtonState()
         local text = SanitizeInput(dialog.EditBox:GetText() or "")
         local length = strlenutf8(text)
         dialog.CharCountLabel:SetText(string.format(L["%d / %d"], length, MAX_NOTE_LENGTH))
 
+        -- Empty? Disable Save, clear any duplicate warning.
         if text == "" then
             dialog.SaveButton:Disable()
+            if dialog.DuplicateWarning then
+                dialog.DuplicateWarning:Hide()
+            end
             return
         end
 
+        -- Check if this text already exists in the same region
         local isDuplicate = false
-        for idx, n in ipairs(woundData[dialog.regionName] or {}) do
-            if (not isEdit or idx ~= noteIndex) and n.text == text then
+        for idx, existingNote in ipairs(woundData[dialog.regionName] or {}) do
+            local sameNoteIndex = (isEdit and (idx == noteIndex))
+            if (not sameNoteIndex) and (existingNote.text == text) then
                 isDuplicate = true
                 break
             end
@@ -959,46 +971,87 @@ function GUI:PopulateNoteDialog(dialog, noteIndex)
     end
 
     dialog.EditBox:SetScript("OnTextChanged", UpdateSaveButtonState)
-    UpdateSaveButtonState()
 
-    dialog.SaveButton:SetScript("OnClick", function()
+    --------------------------------------------------------------------------------
+    -- 3) Shared "Save" function (called by Save button or Enter key)
+    --------------------------------------------------------------------------------
+    local function ConfirmAndSaveNote()
         local text = SanitizeInput(dialog.EditBox:GetText() or "")
-        local severityID = dialog.selectedSeverityID or 2
+        if text == "" then
+            UIErrorsFrame:AddMessage(
+                string.format(L["Error: %s"], L["Note content cannot be empty."]),
+                1.0, 0.0, 0.0, 5
+            )
+            return
+        end
 
-        -- Gather chosen statuses
+        local severityID = dialog.selectedSeverityID or 2
         local chosenStatuses = {}
         for stID in pairs(dialog.StatusSelection.selectedStatusIDs) do
             table.insert(chosenStatuses, stID)
         end
 
-        if text ~= "" then
-            woundData[dialog.regionName] = woundData[dialog.regionName] or {}
-            if isEdit and notes and notes[noteIndex] then
-                notes[noteIndex].text = text
-                notes[noteIndex].severityID = severityID
-                notes[noteIndex].statusIDs = chosenStatuses
-            else
-                table.insert(woundData[dialog.regionName], {
-                    text = text,
-                    severityID = severityID,
-                    statusIDs = chosenStatuses,
-                })
-            end
-            self:UpdateRegionColors()
-            dialog.EditBox:SetText("")
-            dialog:Hide()
-            self:OpenWoundDialog(dialog.regionName, true)
-        else
-            UIErrorsFrame:AddMessage(string.format(L["Error: %s"], L["Note content cannot be empty."]), 1.0, 0.0, 0.0, 5)
-        end
-    end)
+        -- Prepare the region’s note list
+        woundData[dialog.regionName] = woundData[dialog.regionName] or {}
 
-    dialog.CancelButton:SetScript("OnClick", function()
+        if isEdit and notes and notes[noteIndex] then
+            -- Editing an existing note
+            notes[noteIndex].text = text
+            notes[noteIndex].severityID = severityID
+            notes[noteIndex].statusIDs = chosenStatuses
+        else
+            -- Adding a new note
+            table.insert(woundData[dialog.regionName], {
+                text = text,
+                severityID = severityID,
+                statusIDs = chosenStatuses,
+            })
+        end
+
+        -- Refresh severity shading, close this dialog, re-open region detail
+        self:UpdateRegionColors()
         dialog.EditBox:SetText("")
         dialog:Hide()
         self:OpenWoundDialog(dialog.regionName, true)
+    end
+
+    --------------------------------------------------------------------------------
+    -- 4) Handle pressing Enter in the EditBox
+    --    - SHIFT+Enter => inserts newline
+    --    - Enter       => only saves if SaveButton is enabled
+    --------------------------------------------------------------------------------
+    dialog.EditBox:SetScript("OnEnterPressed", function(editBoxSelf)
+        if IsShiftKeyDown() then
+            -- SHIFT+Enter => multiline
+            editBoxSelf:Insert("\n")
+        else
+            -- If SaveButton is enabled => proceed, else ignore
+            if dialog.SaveButton:IsEnabled() then
+                ConfirmAndSaveNote()
+            else
+                -- Optional: beep, show message, or do nothing
+            end
+        end
     end)
+
+    --------------------------------------------------------------------------------
+    -- 5) Hook up the Save/Cancel buttons
+    --------------------------------------------------------------------------------
+    dialog.SaveButton:SetScript("OnClick", ConfirmAndSaveNote)
+    dialog.CancelButton:SetScript("OnClick", function()
+        dialog.EditBox:SetText("")
+        dialog:Hide()
+        -- Re-open the region detail if we canceled mid-entry
+        self:OpenWoundDialog(dialog.regionName, true)
+    end)
+
+    --------------------------------------------------------------------------------
+    -- 6) Final setup
+    --------------------------------------------------------------------------------
+    UpdateSaveButtonState()
+    dialog.EditBox:SetFocus()
 end
+
 
 --------------------------------------------------------------------------------
 -- PROFILE MANAGER WINDOW

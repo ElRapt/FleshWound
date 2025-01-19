@@ -758,8 +758,21 @@ function GUI:CreateNoteEntry(parent, note, index, regionName)
     entry:SetBackdropColor(r, g, b, a)
     entry:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
 
-    entry.regionName = regionName
+    -- Enable mouse so we can show a tooltip on hover
+    entry:EnableMouse(true)
+    entry:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOPLEFT")
+        -- Allow wrapping in the tooltip by passing 'true' as the 4th argument
+        GameTooltip:AddLine(note.text, 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    entry:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
 
+    --------------------------------------------------------------------
+    -- 1) OPTIONALLY SHOW STATUS ICONS (LEFT SIDE)
+    --------------------------------------------------------------------
     local iconSpacing = 4
     local iconSize = 16
     local xOffset = 10
@@ -768,52 +781,54 @@ function GUI:CreateNoteEntry(parent, note, index, regionName)
         for _, stID in ipairs(note.statusIDs) do
             local st = StatusesByID[stID]
             if st and st.icon then
-                
-                -- Create a small Button to hold the icon
                 local iconButton = CreateFrame("Button", nil, entry, "BackdropTemplate")
                 iconButton:SetSize(iconSize, iconSize)
                 iconButton:SetPoint("TOPLEFT", entry, "TOPLEFT", xOffset, -10)
-    
-                -- The actual texture goes on that Button
+
                 local statusIcon = iconButton:CreateTexture(nil, "ARTWORK")
                 statusIcon:SetAllPoints(iconButton)
                 statusIcon:SetTexture(st.icon)
-    
-                -- Show tooltip on mouseover
+
                 iconButton:SetScript("OnEnter", function(self)
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                    -- The main line of the tooltip:
                     GameTooltip:AddLine(st.displayName, 1, 1, 1)
-                    -- Optionally add more lines if you want more info:
-                    -- GameTooltip:AddLine("Extra detail here", 1, 0.8, 0)
                     GameTooltip:Show()
                 end)
-    
-                -- Hide tooltip when the mouse leaves
                 iconButton:SetScript("OnLeave", function()
                     GameTooltip:Hide()
                 end)
-    
+
                 xOffset = xOffset + iconSize + iconSpacing
             end
         end
     end
-    
+
+    --------------------------------------------------------------------
+    -- 2) NOTE TEXT (WRAPPED, ALLOW SPACE FOR BUTTONS)
+    --------------------------------------------------------------------
+    -- We'll reserve enough horizontal space for "Edit" and "Delete" (2×70 px) plus some spacing.
+    local reservedForButtons = 160  -- 70 px + 70 px + ~20 px gap
+    local availableWidth = entry:GetWidth() - xOffset - reservedForButtons
+    if availableWidth < 40 then 
+        availableWidth = 40  -- fallback in case there's extremely small space
+    end
 
     local noteText = entry:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    if xOffset > 10 then
-        noteText:SetPoint("LEFT", entry, "LEFT", xOffset + iconSpacing, 0)
-    else
-        noteText:SetPoint("LEFT", entry, "LEFT", 10, 0)
-    end
-    noteText:SetPoint("RIGHT", entry, "RIGHT", -110, 10)
+    noteText:SetPoint("TOPLEFT", entry, "TOPLEFT", xOffset, -10)
+    noteText:SetWidth(availableWidth)
+    noteText:SetWordWrap(true)
     noteText:SetJustifyH("LEFT")
     noteText:SetJustifyV("TOP")
-    noteText:SetText(note.text)
+    noteText:SetText(note.text or "")
 
-    local textHeight = noteText:GetStringHeight()
-    entry:SetHeight(textHeight + 20)
+    local textHeight = noteText:GetStringHeight() + 20  -- padding top/bottom
+    entry:SetHeight(textHeight)
 
+    entry.regionName = regionName
+
+    --------------------------------------------------------------------
+    -- 3) EDIT / DELETE BUTTONS (RIGHT SIDE)
+    --------------------------------------------------------------------
     if not self.currentTemporaryProfile then
         local editButton = self:CreateButton(entry, L["Edit"], 70, 22, "TOPRIGHT", -80, -5)
         editButton:SetScript("OnClick", function()
@@ -833,6 +848,8 @@ function GUI:CreateNoteEntry(parent, note, index, regionName)
 
     return entry
 end
+
+
 
 --------------------------------------------------------------------------------
 -- OPEN NOTE DIALOG (ADD/EDIT)

@@ -93,7 +93,7 @@ function EventHandler:OnAddonLoaded(loadedName)
         end
 
         -- Attempt to retrieve the version from the TOC
-        local version = GetAddOnMetadata and GetAddOnMetadata(addonName, "Version") or "v1.0.0"
+        local version = GetAddOnMetadata and GetAddOnMetadata(addonName, "Version") or "v0.2.0"
         Utils.FW_Print(string.format(L["Thank you for using FleshWound %s! Be safe out there."], version), false)
 
         ----------------------------------------------------------------------

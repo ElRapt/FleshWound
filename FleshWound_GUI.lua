@@ -639,12 +639,14 @@ function GUI:CreateBodyRegion(frame, region)
         self:OpenWoundDialog(region.name)
     end)
 
+    -- GREEN DOT 
     local regionMarker = btn:CreateTexture(nil, "OVERLAY")
     regionMarker:SetSize(10, 10)
     regionMarker:SetPoint("CENTER", btn, "CENTER")
     regionMarker:SetColorTexture(0, 1, 0, 1)
     btn.regionMarker = regionMarker
 
+    -- Severity shading overlay 
     local overlay = btn:CreateTexture(nil, "ARTWORK")
     local inset = 7
     overlay:SetPoint("TOPLEFT", btn, "TOPLEFT", inset, -inset)
@@ -652,8 +654,34 @@ function GUI:CreateBodyRegion(frame, region)
     overlay:SetColorTexture(0, 0, 0, 0)
     btn.overlay = overlay
 
+    -- NOTE COUNT in the top-right corner 
+    local countText = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    countText:SetPoint("TOPRIGHT", btn, "TOPRIGHT", 0, -30)
+    countText:SetJustifyH("RIGHT")
+    countText:Hide()
+    btn.countText = countText
+
+    ------------------------------------------------------------------------
+    --  Icon "slots" in the top-left corner
+    ------------------------------------------------------------------------
+    btn.statusIcons = {}
+    local iconSize = 14
+    local iconSpacing = 2
+    for i = 1, 3 do
+        local icon = btn:CreateTexture(nil, "OVERLAY")
+        icon:SetSize(iconSize, iconSize)
+        if i == 1 then
+            icon:SetPoint("TOPLEFT", btn, "TOPLEFT", 0, 0)
+        else
+            icon:SetPoint("LEFT", btn.statusIcons[i - 1], "RIGHT", iconSpacing, 0)
+        end
+        icon:Hide()  -- hidden by default
+        btn.statusIcons[i] = icon
+    end
+
     frame.BodyRegions[region.name] = btn
 end
+
 
 --------------------------------------------------------------------------------
 -- UPDATE REGION COLORS (USING HIGHEST SEVERITY ID)
@@ -662,12 +690,84 @@ function GUI:UpdateRegionColors()
     local frame = self.frame
     if not frame or not frame.BodyRegions then return end
 
+    -- Priority: 4=Fracture, 5=Burn, 8=Infected, 3=Bleeding, 7=Poisoned, 6=Scar, 2=Bandaged
+    local statusPriority = {
+        [4] = 1,  -- Broken bone (Fracture)
+        [5] = 2,  -- Burn
+        [8] = 3,  -- Infected
+        [3] = 4,  -- Bleeding
+        [7] = 5,  -- Poisoned
+        [6] = 6,  -- Scar
+        [2] = 7,  -- Bandaged
+    }
+
     for regionName, btn in pairs(frame.BodyRegions) do
+        -----------------------------------------------
+        -- 1) Highest severity color
+        -----------------------------------------------
         local highestID = GetHighestSeverityID(regionName)
-        local r,g,b,a = GetSeverityColorByID(highestID)
+        local r, g, b, a = GetSeverityColorByID(highestID)
         btn.overlay:SetColorTexture(r, g, b, a)
+
+        -----------------------------------------------
+        -- 2) Note count
+        -----------------------------------------------
+        local woundData = addonTable.woundData or {}
+        local notes = woundData[regionName]
+        local count = notes and #notes or 0
+
+        if count > 0 then
+            btn.countText:SetText(count)
+            btn.countText:Show()
+        else
+            btn.countText:Hide()
+        end
+
+        -----------------------------------------------
+        -- 3) Gather present statuses, sorted by priority
+        -----------------------------------------------
+        local foundStatuses = {}
+        if notes then
+            for _, note in ipairs(notes) do
+                if note.statusIDs then
+                    for _, stID in ipairs(note.statusIDs) do
+                        foundStatuses[stID] = true
+                    end
+                end
+            end
+        end
+
+        local sortedStatuses = {}
+        for stID in pairs(foundStatuses) do
+            table.insert(sortedStatuses, stID)
+        end
+        -- Sort by `statusPriority`; unknown statuses float to the end
+        table.sort(sortedStatuses, function(a, b)
+            return (statusPriority[a] or 999) < (statusPriority[b] or 999)
+        end)
+
+        -----------------------------------------------
+        -- 4) Show up to 3 icons in the top-left
+        -----------------------------------------------
+        for i = 1, 3 do
+            local iconTexture = btn.statusIcons[i]
+            local stID = sortedStatuses[i]
+            if stID then
+                local stData = StatusesByID[stID]
+                if stData and stData.icon then
+                    iconTexture:SetTexture(stData.icon)
+                    iconTexture:Show()
+                else
+                    iconTexture:Hide()
+                end
+            else
+                iconTexture:Hide()
+            end
+        end
     end
 end
+
+
 
 --------------------------------------------------------------------------------
 -- WOUND DIALOGS

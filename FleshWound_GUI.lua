@@ -491,16 +491,29 @@ function GUI:Initialize()
 end
 
 function GUI:UpdateProfileBanner()
-    if not self.frame or not self.tempProfileBannerFrame or not self.tempProfileBanner then return end
-
-    local currentProfileName = addonTable.FleshWoundData.currentProfile
-    if self.currentTemporaryProfile then
-        self.tempProfileBanner:SetText(string.format(L["Viewing %s's Profile"], self.currentTemporaryProfile))
-    else
-        self.tempProfileBanner:SetText(string.format(L["Viewing %s's Profile"], currentProfileName))
+    -- If the relevant banner objects don't exist, just bail out
+    if not self.frame or not self.tempProfileBannerFrame or not self.tempProfileBanner then
+        return
     end
+
+    local currentProfileName = addonTable.FleshWoundData.currentProfile or "Unknown"
+
+    if self.currentTemporaryProfile then
+        -- Viewing someone else's profile
+        self.tempProfileBanner:SetText(
+            string.format(L["Viewing %s's Profile"], self.currentTemporaryProfile)
+        )
+    else
+        -- Viewing your own local profile
+        self.tempProfileBanner:SetText(
+            string.format(L["Viewing %s's Profile"], currentProfileName)
+        )
+    end
+
+    -- Make sure the banner frame is visible
     self.tempProfileBannerFrame:Show()
 end
+
 
 function GUI:CreateTemporaryProfileBanner()
     if not self.frame then return end
@@ -527,24 +540,39 @@ function GUI:CreateTemporaryProfileBanner()
 end
 
 function GUI:RestoreOriginalProfile()
-    if self.originalWoundData then
-        addonTable.woundData = self.originalWoundData
-        self.originalWoundData = nil
+    -- If there's no saved data, nothing to restore
+    if not self.originalWoundData then
+        return
     end
 
-    if self.originalProfile then
-        addonTable.FleshWoundData.currentProfile = self.originalProfile
-        self.originalProfile = nil
-    end
+    -- Revert to the original profile name
+    addonTable.FleshWoundData.currentProfile = self.originalProfile
 
+    -- Revert to the original local data
+    addonTable.woundData = self.originalWoundData
+
+    -- Clear the temporary references
+    self.originalProfile   = nil
+    self.originalWoundData = nil
     self.currentTemporaryProfile = nil
-    self:UpdateRegionColors()
-    self:UpdateProfileBanner()
 
+    -- Show the normal "Profile" button again
     if self.frame and self.frame.ProfileButton then
         self.frame.ProfileButton:Show()
     end
+
+    -- Update the wound colors
+    self:UpdateRegionColors()
+
+    -- Update the banner/label if present
+    if self.UpdateProfileBanner then
+        self:UpdateProfileBanner()
+    end
 end
+
+
+
+
 
 function GUI:CreateMainFrame()
     local frame = CreateFrame("Frame", "FleshWoundFrame", UIParent, "BackdropTemplate")

@@ -112,61 +112,56 @@ end
   the user closes or reverts to their own profile.
 ---------------------------------------------------------------------------]]--
 function addonTable:OpenReceivedProfile(profileName, profileData)
-    local originalProfile = addonTable.FleshWoundData.currentProfile
-    local originalWoundData = addonTable.woundData
-
-    addonTable.woundData = profileData.woundData
-
-    if addonTable.GUI and addonTable.GUI.UpdateRegionColors then
-        addonTable.GUI:UpdateRegionColors()
-    end
-    if addonTable.GUI and addonTable.GUI.frame then
-        addonTable.GUI.frame:Show()
+    local GUI = addonTable.GUI
+    if not GUI then
+        return
     end
 
-    if addonTable.GUI then
-        addonTable.GUI.originalProfile = originalProfile
-        addonTable.GUI.originalWoundData = originalWoundData
-        addonTable.GUI.currentTemporaryProfile = profileName
-        addonTable.GUI:UpdateProfileBanner()
-
-        -- Hide the profile button while viewing a remote profile
-        if addonTable.GUI.frame and addonTable.GUI.frame.ProfileButton then
-            addonTable.GUI.frame.ProfileButton:Hide()
-        end
+    -- If we're already viewing a remote profile, restore our local data first
+    if GUI.currentTemporaryProfile then
+        GUI:RestoreOriginalProfile()
     end
-end
-
-function addonTable:OpenReceivedProfile(profileName, profileData)
-    local originalProfile = addonTable.FleshWoundData.currentProfile
-    local originalWoundData = addonTable.woundData
-
-    -- Temporarily overwrite your local data with the remote player's data
-    addonTable.woundData = profileData.woundData
-
-    -- Force your GUI to pick up the new severities/statuses
-    if addonTable.GUI and addonTable.GUI.UpdateRegionColors then
-        addonTable.GUI:UpdateRegionColors()
+    GUI:CloseAllDialogs()
+    if GUI.frame then
+        GUI.frame:Hide()
     end
 
-    -- Optionally open/show the main GUI so user can see it
-    if addonTable.GUI and addonTable.GUI.frame then
-        addonTable.GUI.frame:Show()
+    -- Deep copy of your original data (so we can revert later)
+    local originalProfile   = addonTable.FleshWoundData.currentProfile
+    local originalWoundData = CopyTable(addonTable.woundData)
+
+    -- Deep copy the remote data (so changes don’t affect them)
+    local copiedRemoteData = CopyTable(profileData.woundData)
+
+    -- Temporarily overwrite your local data with the remote
+    addonTable.woundData = copiedRemoteData
+
+    -- Update the GUI with the new data
+    if GUI.UpdateRegionColors then
+        GUI:UpdateRegionColors()
     end
 
-    -- Track the original data, so we can restore it when the user closes or changes profile
-    if addonTable.GUI then
-        addonTable.GUI.originalProfile = originalProfile
-        addonTable.GUI.originalWoundData = originalWoundData
-        addonTable.GUI.currentTemporaryProfile = profileName
-        addonTable.GUI:UpdateProfileBanner()
+    -- Re-show the main frame so the user sees the remote data
+    if GUI.frame then
+        GUI.frame:Show()
+    end
 
-        -- Hide your “Profile” button while looking at someone else’s data
-        if addonTable.GUI.frame and addonTable.GUI.frame.ProfileButton then
-            addonTable.GUI.frame.ProfileButton:Hide()
-        end
+    -- Store references so we can revert easily
+    GUI.originalProfile   = originalProfile
+    GUI.originalWoundData = originalWoundData
+    GUI.currentTemporaryProfile = profileName
+
+    -- Update the label/banner to reflect remote mode
+    if GUI.UpdateProfileBanner then
+        GUI:UpdateProfileBanner()
+    end
+
+    -- Hide the normal "Profile" button while viewing a remote profile
+    if GUI.frame and GUI.frame.ProfileButton then
+        GUI.frame.ProfileButton:Hide()
     end
 end
+
 
 -- Set up an event frame to handle ADDON_LOADED
 EventHandler.eventFrame = CreateFrame("Frame")

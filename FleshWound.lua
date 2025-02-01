@@ -42,7 +42,7 @@ local function ShowWelcomeFrame()
     local text = welcomeFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     text:SetWidth(350)
     text:SetPoint("TOP", title, "BOTTOM", 0, -12)
-    text:SetText(L["FLESHWOUND_FIRST_RELEASE_POPUP"])
+    text:SetText(L.FLESHWOUND_FIRST_RELEASE_POPUP)
 
     -- Close Button
     local closeButton = CreateFrame("Button", nil, welcomeFrame, "UIPanelButtonTemplate")
@@ -94,7 +94,7 @@ function EventHandler:OnAddonLoaded(loadedName)
 
         -- Attempt to retrieve the version from the TOC
         local version = GetAddOnMetadata and GetAddOnMetadata(addonName, "Version") or "v0.2.0"
-        Utils.FW_Print(string.format(L["Thank you for using FleshWound %s! Be safe out there."], version), false)
+        Utils.FW_Print(string.format(L.THANK_YOU, version), false)
 
         ----------------------------------------------------------------------
         -- Show the custom welcome frame if not shown yet

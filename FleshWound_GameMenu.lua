@@ -51,7 +51,7 @@ function GameMenu:CreateMinimapIcon()
         end,
         OnTooltipShow = function(tooltip)
             tooltip:AddLine("FleshWound")
-            tooltip:AddLine(L["Left-click to show/hide the health frame."])
+            tooltip:AddLine(L.LEFT_CLICK_SHOW_HIDE)
         end,
     })
 

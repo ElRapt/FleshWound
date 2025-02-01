@@ -31,7 +31,7 @@ function Data:Initialize()
     end
 
     self:SwitchProfile(assignedProfile)
-    Utils.FW_Print(string.format(L["Data initialized. Current Profile: %s"], "|cffff0000" .. assignedProfile .. "|r"), false)
+    Utils.FW_Print(string.format(L.DATA_INITIALIZED, "|cffff0000" .. assignedProfile .. "|r"), false)
 
 
 end
@@ -66,9 +66,9 @@ end
 function Data:CreateProfile(profileName)
     if not self.FleshWoundData.profiles[profileName] then
         self.FleshWoundData.profiles[profileName] = { woundData = {} }
-        Utils.FW_Print(string.format(L["Created new profile: %s"], "|cffff0000" .. profileName .. "|r"), false)
+        Utils.FW_Print(string.format(L.CREATE_PROFILE, "|cffff0000" .. profileName .. "|r"), false)
     else
-        Utils.FW_Print(string.format(L["Profile '%s' already exists."], "|cffff0000" .. profileName .. "|r"), true)
+        Utils.FW_Print(string.format(L.PROFILE_EXISTS_MSG, "|cffff0000" .. profileName .. "|r"), true)
     end
 end
 
@@ -78,13 +78,13 @@ function Data:DeleteProfile(profileName)
     local profiles = self.FleshWoundData.profiles
     if profiles[profileName] then
         if profileName == self.FleshWoundData.currentProfile then
-            Utils.FW_Print(L["Cannot delete the current profile."], true)
+            Utils.FW_Print(L.CANNOT_DELETE_CURRENT, true)
         else
             profiles[profileName] = nil
-            Utils.FW_Print(string.format(L["Deleted profile '%s'."], "|cffff0000" .. profileName .. "|r"), false)
+            Utils.FW_Print(string.format(L.DELETED_PROFILE, "|cffff0000" .. profileName .. "|r"), false)
         end
     else
-        Utils.FW_Print(string.format(L["Profile '%s' does not exist."], "|cffff0000" .. profileName .. "|r"), true)
+        Utils.FW_Print(string.format(L.PROFILE_NOT_EXIST, "|cffff0000" .. profileName .. "|r"), true)
     end
 end
 
@@ -94,7 +94,7 @@ function Data:RenameProfile(oldName, newName)
     local charProfiles = self.FleshWoundData.charProfiles
     if profiles[oldName] then
         if profiles[newName] then
-            Utils.FW_Print(string.format(L["Profile '%s' already exists."], "|cffff0000" .. newName .. "|r"), true)
+            Utils.FW_Print(string.format(L.PROFILE_EXISTS_MSG, "|cffff0000" .. newName .. "|r"), true)
         else
             profiles[newName] = profiles[oldName]
             profiles[oldName] = nil
@@ -112,12 +112,12 @@ function Data:RenameProfile(oldName, newName)
                     addonTable.GUI:UpdateProfileBanner()
                 end
             end
-            Utils.FW_Print(string.format(L["Renamed profile '%s' to '%s'."], 
+            Utils.FW_Print(string.format(L.RENAMED_PROFILE, 
                 "|cffff0000" .. oldName .. "|r", 
                 "|cffff0000" .. newName .. "|r"), false)
         end
     else
-        Utils.FW_Print(string.format(L["Profile '%s' does not exist."], "|cffff0000" .. oldName .. "|r"), true)
+        Utils.FW_Print(string.format(L.PROFILE_NOT_EXIST, "|cffff0000" .. oldName .. "|r"), true)
     end
 end
 

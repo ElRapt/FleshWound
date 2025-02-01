@@ -1,100 +1,88 @@
--- Localization\frFR.lua
-
 local addonName, addonTable = ...
 local L = addonTable.L or {}
 addonTable.L = L
 
 if GetLocale() ~= "frFR" then return end
 
--- French localization
-L["Profiles"] = "Profils"
-L["Profile Manager"] = "Gestion des profils"
-L["Create Profile"] = "Créer un profil"
-L["Rename Profile"] = "Renommer le profil"
-L["Delete"] = "Supprimer"
-L["Select"] = "Sélectionner"
-L["Rename"] = "Renommer"
-L["Create"] = "Créer"
-L["Profile Name:"] = "Nom du profil :"
-L["New Name:"] = "Nouveau nom :"
-L["Profile name cannot be empty."] = "Le nom du profil ne peut pas être vide."
-L["A profile with this name already exists."] = "Un profil avec ce nom existe déjà."
-L["Add Note"] = "Ajouter une note"
-L["Edit"] = "Modifier"
-L["Edit Note"] = "Modifier la note"
-L["Save"] = "Enregistrer"
-L["Cancel"] = "Annuler"
-L["Close"] = "Fermer"
-L["Wound Details - %s"] = "Détails de la blessure - %s"
-L["Add Note - %s"] = "Ajouter une note - %s"
-L["Edit Note - %s"] = "Modifier la note - %s"
-L["Severity:"] = "Gravité :"
-L["No notes have been added for this region."] = "Aucune note n'a été ajoutée pour cette région."
-L["Note content cannot be empty."] = "Le contenu de la note ne peut pas être vide."
-L["A note with this content already exists."] = "Une note avec ce contenu existe déjà."
-L["Error: %s"] = "Erreur : %s"
-L["Character Limit Exceeded"] = "Limite de caractères dépassée"
-L["%d / %d"] = "%d / %d"
+-- French localization keys
+L.PROFILES               = "Profils"
+L.PROFILE_MANAGER        = "Gestion des profils"
+L.CREATE_PROFILE         = "Créer un profil"
+L.RENAME_PROFILE         = "Renommer le profil"
+L.DELETE                 = "Supprimer"
+L.SELECT                 = "Sélectionner"
+L.RENAME                 = "Renommer"
+L.CREATE                 = "Créer"
+L.PROFILE_NAME           = "Nom du profil :"
+L.NEW_NAME               = "Nouveau nom :"
+L.PROFILE_NAME_EMPTY     = "Le nom du profil ne peut pas être vide."
+L.PROFILE_EXISTS         = "Un profil avec ce nom existe déjà."
+L.ADD_NOTE               = "Ajouter une note"
+L.EDIT                   = "Modifier"
+L.EDIT_NOTE              = "Modifier la note"
+L.SAVE                   = "Enregistrer"
+L.CANCEL                 = "Annuler"
+L.CLOSE                  = "Fermer"
+L.WOUND_DETAILS          = "Détails de la blessure - %s"
+L.ADD_NOTE_TITLE         = "Ajouter une note - %s"
+L.EDIT_NOTE_TITLE        = "Modifier la note - %s"
+L.SEVERITY               = "Gravité :"
+L.NO_NOTES               = "Aucune note n'a été ajoutée pour cette région."
+L.NOTE_EMPTY             = "Le contenu de la note ne peut pas être vide."
+L.NOTE_DUPLICATE         = "Une note avec ce contenu existe déjà."
+L.ERROR                  = "Erreur : %s"
+L.CHAR_LIMIT             = "Limite de caractères dépassée"
+L.CHAR_COUNT             = "%d / %d"
 
 -- Severities
-L["None"] = "Aucune"
-L["Unknown"] = "Inconnue"
-L["Benign"] = "Bénigne"
-L["Moderate"] = "Modérée"
-L["Severe"] = "Sévère"
-L["Critical"] = "Critique"
-L["Deadly"] = "Mortelle"
+L.SEVERITY_NONE          = "Aucune"
+L.SEVERITY_UNKNOWN       = "Inconnue"
+L.SEVERITY_BENIGN        = "Bénigne"
+L.SEVERITY_MODERATE      = "Modérée"
+L.SEVERITY_SEVERE        = "Sévère"
+L.SEVERITY_CRITICAL      = "Critique"
+L.SEVERITY_DEADLY        = "Mortelle"
 
 -- Body Parts
-L["Head"] = "Tête"
-L["Torso"] = "Torse"
-L["Left Arm"] = "Bras gauche"
-L["Right Arm"] = "Bras droit"
-L["Left Hand"] = "Main gauche"
-L["Right Hand"] = "Main droite"
-L["Left Leg"] = "Jambe gauche"
-L["Right Leg"] = "Jambe droite"
-L["Left Foot"] = "Pied gauche"
-L["Right Foot"] = "Pied droit"
+L.HEAD                   = "Tête"
+L.TORSO                  = "Torse"
+L.LEFT_ARM               = "Bras gauche"
+L.RIGHT_ARM              = "Bras droit"
+L.LEFT_HAND              = "Main gauche"
+L.RIGHT_HAND             = "Main droite"
+L.LEFT_LEG               = "Jambe gauche"
+L.RIGHT_LEG              = "Jambe droite"
+L.LEFT_FOOT              = "Pied gauche"
+L.RIGHT_FOOT             = "Pied droit"
 
-L["Cannot open Profile Manager while note dialog is open."] = "Impossible d'ouvrir le gestionnaire de profils pendant que la boîte de dialogue de note est ouverte."
-L["Cannot open wound dialog while Profile Manager is open."] = "Impossible d'ouvrir la boîte de dialogue de blessure pendant que le gestionnaire de profils est ouvert."
+L.CANNOT_OPEN_PM_WHILE_NOTE = "Impossible d'ouvrir le gestionnaire de profils pendant que la boîte de dialogue de note est ouverte."
+L.CANNOT_OPEN_WOUND_WHILE_PM  = "Impossible d'ouvrir la boîte de dialogue de blessure pendant que le gestionnaire de profils est ouvert."
+L.VIEWING_PROFILE        = "Profil de %s"
+L.REQUEST_PROFILE        = "Afficher le profil"
+L.CLICK_BANDAGE_REQUEST  = "Cliquez sur le bandage pour afficher."
+L.THANK_YOU              = "Merci d'utiliser FleshWound %s ! Soyez prudent en ces lieux."
 
-L["Viewing %s's Profile"] = "Profil de %s"
+L.DELETE_PROFILE_CONFIRM = "Êtes-vous sûr de vouloir supprimer le profil '%s' ?"
+L.DATA_INITIALIZED       = "Données initialisées. Profil chargé: %s"
+L.CREATED_PROFILE        = "Nouveau profil créé : %s"
+L.PROFILE_EXISTS_MSG     = "Le profil '%s' existe déjà."
+L.CANNOT_DELETE_CURRENT  = "Impossible de supprimer le profil courant."
+L.DELETED_PROFILE        = "Profil '%s' supprimé."
+L.PROFILE_NOT_EXIST      = "Le profil '%s' n'existe pas."
+L.RENAMED_PROFILE        = "Profil '%s' renommé en '%s'."
 
-L["Request Profile"] = "Afficher le profil"
-L["Click the bandage to request."] = "Cliquez sur le bandage pour afficher."
+L.STATUS                 = "État :"
+L.STATUS_NONE            = "Aucun"
+L.STATUS_BANDAGED        = "Bandé"
+L.STATUS_BLEEDING        = "Saignement"
+L.STATUS_BROKEN_BONE     = "Fracture"
+L.STATUS_BURN            = "Brûlure"
+L.STATUS_SCARRED         = "Cicatrice"
+L.STATUS_POISONED        = "Empoisonné"
+L.STATUS_INFECTED        = "Infecté"
 
-L["Thank you for using FleshWound %s! Be safe out there."] = "Merci d'utiliser FleshWound %s ! Soyez prudent en ces lieux."
-
-
-L["Delete profile confirmation"] = "Êtes-vous sûr de vouloir supprimer le profil '%s' ?"
-L["Data initialized. Current Profile: %s"] = "Données initialisées. Profil chargé: %s"
-
--- Add these entries under appropriate sections
-L["Created new profile: %s"] = "Nouveau profil créé : %s"
-L["Profile '%s' already exists."] = "Le profil '%s' existe déjà."
-L["Cannot delete the current profile."] = "Impossible de supprimer le profil courant."
-L["Deleted profile '%s'."] = "Profil '%s' supprimé."
-L["Profile '%s' does not exist."] = "Le profil '%s' n'existe pas."
-L["Renamed profile '%s' to '%s'."] = "Profil '%s' renommé en '%s'."
-
-L["%d / %d"] = "%d / %d"
-
-L["Status:"] = "État:"
-
-L["None"] = "Aucun"
-L["Bandaged"] = "Bandé"
-L["Bleeding"] = "Saignement"
-L["Broken bone"] = "Fracture"
-L["Burn"] = "Brûlure"
-L["Scarred"] = "Cicatrice"
-L["Poisoned"] = "Empoisonné"
-L["Infected"] = "Infecté"
-
-L["Left-click to show/hide the health frame."] = "Clic gauche pour afficher/masquer l'interface de santé."
-
-L["FLESHWOUND_FIRST_RELEASE_POPUP"] = [[
+L.LEFT_CLICK_SHOW_HIDE   = "Clic gauche pour afficher/masquer l'interface de santé."
+L.FLESHWOUND_FIRST_RELEASE_POPUP = [[
 Merci d'avoir téléchargé la première version de FleshWound !
 
 Attendez-vous à des changements d'interface, des mises à jour visuelles et de nouvelles fonctionnalités à l'avenir.
@@ -103,3 +91,5 @@ Vous pouvez également rencontrer des erreurs, merci de les signaler sur Discord
 
 Vos commentaires sont précieux et aideront à façonner l'avenir de FleshWound. Merci pour votre soutien !
 ]]
+
+return L

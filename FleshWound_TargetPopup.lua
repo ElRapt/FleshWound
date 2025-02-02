@@ -1,20 +1,35 @@
--- FleshWound_TargetPopup.lua
-
 local addonName, addonTable = ...
-local L = addonTable.L -- Localization
+local L = addonTable.L
 local knownAddonUsers = addonTable.Comm:GetKnownAddonUsers()
-local PING_TIMEOUT = 5
+
+local CONSTANTS = {
+    FRAME_SIZE = { WIDTH = 220, HEIGHT = 80 },
+    FRAME_POSITION = { ANCHOR = "BOTTOMRIGHT", X_OFFSET = -50, Y_OFFSET = 200 },
+    PING_TIMEOUT = 5,
+    BACKDROP = {
+        GOLD_BG = "Interface\\DialogFrame\\UI-DialogBox-Gold-Background",
+        GOLD_BORDER = "Interface\\DialogFrame\\UI-DialogBox-Gold-Border",
+        EDGE_SIZE = 32,
+        TILE_SIZE = 32,
+        INSET = 8,
+        BG_ALPHA = 0.9
+    },
+    ICON = {
+        BANDAGE = "Interface\\Icons\\INV_Misc_Bandage_01",
+        HIGHLIGHT = "Interface\\Buttons\\UI-Common-MouseHilight",
+        SIZE = 32
+    },
+    POPUP_OFFSET_ON_CLOSE_BUTTON = { X = -5, Y = -5 },
+    DEFAULT_POPUP_POS = { X = -50, Y = 200 },
+}
+
 local pendingTarget
 local popupFrame
 local targetName
 
----------------------------------------------------
--- Save/restore the popup's position
----------------------------------------------------
 local function SavePopupPosition()
     if not FleshWoundData then FleshWoundData = {} end
     FleshWoundData.popupPos = FleshWoundData.popupPos or {}
-
     local point, _, relativePoint, xOfs, yOfs = popupFrame:GetPoint()
     FleshWoundData.popupPos.point = point
     FleshWoundData.popupPos.relativePoint = relativePoint
@@ -33,13 +48,16 @@ local function RestorePopupPosition()
             FleshWoundData.popupPos.yOfs
         )
     else
-        popupFrame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -50, 200)
+        popupFrame:SetPoint(
+            CONSTANTS.FRAME_POSITION.ANCHOR,
+            UIParent,
+            CONSTANTS.FRAME_POSITION.ANCHOR,
+            CONSTANTS.FRAME_POSITION.X_OFFSET,
+            CONSTANTS.FRAME_POSITION.Y_OFFSET
+        )
     end
 end
 
----------------------------------------------------
--- Hide/show the popup
----------------------------------------------------
 local function HidePopup()
     if popupFrame then
         popupFrame:Hide()
@@ -49,7 +67,7 @@ end
 local function ShowPopupForTarget(name)
     if not popupFrame then
         popupFrame = CreateFrame("Frame", "FleshWoundTargetPopup", UIParent, "BackdropTemplate")
-        popupFrame:SetSize(220, 80)
+        popupFrame:SetSize(CONSTANTS.FRAME_SIZE.WIDTH, CONSTANTS.FRAME_SIZE.HEIGHT)
         popupFrame:SetFrameStrata("DIALOG")
         popupFrame:SetMovable(true)
         popupFrame:EnableMouse(true)
@@ -59,27 +77,22 @@ local function ShowPopupForTarget(name)
             popupFrame:StopMovingOrSizing()
             SavePopupPosition()
         end)
-
         popupFrame:SetBackdrop({
-            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Gold-Background",
-            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Gold-Border",
+            bgFile = CONSTANTS.BACKDROP.GOLD_BG,
+            edgeFile = CONSTANTS.BACKDROP.GOLD_BORDER,
             tile = true,
-            tileSize = 32,
-            edgeSize = 32,
-            insets = { left = 8, right = 8, top = 8, bottom = 8 },
+            tileSize = CONSTANTS.BACKDROP.TILE_SIZE,
+            edgeSize = CONSTANTS.BACKDROP.EDGE_SIZE,
+            insets = { left = CONSTANTS.BACKDROP.INSET, right = CONSTANTS.BACKDROP.INSET, top = CONSTANTS.BACKDROP.INSET, bottom = CONSTANTS.BACKDROP.INSET },
         })
-        popupFrame:SetBackdropColor(1, 1, 1, 0.9)
-
-        -- An icon button for requesting profiles
+        popupFrame:SetBackdropColor(1, 1, 1, CONSTANTS.BACKDROP.BG_ALPHA)
         local iconButton = CreateFrame("Button", nil, popupFrame, "BackdropTemplate")
-        iconButton:SetSize(32, 32)
+        iconButton:SetSize(CONSTANTS.ICON.SIZE, CONSTANTS.ICON.SIZE)
         iconButton:SetPoint("TOPLEFT", popupFrame, "TOPLEFT", 15, -15)
-
         local icon = iconButton:CreateTexture(nil, "ARTWORK")
-        icon:SetTexture("Interface\\Icons\\INV_Misc_Bandage_01")
+        icon:SetTexture(CONSTANTS.ICON.BANDAGE)
         icon:SetAllPoints(iconButton)
-
-        iconButton:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+        iconButton:SetHighlightTexture(CONSTANTS.ICON.HIGHLIGHT, "ADD")
         iconButton:SetScript("OnEnter", function()
             GameTooltip:SetOwner(iconButton, "ANCHOR_RIGHT")
             GameTooltip:AddLine(L.REQUEST_PROFILE, 1, 1, 1)
@@ -88,40 +101,28 @@ local function ShowPopupForTarget(name)
         iconButton:SetScript("OnLeave", function()
             GameTooltip:Hide()
         end)
-
         iconButton:SetScript("OnClick", function()
             if targetName then
                 addonTable.Comm:RequestProfile(targetName)
-                -- Optionally hide the popup here if you want.
             end
         end)
-
         popupFrame.title = popupFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
         popupFrame.title:SetPoint("TOPLEFT", iconButton, "TOPRIGHT", 10, -3)
         popupFrame.title:SetText(L.REQUEST_PROFILE)
-
         popupFrame.text = popupFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         popupFrame.text:SetPoint("TOPLEFT", popupFrame.title, "BOTTOMLEFT", 0, -5)
         popupFrame.text:SetWidth(popupFrame:GetWidth() - 60)
         popupFrame.text:SetJustifyH("LEFT")
         popupFrame.text:SetText(L.CLICK_BANDAGE_REQUEST)
-
         popupFrame.closeButton = CreateFrame("Button", nil, popupFrame, "UIPanelCloseButton")
-        popupFrame.closeButton:SetPoint("TOPRIGHT", popupFrame, "TOPRIGHT", -5, -5)
+        popupFrame.closeButton:SetPoint("TOPRIGHT", popupFrame, "TOPRIGHT", CONSTANTS.POPUP_OFFSET_ON_CLOSE_BUTTON.X, CONSTANTS.POPUP_OFFSET_ON_CLOSE_BUTTON.Y)
         popupFrame.closeButton:SetScript("OnClick", HidePopup)
-
-        -- Restore the saved position (if any) after creating the frame
         RestorePopupPosition()
     end
-
     targetName = name
     popupFrame:Show()
 end
 
----------------------------------------------------
--- Event frame that checks when you change target
--- or when we receive an addon message
----------------------------------------------------
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
 eventFrame:RegisterEvent("CHAT_MSG_ADDON")
@@ -129,45 +130,31 @@ eventFrame:RegisterEvent("CHAT_MSG_ADDON")
 eventFrame:SetScript("OnEvent", function(_, event, ...)
     if event == "PLAYER_TARGET_CHANGED" then
         HidePopup()
-
         local unit = "target"
         if UnitExists(unit) and UnitIsPlayer(unit) and UnitIsFriend("player", unit) then
             local name, realm = UnitName(unit)
             if realm and realm ~= "" then
                 name = name.."-"..realm
             end
-
             knownAddonUsers = addonTable.Comm:GetKnownAddonUsers()
-
-            -- If we already know this target has FleshWound, show popup immediately
             if knownAddonUsers[name] then
                 ShowPopupForTarget(name)
             else
-                -- Otherwise send a ping and wait for PONG before showing
                 pendingTarget = name
                 addonTable.Comm:PingPlayer(name)
             end
         end
-
     elseif event == "CHAT_MSG_ADDON" then
         local prefixMsg, msg, channel, sender = ...
         local player = Ambiguate(sender, "short")
-
-        -- Make sure it's our prefix before proceeding
         if prefixMsg ~= "FleshWoundComm" then
             return
         end
-
-        -- If we got a PONG from someone, mark them as known
         if msg == "PONG" then
             knownAddonUsers[player] = true
-
-            -- If the player we pinged is the current target, show the popup
             if player == pendingTarget and UnitName("target") == player then
                 ShowPopupForTarget(player)
             end
-
-        -- If we see these messages, also mark them known
         elseif msg == "REQUEST_PROFILE" or msg:match("^PROFILE_DATA:") then
             knownAddonUsers[player] = true
         end

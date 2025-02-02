@@ -5,23 +5,41 @@ local addonName, addonTable = ...
 local L = addonTable.L
 local Utils = addonTable.Utils
 
+-- Centralized constants
+local CONSTANTS = {
+    WELCOME_FRAME = {
+        WIDTH = 400,
+        HEIGHT = 220,
+        BACKDROP = {
+            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true,
+            tileSize = 32,
+            edgeSize = 32,
+            insets = { left = 8, right = 8, top = 8, bottom = 8 }
+        },
+        TITLE = "FleshWound - v.0.2.2",
+        CLOSE_BUTTON_WIDTH = 80,
+        CLOSE_BUTTON_HEIGHT = 22,
+        DEFAULT_POINT = "CENTER",
+        TEXT_WIDTH = 350,
+        TEXT_OFFSET_Y = -12
+    },
+    DEFAULT_ADDON_VERSION = "v0.2.2",
+    WELCOME_ALREADY_SHOWN_KEY = "hasShownWelcome",
+    RELOAD_EVENT_NAME = "ADDON_LOADED"
+}
+
 -- Create a custom welcome frame for first-time use.
 local function ShowWelcomeFrame()
-    -- Basic check to avoid re-showing if already done
-    if FleshWoundData and FleshWoundData.hasShownWelcome then
+    if FleshWoundData and FleshWoundData[CONSTANTS.WELCOME_ALREADY_SHOWN_KEY] then
         return
     end
 
-    -- Main frame
     local welcomeFrame = CreateFrame("Frame", "FleshWoundWelcomeFrame", UIParent, "BackdropTemplate")
-    welcomeFrame:SetSize(400, 220)
-    welcomeFrame:SetPoint("CENTER")
-    welcomeFrame:SetBackdrop({
-        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true, tileSize = 32, edgeSize = 32,
-        insets = { left = 8, right = 8, top = 8, bottom = 8 }
-    })
+    welcomeFrame:SetSize(CONSTANTS.WELCOME_FRAME.WIDTH, CONSTANTS.WELCOME_FRAME.HEIGHT)
+    welcomeFrame:SetPoint(CONSTANTS.WELCOME_FRAME.DEFAULT_POINT)
+    welcomeFrame:SetBackdrop(CONSTANTS.WELCOME_FRAME.BACKDROP)
     welcomeFrame:SetMovable(true)
     welcomeFrame:EnableMouse(true)
     welcomeFrame:RegisterForDrag("LeftButton")
@@ -32,32 +50,26 @@ local function ShowWelcomeFrame()
         self:StopMovingOrSizing()
     end)
 
-    -- Title
     local title = welcomeFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", 0, -16)
-    -- You can localize this text as needed
-    title:SetText("FleshWound - v.0.1.0")
+    title:SetText(CONSTANTS.WELCOME_FRAME.TITLE)
 
-    -- Body Text
     local text = welcomeFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    text:SetWidth(350)
-    text:SetPoint("TOP", title, "BOTTOM", 0, -12)
+    text:SetWidth(CONSTANTS.WELCOME_FRAME.TEXT_WIDTH)
+    text:SetPoint("TOP", title, "BOTTOM", 0, CONSTANTS.WELCOME_FRAME.TEXT_OFFSET_Y)
     text:SetText(L.FLESHWOUND_FIRST_RELEASE_POPUP)
 
-    -- Close Button
     local closeButton = CreateFrame("Button", nil, welcomeFrame, "UIPanelButtonTemplate")
-    closeButton:SetSize(80, 22)
+    closeButton:SetSize(CONSTANTS.WELCOME_FRAME.CLOSE_BUTTON_WIDTH, CONSTANTS.WELCOME_FRAME.CLOSE_BUTTON_HEIGHT)
     closeButton:SetPoint("BOTTOM", 0, 16)
     closeButton:SetText("OK")
     closeButton:SetScript("OnClick", function()
-        -- Hide and set flag so we don't show again
         welcomeFrame:Hide()
-        FleshWoundData.hasShownWelcome = true
+        FleshWoundData[CONSTANTS.WELCOME_ALREADY_SHOWN_KEY] = true
     end)
 
     welcomeFrame:Show()
 end
-
 
 --[[---------------------------------------------------------------------------
   EventHandler: A small module to handle ADDON_LOADED and set up the addon.
@@ -67,7 +79,6 @@ addonTable.EventHandler = EventHandler
 
 function EventHandler:OnAddonLoaded(loadedName)
     if loadedName == addonName then
-        -- Ensure global SV is present
         if not FleshWoundData then
             FleshWoundData = {}
         end
@@ -92,20 +103,14 @@ function EventHandler:OnAddonLoaded(loadedName)
             addonTable.Comm:Initialize()
         end
 
-        -- Attempt to retrieve the version from the TOC
-        local version = GetAddOnMetadata and GetAddOnMetadata(addonName, "Version") or "v0.2.0"
+        local version = GetAddOnMetadata and GetAddOnMetadata(addonName, "Version") or CONSTANTS.DEFAULT_ADDON_VERSION
         Utils.FW_Print(string.format(L.THANK_YOU, version), false)
 
-        ----------------------------------------------------------------------
-        -- Show the custom welcome frame if not shown yet
-        ----------------------------------------------------------------------
         ShowWelcomeFrame()
 
-        -- Unregister the event to avoid re-initialization
-        self.eventFrame:UnregisterEvent("ADDON_LOADED")
+        self.eventFrame:UnregisterEvent(CONSTANTS.RELOAD_EVENT_NAME)
     end
 end
-
 
 --[[---------------------------------------------------------------------------
   Called when we receive a remote profile. Temporarily display that data until
@@ -117,7 +122,6 @@ function addonTable:OpenReceivedProfile(profileName, profileData)
         return
     end
 
-    -- If we're already viewing a remote profile, restore our local data first
     if GUI.currentTemporaryProfile then
         GUI:RestoreOriginalProfile()
     end
@@ -126,50 +130,37 @@ function addonTable:OpenReceivedProfile(profileName, profileData)
         GUI.frame:Hide()
     end
 
-    -- Deep copy of your original data (so we can revert later)
     local originalProfile   = addonTable.FleshWoundData.currentProfile
     local originalWoundData = CopyTable(addonTable.woundData)
+    local copiedRemoteData  = CopyTable(profileData.woundData)
 
-    -- Deep copy the remote data (so changes don’t affect them)
-    local copiedRemoteData = CopyTable(profileData.woundData)
-
-    -- Temporarily overwrite your local data with the remote
     addonTable.woundData = copiedRemoteData
 
-    -- Update the GUI with the new data
     if GUI.UpdateRegionColors then
         GUI:UpdateRegionColors()
     end
 
-    -- Re-show the main frame so the user sees the remote data
     if GUI.frame then
         GUI.frame:Show()
     end
 
-    -- Store references so we can revert easily
     GUI.originalProfile   = originalProfile
     GUI.originalWoundData = originalWoundData
     GUI.currentTemporaryProfile = profileName
 
-    -- Update the label/banner to reflect remote mode
     if GUI.UpdateProfileBanner then
         GUI:UpdateProfileBanner()
     end
 
-    -- Hide the normal "Profile" button while viewing a remote profile
     if GUI.frame and GUI.frame.ProfileButton then
         GUI.frame.ProfileButton:Hide()
     end
 end
 
-
--- Set up an event frame to handle ADDON_LOADED
 EventHandler.eventFrame = CreateFrame("Frame")
-EventHandler.eventFrame:RegisterEvent("ADDON_LOADED")
+EventHandler.eventFrame:RegisterEvent(CONSTANTS.RELOAD_EVENT_NAME)
 EventHandler.eventFrame:SetScript("OnEvent", function(_, event, ...)
-    if event == "ADDON_LOADED" then
+    if event == CONSTANTS.RELOAD_EVENT_NAME then
         EventHandler:OnAddonLoaded(...)
     end
 end)
-
-

@@ -2,7 +2,7 @@
 ## Title: FleshWound
 ## Notes: Adds a custom health UI for roleplay purposes
 ## Author: ElRapt
-## Version: 1.0.0
+## Version: 0.2.2
 ## SavedVariables: FleshWoundData
 
 Libs\LibStub\LibStub.lua

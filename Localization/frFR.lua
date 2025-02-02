@@ -4,7 +4,6 @@ addonTable.L = L
 
 if GetLocale() ~= "frFR" then return end
 
--- French localization keys
 L.PROFILES               = "Profils"
 L.PROFILE_MANAGER        = "Gestion des profils"
 L.CREATE_PROFILE         = "Créer un profil"

@@ -19,6 +19,7 @@ FleshWound.lua
 FleshWound_Data.lua
 FleshWound_GUI.lua
 FleshWound_Comm.lua
+FleshWound_Registry.lua
 FleshWound_SlashCommands.lua
 FleshWound_GameMenu.lua
 FleshWound_TargetPopup.lua

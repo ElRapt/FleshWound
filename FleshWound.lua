@@ -103,7 +103,14 @@ function EventHandler:OnAddonLoaded(loadedName)
             addonTable.Comm:Initialize()
         end
 
-        local version = GetAddOnMetadata and GetAddOnMetadata(addonName, "Version") or CONSTANTS.DEFAULT_ADDON_VERSION
+        -- Initialize Registry
+        if addonTable.Registry and addonTable.Registry.Initialize then
+            addonTable.Registry:Initialize()
+        else
+            Utils.FW_Print("Registry module not found or missing Initialize method.", true)
+        end
+
+        local version = (GetAddOnMetadata and GetAddOnMetadata(addonName, "Version")) or CONSTANTS.DEFAULT_ADDON_VERSION
         Utils.FW_Print(string.format(L.THANK_YOU, version), false)
 
         ShowWelcomeFrame()
@@ -130,7 +137,7 @@ function addonTable:OpenReceivedProfile(profileName, profileData)
         GUI.frame:Hide()
     end
 
-    local originalProfile   = addonTable.FleshWoundData.currentProfile
+    local originalProfile   = FleshWoundData.currentProfile
     local originalWoundData = CopyTable(addonTable.woundData)
     local copiedRemoteData  = CopyTable(profileData.woundData)
 

@@ -91,4 +91,9 @@ Vous pouvez également rencontrer des erreurs, merci de les signaler sur Discord
 Vos commentaires sont précieux et aideront à façonner l'avenir de FleshWound. Merci pour votre soutien !
 ]]
 
+
+L.NEW_VERSION_AVAILABLE = "Une nouvelle version de FleshWound est disponible : %s (vous avez %s)."
+L.USERS_ONLINE_OTHER = "Il y a %d autres utilisateurs de FleshWound en ligne."
+L.USERS_ONLINE_NONE = "Vous êtes le seul utilisateur de FleshWound en ligne."
+
 return L

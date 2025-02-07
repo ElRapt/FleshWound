@@ -3,6 +3,8 @@
 -- (Incorporates a standardized print function and a draggable-frame helper.)
 
 local addonName, addonTable = ...
+local GetAddOnMetadata = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
+
 
 local Utils = {}
 addonTable.Utils = Utils

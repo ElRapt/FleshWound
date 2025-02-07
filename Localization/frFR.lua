@@ -84,6 +84,8 @@ L.LEFT_CLICK_SHOW_HIDE   = "Clic gauche pour afficher/masquer l'interface de san
 L.FLESHWOUND_FIRST_RELEASE_POPUP = [[
 Merci d'avoir téléchargé FleshWound !
 
+Pour ouvrir l'interface, cliquez sur l'icône de bandage sur votre boussole, ou entrez /fw.
+
 Attendez-vous à des changements d'interface, des mises à jour visuelles et de nouvelles fonctionnalités à l'avenir.
 
 Vous pouvez également rencontrer des erreurs, merci de les signaler sur Discord lorsqu'elles se produisent.

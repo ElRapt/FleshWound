@@ -83,6 +83,8 @@ L.LEFT_CLICK_SHOW_HIDE   = "Left-click to show/hide the health frame."
 L.FLESHWOUND_FIRST_RELEASE_POPUP = [[
 Thank you for downloading FleshWound!
 
+To open the interface, click on the bandage icon on your compass, or type /fw.
+
 Expect UI changes, visual updates, and new features soon.
 
 You may also encounter errors, so please report these in the Discord when they occur.

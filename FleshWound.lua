@@ -5,6 +5,8 @@ local addonName, addonTable = ...
 local L = addonTable.L
 local Utils = addonTable.Utils
 
+local version = Utils.GetAddonVersion()
+
 -- Centralized constants
 local CONSTANTS = {
     WELCOME_FRAME = {
@@ -25,7 +27,6 @@ local CONSTANTS = {
         TEXT_WIDTH = 350,
         TEXT_OFFSET_Y = -12
     },
-    DEFAULT_ADDON_VERSION = "v0.2.2",
     WELCOME_ALREADY_SHOWN_KEY = "hasShownWelcome",
     RELOAD_EVENT_NAME = "ADDON_LOADED"
 }
@@ -110,7 +111,6 @@ function EventHandler:OnAddonLoaded(loadedName)
             Utils.FW_Print("Registry module not found or missing Initialize method.", true)
         end
 
-        local version = (GetAddOnMetadata and GetAddOnMetadata(addonName, "Version")) or CONSTANTS.DEFAULT_ADDON_VERSION
         Utils.FW_Print(string.format(L.THANK_YOU, version), false)
 
         ShowWelcomeFrame()

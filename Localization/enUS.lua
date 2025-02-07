@@ -81,7 +81,7 @@ L.STATUS_INFECTED        = "Infected"
 
 L.LEFT_CLICK_SHOW_HIDE   = "Left-click to show/hide the health frame."
 L.FLESHWOUND_FIRST_RELEASE_POPUP = [[
-Thank you for downloading the first release of FleshWound!
+Thank you for downloading FleshWound!
 
 Expect UI changes, visual updates, and new features soon.
 

@@ -59,11 +59,8 @@ end
 
 -- Retrieve our own version.
 function Registry:GetLocalVersion()
-    -- Try to get version metadata; fall back to a default if not available.
-    local version = (GetAddOnMetadata and GetAddOnMetadata(addonName, "Version")) or addonTable.DEFAULT_ADDON_VERSION or "0.0.0"
-    return version
+    return Utils.GetAddonVersion()
 end
-
 ---------------------------------------------------------------
 -- Messaging Functions
 ---------------------------------------------------------------

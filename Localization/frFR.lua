@@ -82,7 +82,7 @@ L.STATUS_INFECTED        = "Infecté"
 
 L.LEFT_CLICK_SHOW_HIDE   = "Clic gauche pour afficher/masquer l'interface de santé."
 L.FLESHWOUND_FIRST_RELEASE_POPUP = [[
-Merci d'avoir téléchargé la première version de FleshWound !
+Merci d'avoir téléchargé FleshWound !
 
 Attendez-vous à des changements d'interface, des mises à jour visuelles et de nouvelles fonctionnalités à l'avenir.
 

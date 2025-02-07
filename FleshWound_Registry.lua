@@ -57,7 +57,8 @@ local function VersionCompare(v1, v2)
     return 0
 end
 
--- Retrieve our own version.
+--- Retrieves the local addon version from metadata or a default version.
+--- @return string: The local version of the addon.
 function Registry:GetLocalVersion()
     return Utils.GetAddonVersion()
 end
@@ -65,8 +66,9 @@ end
 -- Messaging Functions
 ---------------------------------------------------------------
 
--- Sends a HELLO message containing our version.
--- If a target is specified, the message is sent as a WHISPER.
+--- Sends a HELLO message containing the local version to announce the addon's presence.
+--- If a target is provided, the message is sent as a whisper.
+--- @param target string|nil: Optional target player to receive the hello message.
 function Registry:SendHello(target)
     local version = self:GetLocalVersion()
     local msg = self.EVENT_HELLO .. ":" .. version
@@ -74,8 +76,12 @@ function Registry:SendHello(target)
     C_ChatInfo.SendAddonMessage(self.PREFIX, msg, distribution, target)
 end
 
--- Sends a QUERY message (asking for version info).
--- If a target is specified, the message is sent as a WHISPER.
+--- Processes incoming addon messages for the registry.
+--- Handles QUERY messages by replying with a HELLO and processes HELLO messages to update version info and notify of newer versions.
+--- @param prefix string: The message prefix.
+--- @param msg string: The incoming message content.
+--- @param channel string: The channel the message was received on.
+--- @param sender string: The sender's name.
 function Registry:SendQuery(target)
     local msg = self.EVENT_QUERY
     local distribution = target and "WHISPER" or "GUILD"
@@ -86,7 +92,12 @@ end
 -- Message Handling
 ---------------------------------------------------------------
 
--- Handles incoming addon messages for our registry prefix.
+--- Processes incoming addon messages for the registry.
+--- Handles QUERY messages by replying with a HELLO and processes HELLO messages to update version info and notify of newer versions.
+--- @param prefix string: The message prefix.
+--- @param msg string: The incoming message content.
+--- @param channel string: The channel the message was received on.
+--- @param sender string: The sender's name.
 function Registry:OnChatMsgAddon(prefix, msg, channel, sender)
     if prefix ~= self.PREFIX then
         return
@@ -119,10 +130,7 @@ function Registry:OnChatMsgAddon(prefix, msg, channel, sender)
     end
 end
 
----------------------------------------------------------------
--- User Count Display
----------------------------------------------------------------
-
+--- Calculates and displays the number of online users (excluding the local player) who have the addon installed.
 function Registry:DisplayUserCount()
     local count = 0
     local localPlayer = NormalizePlayerName(UnitName("player"))
@@ -138,11 +146,9 @@ function Registry:DisplayUserCount()
     end
 end
 
----------------------------------------------------------------
--- Initialization
----------------------------------------------------------------
-
--- Sets up the addon message prefix and event listener.
+--- Initializes the registry module.
+--- Registers the addon message prefix, sets up the event listener for CHAT_MSG_ADDON,
+--- sends an initial version query, and schedules periodic version announcements.
 function Registry:Initialize()
     C_ChatInfo.RegisterAddonMessagePrefix(self.PREFIX)
 

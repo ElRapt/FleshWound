@@ -20,14 +20,12 @@ local knownAddonUsers = {}
 -- Tracks pings that haven’t been answered
 local pendingPings = {}
 
--- Register the prefix
-function Comm:Initialize()
-    C_ChatInfo.RegisterAddonMessagePrefix(self.PREFIX)
-end
 
---[[---------------------------------------------------------------------------
-  Request another player's profile.
----------------------------------------------------------------------------]]--
+
+--- Requests a profile from the specified target player.
+--- If the player is already known (has responded to a previous ping), the request is sent immediately.
+--- Otherwise, the player is pinged and, after a timeout, the profile request is resent if a response is received.
+--- @param targetPlayer string: The name (or name-realm) of the target player.
 function Comm:RequestProfile(targetPlayer)
     if not targetPlayer or targetPlayer == "" then
         return
@@ -46,9 +44,9 @@ function Comm:RequestProfile(targetPlayer)
     end
 end
 
---[[---------------------------------------------------------------------------
-  Send our profile data to a remote target.
----------------------------------------------------------------------------]]--
+--- Sends the serialized profile data associated with profileName to the target player via an addon message.
+--- @param targetPlayer string: The recipient player.
+--- @param profileName string: The name of the profile whose data is to be sent.
 function Comm:SendProfileData(targetPlayer, profileName)
     if not targetPlayer or not profileName then return end
 
@@ -59,18 +57,18 @@ function Comm:SendProfileData(targetPlayer, profileName)
     C_ChatInfo.SendAddonMessage(self.PREFIX, "PROFILE_DATA:"..profileName..":"..serialized, "WHISPER", targetPlayer)
 end
 
---[[---------------------------------------------------------------------------
-  Serialize the woundData sub-table of a profile using AceSerializer.
----------------------------------------------------------------------------]]--
+--- Serializes the woundData sub-table from the provided profileData using AceSerializer.
+--- @param profileData table: The profile data containing woundData.
+--- @return string: The serialized woundData string.
 function Comm:SerializeProfile(profileData)
     local woundData = profileData.woundData or {}
     local serialized = AceSerializer:Serialize(woundData)
     return serialized
 end
 
---[[---------------------------------------------------------------------------
-  Deserialize a profile's woundData.
----------------------------------------------------------------------------]]--
+--- Deserializes the provided serialized woundData string using AceSerializer and returns a table with the woundData.
+--- @param serialized string: The serialized data string.
+--- @return table: A table containing the deserialized woundData.
 function Comm:DeserializeProfile(serialized)
     local profileData = { woundData = {} }
     if serialized == "" then
@@ -86,10 +84,9 @@ function Comm:DeserializeProfile(serialized)
     return profileData
 end
 
---[[---------------------------------------------------------------------------
-  Ping a player to see if they have the addon. If no reply in PING_TIMEOUT,
-  we assume they don’t.
----------------------------------------------------------------------------]]--
+--- Sends a ping message to the specified target player to check if they have the addon installed.
+--- Sets a timeout after which the pending ping is cleared if no pong is received.
+--- @param targetPlayer string: The name (or name-realm) of the target player.
 function Comm:PingPlayer(targetPlayer)
     if not targetPlayer or targetPlayer == "" then return end
 
@@ -104,31 +101,31 @@ function Comm:PingPlayer(targetPlayer)
     end)
 end
 
---[[---------------------------------------------------------------------------
-  Send a PONG response back.
----------------------------------------------------------------------------]]--
+--- Sends a pong response to the specified target player to indicate that this player has the addon.
+--- @param targetPlayer string: The recipient player.
 function Comm:SendPong(targetPlayer)
     C_ChatInfo.SendAddonMessage(self.PREFIX, "PONG", "WHISPER", targetPlayer)
 end
 
---[[---------------------------------------------------------------------------
-  Handle a PONG. Mark them as known.
----------------------------------------------------------------------------]]--
+--- Processes a pong response by clearing any pending ping for the sender and marking the sender as a known addon user.
+--- @param sender string: The name of the player who sent the pong.
 function Comm:HandlePong(sender)
     pendingPings[sender] = nil
     knownAddonUsers[sender] = true
 end
 
---[[---------------------------------------------------------------------------
-  Return known users. 
----------------------------------------------------------------------------]]--
+--- Returns the table of players who are known to have the addon (i.e. who have responded to a ping).
+--- @return table: A table where keys are player names and values indicate addon presence.
 function Comm:GetKnownAddonUsers()
     return knownAddonUsers
 end
 
---[[---------------------------------------------------------------------------
-  Handle all incoming CHAT_MSG_ADDON events with our prefix.
----------------------------------------------------------------------------]]--
+--- Handles incoming addon messages that match the registered prefix.
+--- Dispatches actions based on the message content (e.g., PING, PONG, REQUEST_PROFILE, PROFILE_DATA).
+--- @param prefixMsg string: The prefix of the incoming message.
+--- @param msg string: The message content.
+--- @param channel string: The channel the message was received on.
+--- @param sender string: The player who sent the message.
 function Comm:OnChatMsgAddon(prefixMsg, msg, channel, sender)
     if prefixMsg ~= self.PREFIX then return end
     local player = Ambiguate(sender, "short")
@@ -149,6 +146,11 @@ function Comm:OnChatMsgAddon(prefixMsg, msg, channel, sender)
             addonTable:OpenReceivedProfile(profileName, profileData)
         end
     end
+end
+
+--- Registers the addon message prefix with C_ChatInfo.RegisterAddonMessagePrefix so that all subsequent addon messages use a consistent prefix.
+function Comm:Initialize()
+    C_ChatInfo.RegisterAddonMessagePrefix(self.PREFIX)
 end
 
 -- Event frame to catch CHAT_MSG_ADDON

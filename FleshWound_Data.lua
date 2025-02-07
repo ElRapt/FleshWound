@@ -8,36 +8,11 @@ local L = addonTable.L
 local Data = {}
 addonTable.Data = Data
 
-function Data:Initialize()
-    self.FleshWoundData = addonTable.FleshWoundData or {}
-    local data = self.FleshWoundData
 
-    data.profiles = data.profiles or {}
-    data.charProfiles = data.charProfiles or {}
-    data.positions = data.positions or {}
-
-    local playerName = UnitName("player")
-    local realmName = GetRealmName()
-    local charKey = playerName .. "-" .. realmName
-
-    local assignedProfile = data.charProfiles[charKey]
-
-    if not assignedProfile then
-        if not data.profiles[playerName] then
-            self:CreateProfile(playerName)
-        end
-        assignedProfile = playerName
-        data.charProfiles[charKey] = assignedProfile
-    end
-
-    self:SwitchProfile(assignedProfile)
-    Utils.FW_Print(string.format(L.DATA_INITIALIZED, "|cffff0000" .. assignedProfile .. "|r"), false)
-
-
-end
-
-
-
+--- Switches the current profile to the specified profileName.
+--- If the profile does not exist, it is created.
+--- Updates character profile mapping and refreshes GUI elements accordingly.
+--- @param profileName string: The name of the profile to switch to.
 function Data:SwitchProfile(profileName)
     local data = self.FleshWoundData
     local playerName = UnitName("player")
@@ -62,7 +37,9 @@ function Data:SwitchProfile(profileName)
 end
 
 
--- Create an empty profile if one does not exist already.
+--- Creates a new profile with the given profileName if it does not already exist.
+--- Prints a message indicating whether the profile was created or already exists.
+--- @param profileName string: The desired profile name.
 function Data:CreateProfile(profileName)
     if not self.FleshWoundData.profiles[profileName] then
         self.FleshWoundData.profiles[profileName] = { woundData = {} }
@@ -72,8 +49,9 @@ function Data:CreateProfile(profileName)
     end
 end
 
-
--- Delete a named profile if it isn't the current one.
+--- Deletes the specified profile if it exists and is not currently active.
+--- If the profile is active or does not exist, an error message is printed.
+--- @param profileName string: The name of the profile to delete.
 function Data:DeleteProfile(profileName)
     local profiles = self.FleshWoundData.profiles
     if profiles[profileName] then
@@ -88,7 +66,11 @@ function Data:DeleteProfile(profileName)
     end
 end
 
-
+--- Renames an existing profile from oldName to newName.
+--- Updates all character mappings and the current profile if necessary.
+--- Prints a message indicating the success or failure of the operation.
+--- @param oldName string: The current profile name.
+--- @param newName string: The new profile name.
 function Data:RenameProfile(oldName, newName)
     local profiles = self.FleshWoundData.profiles
     local charProfiles = self.FleshWoundData.charProfiles
@@ -119,6 +101,36 @@ function Data:RenameProfile(oldName, newName)
     else
         Utils.FW_Print(string.format(L.PROFILE_NOT_EXIST, "|cffff0000" .. oldName .. "|r"), true)
     end
+end
+
+--- Initializes the data module by setting up profiles, character-specific profile assignments, and the current profile.
+--- Also prints an initialization message to indicate the active profile.
+function Data:Initialize()
+    self.FleshWoundData = addonTable.FleshWoundData or {}
+    local data = self.FleshWoundData
+
+    data.profiles = data.profiles or {}
+    data.charProfiles = data.charProfiles or {}
+    data.positions = data.positions or {}
+
+    local playerName = UnitName("player")
+    local realmName = GetRealmName()
+    local charKey = playerName .. "-" .. realmName
+
+    local assignedProfile = data.charProfiles[charKey]
+
+    if not assignedProfile then
+        if not data.profiles[playerName] then
+            self:CreateProfile(playerName)
+        end
+        assignedProfile = playerName
+        data.charProfiles[charKey] = assignedProfile
+    end
+
+    self:SwitchProfile(assignedProfile)
+    Utils.FW_Print(string.format(L.DATA_INITIALIZED, "|cffff0000" .. assignedProfile .. "|r"), false)
+
+
 end
 
 

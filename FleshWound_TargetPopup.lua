@@ -27,6 +27,8 @@ local pendingTarget
 local popupFrame
 local targetName
 
+
+--- A function to save the position of the popup frame.
 local function SavePopupPosition()
     if not FleshWoundData then FleshWoundData = {} end
     FleshWoundData.popupPos = FleshWoundData.popupPos or {}
@@ -37,6 +39,7 @@ local function SavePopupPosition()
     FleshWoundData.popupPos.yOfs = yOfs
 end
 
+--- A function to restore the position of the popup frame.
 local function RestorePopupPosition()
     if FleshWoundData and FleshWoundData.popupPos then
         popupFrame:ClearAllPoints()
@@ -58,12 +61,15 @@ local function RestorePopupPosition()
     end
 end
 
+--- Helper function to hide the popup frame.
 local function HidePopup()
     if popupFrame then
         popupFrame:Hide()
     end
 end
 
+--- The function to show the popup frame for a target.
+--- @param name string: The name of the target player.
 local function ShowPopupForTarget(name)
     if not popupFrame then
         popupFrame = CreateFrame("Frame", "FleshWoundTargetPopup", UIParent, "BackdropTemplate")
@@ -123,6 +129,8 @@ local function ShowPopupForTarget(name)
     popupFrame:Show()
 end
 
+
+--- Event frame to catch PLAYER_TARGET_CHANGED and CHAT_MSG_ADDON events.
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
 eventFrame:RegisterEvent("CHAT_MSG_ADDON")

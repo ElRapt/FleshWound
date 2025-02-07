@@ -31,7 +31,7 @@ local CONSTANTS = {
     RELOAD_EVENT_NAME = "ADDON_LOADED"
 }
 
--- Create a custom welcome frame for first-time use.
+--- Create a custom backdrop frame to display the welcome message.
 local function ShowWelcomeFrame()
     if FleshWoundData and FleshWoundData[CONSTANTS.WELCOME_ALREADY_SHOWN_KEY] then
         return
@@ -72,12 +72,12 @@ local function ShowWelcomeFrame()
     welcomeFrame:Show()
 end
 
---[[---------------------------------------------------------------------------
-  EventHandler: A small module to handle ADDON_LOADED and set up the addon.
----------------------------------------------------------------------------]]--
+--- Event handler for the ADDON_LOADED event.
 local EventHandler = {}
 addonTable.EventHandler = EventHandler
 
+--- A callback for the ADDON_LOADED event.
+--- @param loadedName string: The name of the addon that was loaded.
 function EventHandler:OnAddonLoaded(loadedName)
     if loadedName == addonName then
         if not FleshWoundData then
@@ -119,10 +119,9 @@ function EventHandler:OnAddonLoaded(loadedName)
     end
 end
 
---[[---------------------------------------------------------------------------
-  Called when we receive a remote profile. Temporarily display that data until
-  the user closes or reverts to their own profile.
----------------------------------------------------------------------------]]--
+--- A function to handle the display of distant profile data.
+--- @param profileName string: The name of the profile.
+--- @param profileData table: The profile data to display.
 function addonTable:OpenReceivedProfile(profileName, profileData)
     local GUI = addonTable.GUI
     if not GUI then
@@ -164,6 +163,8 @@ function addonTable:OpenReceivedProfile(profileName, profileData)
     end
 end
 
+
+--- The event frame to catch the ADDON_LOADED event.
 EventHandler.eventFrame = CreateFrame("Frame")
 EventHandler.eventFrame:RegisterEvent(CONSTANTS.RELOAD_EVENT_NAME)
 EventHandler.eventFrame:SetScript("OnEvent", function(_, event, ...)

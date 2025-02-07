@@ -10,21 +10,19 @@ addonTable.Utils = Utils
 -- A colorized prefix for all chat prints.
 local prefixColor = "|cFF00FF00FleshWound:|r "
 
---[[---------------------------------------------------------------------------
-    Returns the version of the addon as a string.
-    If the version is not found, returns "0.0.0".
----------------------------------------------------------------------------]]--
 
+
+--- Returns the version of the addon as a string.
+--- @return string: The version of the addon.
 function Utils.GetAddonVersion()
     local version = GetAddOnMetadata and GetAddOnMetadata(addonName, "Version")
     return version or "0.0.0"
 end
 
 
---[[---------------------------------------------------------------------------
-    Prints a message to the chat window with a uniform prefix.
-    Pass `isError = true` to also show in UIErrorsFrame in red.
----------------------------------------------------------------------------]]--
+--- Prints a message to the chat frame.
+--- @param msg string: The message to print.
+--- @param isError boolean: If true, the message is printed in red to the UIErrorsFrame.
 function Utils.FW_Print(msg, isError)
     if isError then
         UIErrorsFrame:AddMessage(prefixColor .. msg, 1.0, 0.0, 0.0, 5)
@@ -33,10 +31,9 @@ function Utils.FW_Print(msg, isError)
     end
 end
 
---[[---------------------------------------------------------------------------
-    Helper to make a frame draggable. If you pass onStopCallback,
-    it will be called after the user stops dragging.
----------------------------------------------------------------------------]]--
+--- Helper function to make a frame draggable.
+--- @param frame table: The frame to make draggable.
+--- @param onStopCallback function: An optional callback function to call when dragging stops.
 function Utils.MakeFrameDraggable(frame, onStopCallback)
     frame:SetMovable(true)
     frame:EnableMouse(true)

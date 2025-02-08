@@ -1,14 +1,26 @@
 local addonName, addonTable = ...
-local Utils = addonTable.Utils
 local Comm = {}
 addonTable.Comm = Comm
+
+-- Constants
 Comm.PREFIX = "FleshWoundComm"
 Comm.PING_TIMEOUT = 5
 local AceSerializer = LibStub("AceSerializer-3.0")
-local knownAddonUsers = {}
-local pendingPings = {}
+local CHANNEL_NAME = "FleshWoundComm"
+
+-- Internal state tables
+local knownAddonUsers = {}   -- Tracks players known to have the addon
+local pendingPings = {}      -- Records ping start times for players
 local channelJoinedOnce = false
 
+--------------------------------------------------------------------------------
+-- Profile Request and Handling
+--------------------------------------------------------------------------------
+
+--- Requests a profile from the specified target player.
+-- If the player is known to have the addon, immediately sends a profile request.
+-- Otherwise, pings the player and retries after the ping timeout.
+-- @param targetPlayer string The name of the target player.
 function Comm:RequestProfile(targetPlayer)
     if not targetPlayer or targetPlayer == "" then return end
     if knownAddonUsers[targetPlayer] then
@@ -23,6 +35,10 @@ function Comm:RequestProfile(targetPlayer)
     end
 end
 
+--- Sends the profile data for a given profile name to a target player.
+-- Retrieves the profile from FleshWoundData, serializes it, and sends it.
+-- @param targetPlayer string The name of the target player.
+-- @param profileName string The name of the profile to send.
 function Comm:SendProfileData(targetPlayer, profileName)
     if not targetPlayer or not profileName then return end
     local data = addonTable.FleshWoundData.profiles[profileName]
@@ -31,12 +47,17 @@ function Comm:SendProfileData(targetPlayer, profileName)
     C_ChatInfo.SendAddonMessage(self.PREFIX, "PROFILE_DATA:" .. profileName .. ":" .. serialized, "WHISPER", targetPlayer)
 end
 
+--- Serializes a profile's wound data.
+-- @param profileData table The profile data table.
+-- @return string The serialized wound data.
 function Comm:SerializeProfile(profileData)
     local woundData = profileData.woundData or {}
-    local serialized = AceSerializer:Serialize(woundData)
-    return serialized
+    return AceSerializer:Serialize(woundData)
 end
 
+--- Deserializes profile data from a serialized string.
+-- @param serialized string The serialized wound data.
+-- @return table A table containing a field 'woundData' with the deserialized data.
 function Comm:DeserializeProfile(serialized)
     local profileData = { woundData = {} }
     if serialized == "" then return profileData end
@@ -47,6 +68,13 @@ function Comm:DeserializeProfile(serialized)
     return profileData
 end
 
+--------------------------------------------------------------------------------
+-- Ping/Pong Functions
+--------------------------------------------------------------------------------
+
+--- Pings a target player to determine if they have the addon.
+-- Records the ping time and sends a "PING" message.
+-- @param targetPlayer string The name of the target player.
 function Comm:PingPlayer(targetPlayer)
     if not targetPlayer or targetPlayer == "" then return end
     pendingPings[targetPlayer] = time()
@@ -59,19 +87,36 @@ function Comm:PingPlayer(targetPlayer)
     end)
 end
 
+--- Sends a "PONG" message in response to a ping.
+-- @param targetPlayer string The name of the target player.
 function Comm:SendPong(targetPlayer)
     C_ChatInfo.SendAddonMessage(self.PREFIX, "PONG", "WHISPER", targetPlayer)
 end
 
+--- Handles receipt of a "PONG" message.
+-- Clears any pending ping for the sender and marks them as a known addon user.
+-- @param sender string The name of the sender.
 function Comm:HandlePong(sender)
     pendingPings[sender] = nil
     knownAddonUsers[sender] = true
 end
 
+--- Retrieves the table of known addon users.
+-- @return table A table mapping player names to true.
 function Comm:GetKnownAddonUsers()
     return knownAddonUsers
 end
 
+--------------------------------------------------------------------------------
+-- Addon Message Handling
+--------------------------------------------------------------------------------
+
+--- Processes incoming addon messages.
+-- Handles "PING", "PONG", "REQUEST_PROFILE", and "PROFILE_DATA" commands.
+-- @param prefixMsg string The message prefix.
+-- @param msg string The content of the message.
+-- @param channel string The channel over which the message was received.
+-- @param sender string The name of the sender.
 function Comm:OnChatMsgAddon(prefixMsg, msg, channel, sender)
     if prefixMsg ~= self.PREFIX then return end
     local player = Ambiguate(sender, "short")
@@ -93,13 +138,21 @@ function Comm:OnChatMsgAddon(prefixMsg, msg, channel, sender)
     end
 end
 
+--------------------------------------------------------------------------------
+-- Channel Management
+--------------------------------------------------------------------------------
+
+--- Initializes the Comm module.
+-- Registers the addon message prefix and begins the process of joining the channel.
 function Comm:Initialize()
     C_ChatInfo.RegisterAddonMessagePrefix(self.PREFIX)
     self:JoinChannel()
 end
 
+--- Retrieves the channel ID for the communication channel.
+-- @return number|nil The channel ID, or nil if the channel is not found.
 function Comm:GetChannel()
-    local channelId = GetChannelName("FleshWoundComm")
+    local channelId = GetChannelName(CHANNEL_NAME)
     if channelId ~= 0 then
         return channelId
     else
@@ -107,9 +160,8 @@ function Comm:GetChannel()
     end
 end
 
-Comm.channelJoiner = nil
-local CHANNEL_NAME = "FleshWoundComm"
-
+--- Called when the channel is successfully joined.
+-- Initializes the Registry module on the first successful join.
 function Comm:OnChannelJoined()
     if not channelJoinedOnce then
         channelJoinedOnce = true
@@ -119,29 +171,21 @@ function Comm:OnChannelJoined()
     end
 end
 
+--- Called when joining the channel fails.
+-- Retries joining the channel after a 10-second delay.
+-- @param reason string The reason for the failure.
 function Comm:OnChannelFailed(reason)
     C_Timer.After(10, function() self:JoinChannel() end)
 end
 
+--- Called when the channel is left.
+-- Attempts to rejoin the channel after a 1-second delay.
 function Comm:OnChannelLeft()
     C_Timer.After(1, function() self:JoinChannel() end)
 end
 
-local channelNoticeFrame = CreateFrame("Frame")
-channelNoticeFrame:RegisterEvent("CHAT_MSG_CHANNEL_NOTICE")
-channelNoticeFrame:SetScript("OnEvent", function(self, event, ...)
-    local text, _, _, _, _, _, _, _, channelName = ...
-    if channelName == CHANNEL_NAME then
-        if text == "YOU_JOINED" or text == "YOU_CHANGED" then
-            Comm:OnChannelJoined()
-        elseif text == "WRONG_PASSWORD" or text == "BANNED" then
-            Comm:OnChannelFailed(text)
-        elseif text == "YOU_LEFT" then
-            Comm:OnChannelLeft()
-        end
-    end
-end)
-
+--- Attempts to join the communication channel.
+-- If already joined, triggers OnChannelJoined; otherwise, periodically attempts to join.
 function Comm:JoinChannel()
     if self.channelJoiner then return end
     if self:GetChannel() then
@@ -161,6 +205,27 @@ function Comm:JoinChannel()
     end)
 end
 
+--------------------------------------------------------------------------------
+-- Event Handling
+--------------------------------------------------------------------------------
+
+-- Create a frame to handle CHAT_MSG_CHANNEL_NOTICE events.
+local channelNoticeFrame = CreateFrame("Frame")
+channelNoticeFrame:RegisterEvent("CHAT_MSG_CHANNEL_NOTICE")
+channelNoticeFrame:SetScript("OnEvent", function(self, event, ...)
+    local text, _, _, _, _, _, _, _, channelName = ...
+    if channelName == CHANNEL_NAME then
+        if text == "YOU_JOINED" or text == "YOU_CHANGED" then
+            Comm:OnChannelJoined()
+        elseif text == "WRONG_PASSWORD" or text == "BANNED" then
+            Comm:OnChannelFailed(text)
+        elseif text == "YOU_LEFT" then
+            Comm:OnChannelLeft()
+        end
+    end
+end)
+
+-- Create a frame to handle CHAT_MSG_ADDON events.
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("CHAT_MSG_ADDON")
 eventFrame:SetScript("OnEvent", function(self, event, ...)

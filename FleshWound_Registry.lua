@@ -15,15 +15,29 @@ Registry.queryTicker = nil
 Registry.fetchTimer = nil
 Registry.CHANNEL_NAME = "FleshWoundComm"
 
+--- Normalizes a player's name using Ambiguate in "short" mode.
+-- @param name string The player's name.
+-- @return string|nil The normalized name or nil if no name provided.
 local function NormalizePlayerName(name)
     return name and Ambiguate(name, "short") or nil
 end
 
+--- Converts a given name to lowercase.
+-- @param name string The player's name.
+-- @return string|nil The lowercase version of the name or nil if no name provided.
 local function ToLower(name)
     return name and string.lower(name) or nil
 end
 
+--- Compares two version strings.
+-- Returns -1 if v1 is less than v2, 1 if greater, or 0 if equal.
+-- @param v1 string First version string.
+-- @param v2 string Second version string.
+-- @return number Comparison result: -1, 0, or 1.
 local function VersionCompare(v1, v2)
+    --- Splits a version string into its numeric parts.
+    -- @param v string Version string.
+    -- @return table Array of numbers representing the version.
     local function splitVersion(v)
         local parts = {}
         for num in string.gmatch(v, "%d+") do
@@ -46,10 +60,14 @@ local function VersionCompare(v1, v2)
     return 0
 end
 
+--- Retrieves the local addon's version.
+-- @return string The local version string.
 function Registry:GetLocalVersion()
     return Utils.GetAddonVersion()
 end
 
+--- Sends a HELLO message containing the local version.
+-- @param target string (optional) The target player to respond to.
 function Registry:SendHello(target)
     local version = self:GetLocalVersion()
     local msg = self.EVENT_HELLO .. ":" .. version
@@ -63,6 +81,8 @@ function Registry:SendHello(target)
     end
 end
 
+--- Sends a QUERY message to request version information.
+-- @param target string (optional) The target player for the query.
 function Registry:SendQuery(target)
     local msg = self.EVENT_QUERY
     if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then
@@ -75,6 +95,12 @@ function Registry:SendQuery(target)
     end
 end
 
+--- Handles incoming addon messages.
+-- Processes both QUERY and HELLO messages from other users.
+-- @param prefix string The addon message prefix.
+-- @param msg string The message payload.
+-- @param channel string The channel over which the message was received.
+-- @param sender string The sender's name.
 function Registry:OnChatMsgAddon(prefix, msg, channel, sender)
     if prefix ~= self.PREFIX then return end
     local player = NormalizePlayerName(sender)
@@ -95,6 +121,8 @@ function Registry:OnChatMsgAddon(prefix, msg, channel, sender)
     end
 end
 
+--- Displays the count of online users.
+-- Calculates the number of users in the registry and prints an appropriate message.
 function Registry:DisplayUserCount()
     local total = 0
     for player, data in pairs(self.users) do
@@ -110,6 +138,8 @@ function Registry:DisplayUserCount()
     end
 end 
 
+--- Initiates fetching of the user list from the designated channel.
+-- Calls ListChannelByName to trigger the CHAT_MSG_CHANNEL_LIST event.
 function Registry:FetchUsers()
     if self.usersFetched and not self.fetchingUsers then return end
     self.fetchingUsers = true
@@ -118,6 +148,8 @@ function Registry:FetchUsers()
     end
 end
 
+--- Callback for the CHAT_MSG_CHANNEL_LIST event.
+-- Processes the comma-separated list of players from the channel and updates the registry.
 local channelListFrame = CreateFrame("Frame")
 channelListFrame:RegisterEvent("CHAT_MSG_CHANNEL_LIST")
 channelListFrame:SetScript("OnEvent", function(_, event, ...)
@@ -148,6 +180,8 @@ channelListFrame:SetScript("OnEvent", function(_, event, ...)
     Registry:DisplayUserCount()
 end)
 
+--- Filters CHAT_MSG_CHANNEL_LIST events.
+-- Suppresses the default chat output for the designated channel.
 ChatFrame_AddMessageEventFilter("CHAT_MSG_CHANNEL_LIST", function(_, event, ...)
     local channelName = select(9, ...)
     if channelName == Registry.CHANNEL_NAME then
@@ -156,6 +190,9 @@ ChatFrame_AddMessageEventFilter("CHAT_MSG_CHANNEL_LIST", function(_, event, ...)
     return false
 end)
 
+--- Initializes the registry module.
+-- Registers the addon message prefix, sets up event handlers, fetches users,
+-- and starts a periodic ticker to send HELLO messages.
 function Registry:Initialize()
     C_ChatInfo.RegisterAddonMessagePrefix(self.PREFIX)
     local eventFrame = CreateFrame("Frame")

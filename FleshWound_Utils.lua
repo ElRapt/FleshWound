@@ -12,8 +12,6 @@ addonTable.Utils = Utils
 -- A colorized prefix for all chat prints.
 local prefixColor = "|cFF00FF00FleshWound:|r "
 
-
-
 --- Returns the version of the addon as a string.
 --- @return string: The version of the addon.
 function Utils.GetAddonVersion()

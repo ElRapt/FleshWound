@@ -102,7 +102,7 @@ function Registry:DisplayUserCount()
     for player, data in pairs(self.users) do
         total = total + 1
     end
-    count = total - 1
+    local count = total - 1
     if count == 1 then
         Utils.FW_Print(string.format(L.USERS_ONLINE_ONE), false)
     elseif count > 1 then
@@ -148,6 +148,14 @@ channelListFrame:SetScript("OnEvent", function(_, event, ...)
     end
     
     Registry:DisplayUserCount()
+end)
+
+ChatFrame_AddMessageEventFilter("CHAT_MSG_CHANNEL_LIST", function(_, event, ...)
+    local channelName = select(9, ...)
+    if channelName == Registry.CHANNEL_NAME then
+        return true
+    end
+    return false
 end)
 
 function Registry:Initialize()

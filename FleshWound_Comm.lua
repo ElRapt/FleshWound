@@ -7,6 +7,7 @@ Comm.PING_TIMEOUT = 5
 local AceSerializer = LibStub("AceSerializer-3.0")
 local knownAddonUsers = {}
 local pendingPings = {}
+local channelJoinedOnce = false
 
 function Comm:RequestProfile(targetPlayer)
     if not targetPlayer or targetPlayer == "" then return end
@@ -110,16 +111,19 @@ Comm.channelJoiner = nil
 local CHANNEL_NAME = "FleshWoundComm"
 
 function Comm:OnChannelJoined()
-    Utils.FW_Print("Channel joined: " .. CHANNEL_NAME, false)
+    if not channelJoinedOnce then
+        channelJoinedOnce = true
+        if addonTable.Registry and addonTable.Registry.Initialize then
+            addonTable.Registry:Initialize()
+        end
+    end
 end
 
 function Comm:OnChannelFailed(reason)
-    Utils.FW_Print("Channel join failed: " .. reason, false)
     C_Timer.After(10, function() self:JoinChannel() end)
 end
 
 function Comm:OnChannelLeft()
-    Utils.FW_Print("Channel left: " .. CHANNEL_NAME, false)
     C_Timer.After(1, function() self:JoinChannel() end)
 end
 
@@ -140,9 +144,7 @@ end)
 
 function Comm:JoinChannel()
     if self.channelJoiner then return end
-    Utils.FW_Print("Attempting to join channel: " .. CHANNEL_NAME, false)
     if self:GetChannel() then
-        Utils.FW_Print("Already joined channel: " .. CHANNEL_NAME, false)
         self:OnChannelJoined()
         return
     end
@@ -154,7 +156,6 @@ function Comm:JoinChannel()
             end
             self:OnChannelJoined()
         else
-            Utils.FW_Print("Joining channel: " .. CHANNEL_NAME, false)
             JoinTemporaryChannel(CHANNEL_NAME, nil)
         end
     end)

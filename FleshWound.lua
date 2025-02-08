@@ -104,13 +104,6 @@ function EventHandler:OnAddonLoaded(loadedName)
             addonTable.Comm:Initialize()
         end
 
-        -- Initialize Registry
-        if addonTable.Registry and addonTable.Registry.Initialize then
-            addonTable.Registry:Initialize()
-        else
-            Utils.FW_Print("Registry module not found or missing Initialize method.", true)
-        end
-
         Utils.FW_Print(string.format(L.THANK_YOU, version), false)
 
         ShowWelcomeFrame()
@@ -163,7 +156,6 @@ function addonTable:OpenReceivedProfile(profileName, profileData)
     end
 end
 
-
 --- The event frame to catch the ADDON_LOADED event.
 EventHandler.eventFrame = CreateFrame("Frame")
 EventHandler.eventFrame:RegisterEvent(CONSTANTS.RELOAD_EVENT_NAME)
@@ -172,3 +164,6 @@ EventHandler.eventFrame:SetScript("OnEvent", function(_, event, ...)
         EventHandler:OnAddonLoaded(...)
     end
 end)
+
+
+

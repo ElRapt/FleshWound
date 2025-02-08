@@ -95,6 +95,7 @@ Your feedback is valuable and will help shape the future of FleshWound. Thank yo
 L.NEW_VERSION_AVAILABLE = "A new version of FleshWound is available: %s (you have %s)."
 L.USERS_ONLINE_OTHER = "There are %d other users with FleshWound online."
 L.USERS_ONLINE_NONE = "You are the only user of FleshWound online."
+L.USERS_ONLINE_ONE = "There is 1 other user with FleshWound online."
 
 
 return L

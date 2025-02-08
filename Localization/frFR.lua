@@ -97,5 +97,6 @@ Vos commentaires sont précieux et aideront à façonner l'avenir de FleshWound.
 L.NEW_VERSION_AVAILABLE = "Une nouvelle version de FleshWound est disponible : %s (vous avez %s)."
 L.USERS_ONLINE_OTHER = "Il y a %d autres utilisateurs de FleshWound en ligne."
 L.USERS_ONLINE_NONE = "Vous êtes le seul utilisateur de FleshWound en ligne."
+L.USERS_ONLINE_ONE = "Il y a 1 autre utilisateur de FleshWound en ligne."
 
 return L

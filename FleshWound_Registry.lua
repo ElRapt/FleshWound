@@ -11,7 +11,6 @@ Registry.users = {}
 Registry.newVersionNotified = false
 Registry.fetchingUsers = false
 Registry.usersFetched = false
-Registry.queryTicker = nil
 Registry.fetchTimer = nil
 Registry.CHANNEL_NAME = "FleshWoundComm"
 
@@ -125,7 +124,7 @@ end
 -- Calculates the number of users in the registry and prints an appropriate message.
 function Registry:DisplayUserCount()
     local total = 0
-    for player, data in pairs(self.users) do
+    for _, _ in pairs(self.users) do
         total = total + 1
     end
     local count = total - 1
@@ -139,12 +138,23 @@ function Registry:DisplayUserCount()
 end 
 
 --- Initiates fetching of the user list from the designated channel.
--- Calls ListChannelByName to trigger the CHAT_MSG_CHANNEL_LIST event.
+-- Calls ListChannelByName to trigger the CHAT_MSG_CHANNEL_LIST event and retries until successful.
 function Registry:FetchUsers()
     if self.usersFetched and not self.fetchingUsers then return end
     self.fetchingUsers = true
     if addonTable.Comm and addonTable.Comm:GetChannel() then
         ListChannelByName(self.CHANNEL_NAME)
+        if self.fetchTimer then
+            self.fetchTimer:Cancel()
+        end
+        self.fetchTimer = C_Timer.NewTicker(1, function()
+            if not Registry.usersFetched then
+                ListChannelByName(Registry.CHANNEL_NAME)
+            else
+                Registry.fetchTimer:Cancel()
+                Registry.fetchTimer = nil
+            end
+        end)
     end
 end
 
@@ -176,7 +186,14 @@ channelListFrame:SetScript("OnEvent", function(_, event, ...)
             Registry.users[key].lastSeen = time()
         end
     end
-    
+
+    Registry.usersFetched = true
+    Registry.fetchingUsers = false
+    if Registry.fetchTimer then
+        Registry.fetchTimer:Cancel()
+        Registry.fetchTimer = nil
+    end
+
     Registry:DisplayUserCount()
 end)
 

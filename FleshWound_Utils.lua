@@ -50,3 +50,92 @@ function Utils.MakeFrameDraggable(frame, onStopCallback)
         end
     end)
 end
+
+-- Trims whitespace and removes control characters from a string.
+-- @param text (string) The input string.
+-- @return (string) The sanitized string.
+function Utils.SanitizeInput(text)
+    text = text or ""
+    text = text:match("^%s*(.-)%s*$") or ""
+    text = text:gsub("[%c]", "")
+    return text
+end
+
+-- Retrieves the RGBA color values for a given severity ID.
+-- @param severityID (number) The severity identifier.
+-- @param SeveritiesByID (table) The table of severity data.
+-- @return (number, number, number, number) The red, green, blue, and alpha values.
+function Utils.GetSeverityColorByID(severityID, SeveritiesByID)
+    local sev = SeveritiesByID[severityID]
+    if not sev then
+        return 0, 0, 0, 0
+    end
+    local c = sev.color
+    return c[1], c[2], c[3], c[4]
+end
+
+
+-- Determines the highest severity ID within a region.
+-- @param regionID (number) The ID of the body region.
+-- @return (number) The highest severity ID found (default is 1 for "None").
+function Utils.GetHighestSeverityID(regionID)
+    local woundData = addonTable.woundData or {}
+    local notes = woundData[regionID]
+    if not (notes and #notes > 0) then
+        return 1
+    end
+    local highestID = 1
+    for _, note in ipairs(notes) do
+        local sevID = note.severityID or 1
+        if sevID > highestID then
+            highestID = sevID
+        end
+    end
+    return highestID
+end
+
+
+--- Normalizes a player's name using Ambiguate in "short" mode.
+-- @param name string The player's name.
+-- @return string|nil The normalized name or nil if no name provided.
+function Utils.NormalizePlayerName(name)
+    return name and Ambiguate(name, "short") or nil
+end
+
+--- Converts a given name to lowercase.
+-- @param name string The player's name.
+-- @return string|nil The lowercase version of the name or nil if no name provided.
+function Utils.ToLower(name)
+    return name and string.lower(name) or nil
+end
+
+--- Compares two version strings.
+-- Returns -1 if v1 is less than v2, 1 if greater, or 0 if equal.
+-- @param v1 string First version string.
+-- @param v2 string Second version string.
+-- @return number Comparison result: -1, 0, or 1.
+function Utils.VersionCompare(v1, v2)
+    --- Splits a version string into its numeric parts.
+    -- @param v string Version string.
+    -- @return table Array of numbers representing the version.
+    local function splitVersion(v)
+        local parts = {}
+        for num in string.gmatch(v, "%d+") do
+            table.insert(parts, tonumber(num))
+        end
+        return parts
+    end
+    local t1 = splitVersion(v1)
+    local t2 = splitVersion(v2)
+    local maxLen = math.max(#t1, #t2)
+    for i = 1, maxLen do
+        local n1 = t1[i] or 0
+        local n2 = t2[i] or 0
+        if n1 < n2 then
+            return -1
+        elseif n1 > n2 then
+            return 1
+        end
+    end
+    return 0
+end

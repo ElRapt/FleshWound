@@ -158,52 +158,6 @@ for _, st in ipairs(Statuses) do
     StatusesByID[st.id] = st
 end
 
--------------------------------------------------------------------------------
--- SanitizeInput - Trims whitespace and removes control characters from a string.
--- @param text (string) The input string.
--- @return (string) The sanitized string.
--------------------------------------------------------------------------------
-local function SanitizeInput(text)
-    text = text or ""
-    text = text:match("^%s*(.-)%s*$") or ""
-    text = text:gsub("[%c]", "")
-    return text
-end
-
--------------------------------------------------------------------------------
--- GetSeverityColorByID - Retrieves the RGBA color values for a given severity ID.
--- @param severityID (number) The severity identifier.
--- @return (number, number, number, number) The red, green, blue, and alpha values.
--------------------------------------------------------------------------------
-local function GetSeverityColorByID(severityID)
-    local sev = SeveritiesByID[severityID]
-    if not sev then
-        return 0, 0, 0, 0
-    end
-    local c = sev.color
-    return c[1], c[2], c[3], c[4]
-end
-
--------------------------------------------------------------------------------
--- GetHighestSeverityID - Determines the highest severity ID within a region.
--- @param regionID (number) The ID of the body region.
--- @return (number) The highest severity ID found (default is 1 for "None").
--------------------------------------------------------------------------------
-local function GetHighestSeverityID(regionID)
-    local woundData = addonTable.woundData or {}
-    local notes = woundData[regionID]
-    if not (notes and #notes > 0) then
-        return 1
-    end
-    local highestID = 1
-    for _, note in ipairs(notes) do
-        local sevID = note.severityID or 1
-        if sevID > highestID then
-            highestID = sevID
-        end
-    end
-    return highestID
-end
 
 -------------------------------------------------------------------------------
 -- GUI:SaveWindowPosition - Saves the position of a given frame.
@@ -721,8 +675,8 @@ function GUI:UpdateRegionColors()
     local statusPriority = CONSTANTS.STATUS_PRIORITY
 
     for regionID, btn in pairs(frame.BodyRegions) do
-        local highestID = GetHighestSeverityID(regionID)
-        local r, g, b, a = GetSeverityColorByID(highestID)
+        local highestID = Utils.GetHighestSeverityID(regionID)
+        local r, g, b, a = Utils.GetSeverityColorByID(highestID, SeveritiesByID)
         btn.overlay:SetColorTexture(r, g, b, a)
 
         local woundData = addonTable.woundData or {}
@@ -874,7 +828,7 @@ function GUI:CreateNoteEntry(parent, note, index, regionID)
     entry:SetBackdrop(CONSTANTS.BACKDROPS.TOOLTIP_FRAME)
 
     local severityID = note.severityID or 1
-    local r, g, b, a = GetSeverityColorByID(severityID)
+    local r, g, b, a = Utils.GetSeverityColorByID(severityID, SeveritiesByID)
     entry:SetBackdropColor(r, g, b, a)
     entry:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
 
@@ -1041,7 +995,7 @@ function GUI:PopulateNoteDialog(dialog, noteIndex)
     end
 
     local function UpdateSaveButtonState()
-        local text = SanitizeInput(dialog.EditBox:GetText() or "")
+        local text = Utils.SanitizeInput(dialog.EditBox:GetText() or "")
         local length = strlenutf8(text)
         dialog.CharCountLabel:SetText(string.format(L.CHAR_COUNT, length, CONSTANTS.LIMITS.MAX_NOTE_LENGTH))
 
@@ -1081,7 +1035,7 @@ function GUI:PopulateNoteDialog(dialog, noteIndex)
     dialog.EditBox:SetScript("OnTextChanged", UpdateSaveButtonState)
 
     local function ConfirmAndSaveNote()
-        local text = SanitizeInput(dialog.EditBox:GetText() or "")
+        local text = Utils.SanitizeInput(dialog.EditBox:GetText() or "")
         if text == "" then
             UIErrorsFrame:AddMessage(string.format(L.ERROR, L.EMPTY), 1.0, 0.0, 0.0, 5)
             return
@@ -1300,7 +1254,7 @@ function GUI:OpenCreateProfileDialog()
 
     local function UpdateCreateButtonState()
         local text = dialog.nameEditBox:GetText()
-        local profileName = SanitizeInput(text)
+        local profileName = Utils.SanitizeInput(text)
         local length = strlenutf8(text)
         dialog.charCountLabel:SetText(string.format(L.CHAR_COUNT, length, CONSTANTS.LIMITS.MAX_PROFILE_NAME_LENGTH))
 
@@ -1318,7 +1272,7 @@ function GUI:OpenCreateProfileDialog()
     dialog.nameEditBox:SetScript("OnTextChanged", UpdateCreateButtonState)
 
     dialog.SaveButton:SetScript("OnClick", function()
-        local profileName = SanitizeInput(dialog.nameEditBox:GetText())
+        local profileName = Utils.SanitizeInput(dialog.nameEditBox:GetText())
         addonTable.Data:CreateProfile(profileName)
         dialog:Hide()
         self:OpenProfileManager()
@@ -1370,7 +1324,7 @@ function GUI:OpenRenameProfileDialog(oldProfileName)
 
     local function UpdateRenameButtonState()
         local text = dialog.nameEditBox:GetText()
-        local newProfileName = SanitizeInput(text)
+        local newProfileName = Utils.SanitizeInput(text)
         local length = strlenutf8(text)
         dialog.charCountLabel:SetText(string.format(L.CHAR_COUNT, length, CONSTANTS.LIMITS.MAX_PROFILE_NAME_LENGTH))
 
@@ -1389,7 +1343,7 @@ function GUI:OpenRenameProfileDialog(oldProfileName)
     dialog.nameEditBox:SetScript("OnTextChanged", UpdateRenameButtonState)
 
     dialog.SaveButton:SetScript("OnClick", function()
-        local newProfileName = SanitizeInput(dialog.nameEditBox:GetText())
+        local newProfileName = Utils.SanitizeInput(dialog.nameEditBox:GetText())
         addonTable.Data:RenameProfile(oldProfileName, newProfileName)
         dialog:Hide()
         self:OpenProfileManager()

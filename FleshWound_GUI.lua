@@ -828,7 +828,7 @@ function GUI:CreateNoteEntry(parent, note, index, regionID)
     entry:SetBackdrop(CONSTANTS.BACKDROPS.TOOLTIP_FRAME)
 
     local severityID = note.severityID or 1
-    local r, g, b, a = GetSeverityColorByID(severityID)
+    local r, g, b, a = Utils.GetSeverityColorByID(severityID, SeveritiesByID)
     entry:SetBackdropColor(r, g, b, a)
     entry:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
 

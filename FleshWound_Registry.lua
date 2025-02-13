@@ -14,51 +14,6 @@ Registry.usersFetched = false
 Registry.fetchTimer = nil
 Registry.CHANNEL_NAME = "FleshWoundComm"
 
---- Normalizes a player's name using Ambiguate in "short" mode.
--- @param name string The player's name.
--- @return string|nil The normalized name or nil if no name provided.
-local function NormalizePlayerName(name)
-    return name and Ambiguate(name, "short") or nil
-end
-
---- Converts a given name to lowercase.
--- @param name string The player's name.
--- @return string|nil The lowercase version of the name or nil if no name provided.
-local function ToLower(name)
-    return name and string.lower(name) or nil
-end
-
---- Compares two version strings.
--- Returns -1 if v1 is less than v2, 1 if greater, or 0 if equal.
--- @param v1 string First version string.
--- @param v2 string Second version string.
--- @return number Comparison result: -1, 0, or 1.
-local function VersionCompare(v1, v2)
-    --- Splits a version string into its numeric parts.
-    -- @param v string Version string.
-    -- @return table Array of numbers representing the version.
-    local function splitVersion(v)
-        local parts = {}
-        for num in string.gmatch(v, "%d+") do
-            table.insert(parts, tonumber(num))
-        end
-        return parts
-    end
-    local t1 = splitVersion(v1)
-    local t2 = splitVersion(v2)
-    local maxLen = math.max(#t1, #t2)
-    for i = 1, maxLen do
-        local n1 = t1[i] or 0
-        local n2 = t2[i] or 0
-        if n1 < n2 then
-            return -1
-        elseif n1 > n2 then
-            return 1
-        end
-    end
-    return 0
-end
-
 --- Retrieves the local addon's version.
 -- @return string The local version string.
 function Registry:GetLocalVersion()
@@ -102,7 +57,7 @@ end
 -- @param sender string The sender's name.
 function Registry:OnChatMsgAddon(prefix, msg, channel, sender)
     if prefix ~= self.PREFIX then return end
-    local player = NormalizePlayerName(sender)
+    local player = Utils.NormalizePlayerName(sender)
     if not player then return end
     local event, payload = strsplit(":", msg, 2)
     
@@ -110,9 +65,9 @@ function Registry:OnChatMsgAddon(prefix, msg, channel, sender)
         self:SendHello(player)
     elseif event == self.EVENT_HELLO then
         local remoteVersion = payload or "0.0.0"
-        self.users[ToLower(player)] = { version = remoteVersion, lastSeen = time() }
+        self.users[Utils.ToLower(player)] = { version = remoteVersion, lastSeen = time() }
         local localVersion = self:GetLocalVersion()
-        if not self.newVersionNotified and VersionCompare(localVersion, remoteVersion) < 0 then
+        if not self.newVersionNotified and Utils.VersionCompare(localVersion, remoteVersion) < 0 then
             self.newVersionNotified = true
             Utils.FW_Print(string.format(L.NEW_VERSION_AVAILABLE, remoteVersion, localVersion), true)
         end
@@ -179,9 +134,9 @@ channelListFrame:SetScript("OnEvent", function(_, event, ...)
     
     for player in string.gmatch(players, "([^,]+)") do
         player = player:gsub("^%s*(.-)%s*$", "%1")
-        local normPlayer = NormalizePlayerName(player)
+        local normPlayer = Utils.NormalizePlayerName(player)
         if normPlayer then
-            local key = ToLower(normPlayer)
+            local key = Utils.ToLower(normPlayer)
             Registry.users[key] = Registry.users[key] or {}
             Registry.users[key].lastSeen = time()
         end

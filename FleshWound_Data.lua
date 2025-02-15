@@ -30,7 +30,9 @@ function Data:SwitchProfile(profileName)
 
     if addonTable.GUI then
         addonTable.GUI:UpdateRegionColors()
-        addonTable.GUI:CloseAllDialogs()
+        if addonTable.Dialogs then
+            addonTable.Dialogs:CloseAllDialogs()
+        end
         addonTable.GUI.currentTemporaryProfile = nil
         addonTable.GUI:UpdateProfileBanner()
     end

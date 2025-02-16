@@ -117,14 +117,16 @@ end
 --- @param profileData table: The profile data to display.
 function addonTable:OpenReceivedProfile(profileName, profileData)
     local GUI = addonTable.GUI
-    if not GUI then
+    local Dialogs = addonTable.Dialogs
+    if not GUI or not Dialogs then
         return
+    
     end
 
     if GUI.currentTemporaryProfile then
         GUI:RestoreOriginalProfile()
     end
-    GUI:CloseAllDialogs()
+    Dialogs:CloseAllDialogs()
     if GUI.frame then
         GUI.frame:Hide()
     end

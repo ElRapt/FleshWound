@@ -12,7 +12,7 @@ function ProfileManager:OpenProfileManager()
     addonTable.Dialogs:CloseAllDialogs()
     local frameName = "FleshWoundProfileManager"
     local dialogTitle = L.PROFILE_MANAGER or "Profile Manager"
-    local dialog = Dialogs.CreateDialog(frameName, dialogTitle, CONSTANTS.SIZES.PROFILE_MANAGER_WIDTH, CONSTANTS.SIZES.PROFILE_MANAGER_HEIGHT)
+    local dialog = Dialogs:CreateDialog(frameName, dialogTitle, CONSTANTS.SIZES.PROFILE_MANAGER_WIDTH, CONSTANTS.SIZES.PROFILE_MANAGER_HEIGHT)
     dialog:EnableMouseWheel(true)
     dialog:SetFrameStrata("DIALOG")
     dialog:SetToplevel(true)
@@ -119,7 +119,7 @@ function ProfileManager:OpenCreateProfileDialog()
     addonTable.Dialogs:CloseAllDialogs()
     local frameName = "FleshWoundCreateProfileDialog"
     local dialogTitle = L.CREATE_PROFILE or "Create Profile"
-    local dialog = Dialogs.CreateDialog(frameName, dialogTitle, CONSTANTS.SIZES.CREATE_PROFILE_WIDTH, CONSTANTS.SIZES.CREATE_PROFILE_HEIGHT)
+    local dialog = Dialogs:CreateDialog(frameName, dialogTitle, CONSTANTS.SIZES.CREATE_PROFILE_WIDTH, CONSTANTS.SIZES.CREATE_PROFILE_HEIGHT)
     dialog:EnableMouseWheel(true)
     dialog:SetFrameStrata("DIALOG")
     dialog:SetToplevel(true)
@@ -134,7 +134,7 @@ function ProfileManager:OpenCreateProfileDialog()
     nameEditBox:SetPoint("LEFT", nameLabel, "RIGHT", 10, 0)
     dialog.nameEditBox = nameEditBox
     dialog.charCountLabel = charCountLabel
-    dialog.SaveButton, dialog.CancelButton = GUI:CreateSaveCancelButtons(dialog)
+    dialog.SaveButton, dialog.CancelButton = Dialogs:CreateSaveCancelButtons(dialog)
     dialog.SaveButton:SetText(L.CREATE or "Create")
     _G[frameName] = dialog
     local function UpdateCreateButtonState()
@@ -175,7 +175,7 @@ function ProfileManager:OpenRenameProfileDialog(oldProfileName)
     end
     local dialog = _G[frameName]
     if not dialog then
-        dialog = Dialogs.CreateDialog(frameName, dialogTitle, CONSTANTS.SIZES.RENAME_PROFILE_WIDTH, CONSTANTS.SIZES.RENAME_PROFILE_HEIGHT)
+        dialog = Dialogs:CreateDialog(frameName, dialogTitle, CONSTANTS.SIZES.RENAME_PROFILE_WIDTH, CONSTANTS.SIZES.RENAME_PROFILE_HEIGHT)
         addonTable.Utils.MakeFrameDraggable(dialog, function(f)
             GUI:SaveWindowPosition(frameName, f)
         end)
@@ -186,7 +186,7 @@ function ProfileManager:OpenRenameProfileDialog(oldProfileName)
         nameEditBox:SetPoint("LEFT", nameLabel, "RIGHT", 10, 0)
         dialog.nameEditBox = nameEditBox
         dialog.charCountLabel = charCountLabel
-        dialog.SaveButton, dialog.CancelButton = GUI:CreateSaveCancelButtons(dialog)
+        dialog.SaveButton, dialog.CancelButton = Dialogs:CreateSaveCancelButtons(dialog)
         dialog.SaveButton:SetText(L.RENAME or "Rename")
         _G[frameName] = dialog
     end

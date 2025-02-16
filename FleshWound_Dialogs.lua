@@ -12,35 +12,46 @@ local L = addonTable.L
 -- @param width number Dialog width.
 -- @param height number Dialog height.
 -- @return Frame The constructed dialog frame.
-function Dialogs.CreateDialog(name, titleText, width, height)
+function Dialogs:CreateDialog(name, titleText, width, height)
+    if type(width) ~= "number" or type(height) ~= "number" then
+        error(string.format("Invalid dialog size: width=%s, height=%s", tostring(width), tostring(height)))
+        return nil
+    end
+
     local dialog = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
-    dialog:SetSize(width, height)
+    dialog:SetSize(width, height) -- No more nil values
     dialog:SetPoint("CENTER")
     dialog:SetBackdrop(CONSTANTS.BACKDROPS.GENERIC_DIALOG)
     dialog:SetFrameStrata("DIALOG")
     dialog:EnableMouse(true)
     addonTable.Utils.MakeFrameDraggable(dialog, nil)
+
     dialog.CloseButton = CreateFrame("Button", nil, dialog, "UIPanelCloseButton")
     dialog.CloseButton:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -5, -5)
     dialog.CloseButton:SetScript("OnClick", function() dialog:Hide() end)
+
     if name and name ~= "" then
         table.insert(UISpecialFrames, name)
     end
+
     local title = dialog:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
     title:SetPoint("TOPLEFT", dialog, "TOPLEFT", 15, -15)
     title:SetText(titleText)
+
     local titleLine = dialog:CreateTexture(nil, "ARTWORK")
     titleLine:SetHeight(2)
     titleLine:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
     titleLine:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -15, -40)
     titleLine:SetColorTexture(1, 1, 1, 0.2)
+
     return dialog
 end
+
 
 --- Creates a dropdown for selecting severity.
 -- @param parent Frame The parent frame.
 -- @return FontString, Frame The label and dropdown.
-function Dialogs.CreateSeverityDropdown(parent)
+function Dialogs:CreateSeverityDropdown(parent)
     local severityLabel = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     severityLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", 15, -60)
     severityLabel:SetText(L.SEVERITY or "Severity")
@@ -70,7 +81,7 @@ end
 --- Creates checkboxes for selecting statuses.
 -- @param parent Frame The parent frame.
 -- @return Frame The constructed frame.
-function Dialogs.CreateStatusSelection(parent)
+function Dialogs:CreateStatusSelection(parent)
     local frame = CreateFrame("Frame", nil, parent)
     local numStatuses = #GUI.Statuses
     local height = 30 * (numStatuses + 1)
@@ -135,7 +146,7 @@ end
 -- @param parent Frame The parent frame.
 -- @param maxChars number Maximum characters.
 -- @return Frame, EditBox, FontString The scroll frame, edit box, and counter label.
-function Dialogs.CreateEditBoxWithCounter(parent, maxChars)
+function Dialogs:CreateEditBoxWithCounter(parent, maxChars)
     local scrollFrame = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
     local topAnchor = parent.StatusLabel or parent.StatusSelection
     if topAnchor then
@@ -169,7 +180,7 @@ end
 --- Creates standardized Save and Cancel buttons.
 -- @param parent Frame The parent frame.
 -- @return Button, Button The Save and Cancel buttons.
-function Dialogs.CreateSaveCancelButtons(parent)
+function Dialogs:CreateSaveCancelButtons(parent)
     local saveButton = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     saveButton:SetSize(80, 24)
     saveButton:SetPoint("BOTTOMRIGHT", parent, "BOTTOM", -10, 15)
@@ -185,7 +196,7 @@ end
 -- @param parent Frame The parent frame.
 -- @param maxChars number Maximum characters.
 -- @return EditBox, FontString The edit box and counter label.
-function Dialogs.CreateSingleLineEditBoxWithCounter(parent, maxChars)
+function Dialogs:CreateSingleLineEditBoxWithCounter(parent, maxChars)
     local editBox = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
     editBox:SetAutoFocus(true)
     editBox:SetMaxLetters(maxChars)
@@ -211,6 +222,7 @@ function Dialogs:OpenWoundDialog(regionID, skipCloseDialogs)
     if not skipCloseDialogs then
         self:CloseAllDialogs("BodyPartDialogs")
     end
+
     local regionData = nil
     for _, rData in ipairs(CONSTANTS.REGIONS) do
         if rData.id == regionID then
@@ -218,18 +230,25 @@ function Dialogs:OpenWoundDialog(regionID, skipCloseDialogs)
             break
         end
     end
+
     local displayName = regionData and regionData.localName or ("Unknown Region " .. tostring(regionID))
     local dialogName = "FleshWoundDialog_" .. regionID
     local dialogTitle = string.format(L.WOUND_DETAILS or "Wound Details: %s", displayName)
-    local dialog = self.CreateDialog(dialogName, dialogTitle, CONSTANTS.SIZES.GENERIC_DIALOG_WIDTH, CONSTANTS.SIZES.GENERIC_DIALOG_HEIGHT)
+
+    -- ✅ FIX: Ensure `CreateDialog` is called with `self` as `Dialogs`
+    local dialog = self:CreateDialog(dialogName, dialogTitle, CONSTANTS.SIZES.GENERIC_DIALOG_WIDTH, CONSTANTS.SIZES.GENERIC_DIALOG_HEIGHT)
+    
     dialog.regionID = regionID
     dialog:SetScript("OnDragStop", function(f)
         f:StopMovingOrSizing()
         GUI:SaveWindowPosition(dialogName, f)
     end)
+    
     GUI:RestoreWindowPosition(dialogName, dialog)
+    
     dialog.ScrollFrame, dialog.ScrollChild = GUI:CreateScrollFrame(dialog, 15, -60, -35, 60)
     dialog.NoteEntries = {}
+
     if not addonTable.GUI.currentTemporaryProfile then
         dialog.AddNoteButton = GUI:CreateButton(dialog, L.ADD_NOTE or "Add Note", 120, 30, "BOTTOMLEFT", 15, 15)
         dialog.AddNoteButton:SetScript("OnClick", function()
@@ -237,10 +256,12 @@ function Dialogs:OpenWoundDialog(regionID, skipCloseDialogs)
             self:OpenNoteDialog(regionID)
         end)
     end
+
     _G[dialogName] = dialog
     self:PopulateWoundDialog(dialog)
     dialog:Show()
 end
+
 
 --- Populates the wound dialog with note entries.
 -- @param dialog Frame The wound dialog frame.
@@ -382,16 +403,16 @@ function Dialogs:OpenNoteDialog(regionID, noteIndex)
     local dialogTitle = isEdit and string.format(L.EDIT_NOTE or "Edit Note: %s", displayRegionName)
                                  or string.format(L.ADD_NOTE or "Add Note: %s", displayRegionName)
     local frameName = baseName .. "_" .. tostring(regionID)
-    local dialog = self.CreateDialog(frameName, dialogTitle, CONSTANTS.SIZES.NOTE_DIALOG_WIDTH, CONSTANTS.SIZES.NOTE_DIALOG_HEIGHT)
+    local dialog = self:CreateDialog(frameName, dialogTitle, CONSTANTS.SIZES.NOTE_DIALOG_WIDTH, CONSTANTS.SIZES.NOTE_DIALOG_HEIGHT)
     dialog.regionID = regionID
     addonTable.Utils.MakeFrameDraggable(dialog, function(f)
         GUI:SaveWindowPosition(frameName, f)
     end)
     GUI:RestoreWindowPosition(frameName, dialog)
-    dialog.SeverityLabel, dialog.SeverityDropdown = self.CreateSeverityDropdown(dialog)
-    dialog.StatusSelection = self.CreateStatusSelection(dialog)
-    dialog.ScrollFrame, dialog.EditBox, dialog.CharCountLabel = self.CreateEditBoxWithCounter(dialog, CONSTANTS.LIMITS.MAX_NOTE_LENGTH)
-    dialog.SaveButton, dialog.CancelButton = self.CreateSaveCancelButtons(dialog)
+    dialog.SeverityLabel, dialog.SeverityDropdown = self:CreateSeverityDropdown(dialog)
+    dialog.StatusSelection = self:CreateStatusSelection(dialog)
+    dialog.ScrollFrame, dialog.EditBox, dialog.CharCountLabel = self:CreateEditBoxWithCounter(dialog, CONSTANTS.LIMITS.MAX_NOTE_LENGTH)
+    dialog.SaveButton, dialog.CancelButton = self:CreateSaveCancelButtons(dialog)
     _G[frameName] = dialog
     self:PopulateNoteDialog(dialog, noteIndex)
     dialog:Show()

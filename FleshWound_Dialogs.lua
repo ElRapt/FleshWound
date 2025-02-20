@@ -12,7 +12,7 @@ local L = addonTable.L
 -- @param width number Dialog width.
 -- @param height number Dialog height.
 -- @return Frame The constructed dialog frame.
-function Dialogs.CreateDialog(name, titleText, width, height)
+function Dialogs:CreateDialog(name, titleText, width, height)
     local dialog = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
     dialog:SetSize(width, height)
     dialog:SetPoint("CENTER")
@@ -40,7 +40,7 @@ end
 --- Creates a dropdown for selecting severity.
 -- @param parent Frame The parent frame.
 -- @return FontString, Frame The label and dropdown.
-function Dialogs.CreateSeverityDropdown(parent)
+function Dialogs:CreateSeverityDropdown(parent)
     local severityLabel = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     severityLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", 15, -60)
     severityLabel:SetText(L.SEVERITY or "Severity")
@@ -70,7 +70,7 @@ end
 --- Creates checkboxes for selecting statuses.
 -- @param parent Frame The parent frame.
 -- @return Frame The constructed frame.
-function Dialogs.CreateStatusSelection(parent)
+function Dialogs:CreateStatusSelection(parent)
     local frame = CreateFrame("Frame", nil, parent)
     local numStatuses = #GUI.Statuses
     local height = 30 * (numStatuses + 1)
@@ -135,7 +135,7 @@ end
 -- @param parent Frame The parent frame.
 -- @param maxChars number Maximum characters.
 -- @return Frame, EditBox, FontString The scroll frame, edit box, and counter label.
-function Dialogs.CreateEditBoxWithCounter(parent, maxChars)
+function Dialogs:CreateEditBoxWithCounter(parent, maxChars)
     local scrollFrame = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
     local topAnchor = parent.StatusLabel or parent.StatusSelection
     if topAnchor then
@@ -169,7 +169,7 @@ end
 --- Creates standardized Save and Cancel buttons.
 -- @param parent Frame The parent frame.
 -- @return Button, Button The Save and Cancel buttons.
-function Dialogs.CreateSaveCancelButtons(parent)
+function Dialogs:CreateSaveCancelButtons(parent)
     local saveButton = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     saveButton:SetSize(80, 24)
     saveButton:SetPoint("BOTTOMRIGHT", parent, "BOTTOM", -10, 15)
@@ -185,7 +185,7 @@ end
 -- @param parent Frame The parent frame.
 -- @param maxChars number Maximum characters.
 -- @return EditBox, FontString The edit box and counter label.
-function Dialogs.CreateSingleLineEditBoxWithCounter(parent, maxChars)
+function Dialogs:CreateSingleLineEditBoxWithCounter(parent, maxChars)
     local editBox = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
     editBox:SetAutoFocus(true)
     editBox:SetMaxLetters(maxChars)

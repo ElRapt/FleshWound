@@ -324,12 +324,13 @@ end
 -- @param region table The region parameters.
 function GUI:CreateBodyRegion(frame, region)
     local btn = CreateFrame("Button", nil, frame)
+    local Dialogs = addonTable.Dialogs
     btn:SetSize(region.width, region.height)
     btn:SetPoint("BOTTOMLEFT", frame.BodyImage, "BOTTOMLEFT", region.x, region.y)
     btn:SetHighlightTexture(CONSTANTS.IMAGES.ICON_MOUSE_HIGHLIGHT)
     btn.regionID = region.id
     btn:SetScript("OnClick", function()
-        addonTable.Dialogs:OpenWoundDialog(btn.regionID)
+        Dialogs:OpenWoundDialog(btn.regionID)
     end)
     local regionMarker = btn:CreateTexture(nil, "OVERLAY")
     regionMarker:SetSize(10, 10)

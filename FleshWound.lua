@@ -2,12 +2,12 @@
 -- The main addon file that initializes the addon's modules on ADDON_LOADED.
 
 local addonName, addonTable = ...
+addonTable.remoteProfiles = addonTable.remoteProfiles or {}
 local L = addonTable.L
 local Utils = addonTable.Utils
 
 local version = Utils.GetAddonVersion()
 
--- Centralized constants
 local CONSTANTS = {
     WELCOME_FRAME = {
         WIDTH = 400,
@@ -31,7 +31,6 @@ local CONSTANTS = {
     RELOAD_EVENT_NAME = "ADDON_LOADED"
 }
 
---- Create a custom backdrop frame to display the welcome message.
 local function ShowWelcomeFrame()
     if FleshWoundData and FleshWoundData[CONSTANTS.WELCOME_ALREADY_SHOWN_KEY] then
         return
@@ -72,12 +71,9 @@ local function ShowWelcomeFrame()
     welcomeFrame:Show()
 end
 
---- Event handler for the ADDON_LOADED event.
 local EventHandler = {}
 addonTable.EventHandler = EventHandler
 
---- A callback for the ADDON_LOADED event.
---- @param loadedName string: The name of the addon that was loaded.
 function EventHandler:OnAddonLoaded(loadedName)
     if loadedName == addonName then
         if not FleshWoundData then
@@ -85,80 +81,37 @@ function EventHandler:OnAddonLoaded(loadedName)
         end
         addonTable.FleshWoundData = FleshWoundData
 
-        -- Initialize Data
         if addonTable.Data and addonTable.Data.Initialize then
             addonTable.Data:Initialize()
         else
             Utils.FW_Print("Data module not found or missing Initialize method.", true)
         end
 
-        -- Initialize GUI
         if addonTable.GUI and addonTable.GUI.Initialize then
             addonTable.GUI:Initialize()
         else
             Utils.FW_Print("GUI module not found or missing Initialize method.", true)
         end
 
-        -- Initialize Comm
         if addonTable.Comm and addonTable.Comm.Initialize then
             addonTable.Comm:Initialize()
         end
 
         Utils.FW_Print(string.format(L.THANK_YOU, version), false)
-
         ShowWelcomeFrame()
-
         self.eventFrame:UnregisterEvent(CONSTANTS.RELOAD_EVENT_NAME)
     end
 end
 
---- A function to handle the display of distant profile data.
---- @param profileName string: The name of the profile.
---- @param profileData table: The profile data to display.
+--- Opens a received remote profile for display in read-only mode.
+--- @param profileName string The remote profile name
+--- @param profileData table The remote profile data
 function addonTable:OpenReceivedProfile(profileName, profileData)
-    local GUI = addonTable.GUI
-    local Dialogs = addonTable.Dialogs
-    if not GUI or not Dialogs then
-        return
-    
-    end
-
-    if GUI.currentTemporaryProfile then
-        GUI:RestoreOriginalProfile()
-    end
-    Dialogs:CloseAllDialogs()
-    if GUI.frame then
-        GUI.frame:Hide()
-    end
-
-    local originalProfile   = FleshWoundData.currentProfile
-    local originalWoundData = CopyTable(addonTable.woundData)
-    local copiedRemoteData  = CopyTable(profileData.woundData)
-
-    addonTable.woundData = copiedRemoteData
-
-    if GUI.UpdateRegionColors then
-        GUI:UpdateRegionColors()
-    end
-
-    if GUI.frame then
-        GUI.frame:Show()
-    end
-
-    GUI.originalProfile   = originalProfile
-    GUI.originalWoundData = originalWoundData
-    GUI.currentTemporaryProfile = profileName
-
-    if GUI.UpdateProfileBanner then
-        GUI:UpdateProfileBanner()
-    end
-
-    if GUI.frame and GUI.frame.ProfileButton then
-        GUI.frame.ProfileButton:Hide()
-    end
+    if not addonTable.GUI then return end
+    addonTable.remoteProfiles[profileName] = profileData.woundData or {}
+    addonTable.GUI:DisplayRemoteProfile(profileName)
 end
 
---- The event frame to catch the ADDON_LOADED event.
 EventHandler.eventFrame = CreateFrame("Frame")
 EventHandler.eventFrame:RegisterEvent(CONSTANTS.RELOAD_EVENT_NAME)
 EventHandler.eventFrame:SetScript("OnEvent", function(_, event, ...)
@@ -166,6 +119,3 @@ EventHandler.eventFrame:SetScript("OnEvent", function(_, event, ...)
         EventHandler:OnAddonLoaded(...)
     end
 end)
-
-
-

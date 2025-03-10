@@ -4,10 +4,6 @@ local GUI = {}
 addonTable.GUI = GUI
 local L = addonTable.L
 
---[[ 
-    Constants and shared configuration for the GUI.
-    (Note: Some constants such as icons used by ProfileManager may also be used by other modules.)
---]]
 local CONSTANTS = {
     SIZES = {
         MAIN_FRAME_WIDTH = 320,
@@ -101,7 +97,7 @@ local CONSTANTS = {
     },
     STATUSES = {
         { id = 1, displayName = L.STATUS_NONE,       icon = nil },
-        { id = 2, displayName = L.STATUS_BANDAGED,   icon = CONSTANTS and CONSTANTS.ICONS and CONSTANTS.ICONS.BANDAGE or "Interface\\Icons\\INV_Misc_Bandage_01" },
+        { id = 2, displayName = L.STATUS_BANDAGED,   icon = "Interface\\Icons\\INV_Misc_Bandage_01" },
         { id = 3, displayName = L.STATUS_BLEEDING,   icon = "Interface\\Icons\\Spell_Druid_Bloodythrash" },
         { id = 4, displayName = L.STATUS_BROKEN_BONE,icon = "Interface\\Icons\\INV_Misc_Bone_01" },
         { id = 5, displayName = L.STATUS_BURN,       icon = "Interface\\Icons\\Spell_Fire_Immolation" },
@@ -213,8 +209,10 @@ function GUI:CreateButton(parent, text, width, height, point, relativeTo, offset
 end
 
 --- Initializes the main FleshWound UI.
+
 function GUI:Initialize()
-    self.woundData = addonTable.woundData or {}
+    self.displayingRemote = false
+    self.activeRemoteProfileName = nil
     self:CreateMainFrame()
     self:RestoreWindowPosition("FleshWoundFrame", self.frame)
     self:CreateBodyRegions()
@@ -223,21 +221,58 @@ function GUI:Initialize()
     self:UpdateProfileBanner()
 end
 
---- Updates the profile banner text.
+--- Explicitly display a remote profile
+function GUI:DisplayRemoteProfile(profileName)
+    self.displayingRemote = true
+    self.activeRemoteProfileName = profileName
+    self:CloseAllDialogs()
+    if self.frame then
+        self.frame:Show()
+    end
+    self:UpdateProfileBanner()
+    self:UpdateRegionColors()
+    if self.frame and self.frame.ProfileButton then
+        self.frame.ProfileButton:Hide()
+    end
+end
+
+--- Explicitly display local data (the user's own profile)
+function GUI:DisplayLocalProfile()
+    self.displayingRemote = false
+    self.activeRemoteProfileName = nil
+    self:CloseAllDialogs()
+    if self.frame then
+        self.frame:Show()
+    end
+    self:UpdateProfileBanner()
+    self:UpdateRegionColors()
+    if self.frame and self.frame.ProfileButton then
+        self.frame.ProfileButton:Show()
+    end
+end
+
+function GUI:GetActiveWoundData()
+    if self.displayingRemote and self.activeRemoteProfileName then
+        local remoteData = addonTable.remoteProfiles[self.activeRemoteProfileName]
+        if not remoteData then return {} end
+        return remoteData
+    end
+    return addonTable.woundData or {}
+end
+
 function GUI:UpdateProfileBanner()
     if not (self.frame and self.tempProfileBannerFrame and self.tempProfileBanner) then
         return
     end
-    local currentProfileName = addonTable.FleshWoundData.currentProfile or "Unknown"
-    if self.currentTemporaryProfile then
-        self.tempProfileBanner:SetText(string.format(L.VIEWING_PROFILE, self.currentTemporaryProfile))
+    if self.displayingRemote and self.activeRemoteProfileName then
+        self.tempProfileBanner:SetText(string.format(L.VIEWING_PROFILE, self.activeRemoteProfileName))
     else
+        local currentProfileName = addonTable.FleshWoundData.currentProfile or "Unknown"
         self.tempProfileBanner:SetText(string.format(L.VIEWING_PROFILE, currentProfileName))
     end
     self.tempProfileBannerFrame:Show()
 end
 
---- Creates a temporary profile banner frame.
 function GUI:CreateTemporaryProfileBanner()
     if not self.frame then return end
     local bannerFrame = CreateFrame("Frame", nil, self.frame, "BackdropTemplate")
@@ -254,24 +289,33 @@ function GUI:CreateTemporaryProfileBanner()
     self.tempProfileBanner = bannerText
 end
 
---- Restores the original profile and wound data.
-function GUI:RestoreOriginalProfile()
-    if not self.originalWoundData then
-        return
+--- Closes all relevant dialogs when switching modes
+function GUI:CloseAllDialogs()
+    if addonTable.Dialogs then
+        addonTable.Dialogs:CloseAllDialogs()
     end
-    addonTable.FleshWoundData.currentProfile = self.originalProfile
-    addonTable.woundData = self.originalWoundData
-    self.originalProfile   = nil
-    self.originalWoundData = nil
-    self.currentTemporaryProfile = nil
-    if self.frame and self.frame.ProfileButton then
-        self.frame.ProfileButton:Show()
+    if self.frame then
+        self.frame:Hide()
     end
-    self:UpdateRegionColors()
-    self:UpdateProfileBanner()
 end
 
---- Creates the main FleshWound frame.
+function GUI:SaveWindowPosition(frameName, frame)
+    addonTable.FleshWoundData.positions = addonTable.FleshWoundData.positions or {}
+    local pos = addonTable.FleshWoundData.positions
+    local point, _, relativePoint, xOfs, yOfs = frame:GetPoint()
+    pos[frameName] = { point = point, relativePoint = relativePoint, xOfs = xOfs, yOfs = yOfs }
+end
+
+function GUI:RestoreWindowPosition(frameName, frame)
+    local pos = addonTable.FleshWoundData.positions and addonTable.FleshWoundData.positions[frameName]
+    if pos then
+        frame:ClearAllPoints()
+        frame:SetPoint(pos.point, UIParent, pos.relativePoint, pos.xOfs, pos.yOfs)
+    else
+        frame:SetPoint("CENTER")
+    end
+end
+
 function GUI:CreateMainFrame()
     local frame = CreateFrame("Frame", "FleshWoundFrame", UIParent, "BackdropTemplate")
     self.frame = frame
@@ -283,16 +327,20 @@ function GUI:CreateMainFrame()
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", function(f) f:StartMoving() end)
-    frame:SetScript("OnDragStop", function(f) f:StopMovingOrSizing() GUI:SaveWindowPosition("FleshWoundFrame", f) end)
+    frame:SetScript("OnDragStop", function(f)
+        f:StopMovingOrSizing()
+        GUI:SaveWindowPosition("FleshWoundFrame", f)
+    end)
     frame.CloseButton = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     frame.CloseButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -5, -5)
     frame.CloseButton:SetScript("OnClick", function() frame:Hide() end)
     table.insert(UISpecialFrames, frame:GetName())
+
     frame.BodyImage = frame:CreateTexture(nil, "BACKGROUND")
     frame.BodyImage:SetSize(CONSTANTS.SIZES.BODY_IMAGE_WIDTH, CONSTANTS.SIZES.BODY_IMAGE_HEIGHT)
     frame.BodyImage:SetPoint("CENTER", frame, "CENTER", 0, 0)
-    -- Use the restored constant for body image:
     frame.BodyImage:SetTexture(CONSTANTS.IMAGES.BODY_IMAGE)
+
     frame.ProfileButton = CreateFrame("Button", nil, frame)
     frame.ProfileButton:SetSize(35, 35)
     frame.ProfileButton:SetPoint("TOPLEFT", frame, "TOPLEFT", 15, -15)
@@ -300,17 +348,18 @@ function GUI:CreateMainFrame()
     frame.ProfileButton:SetHighlightTexture(CONSTANTS.IMAGES.ICON_HIGHLIGHT_SQUARE)
     frame.ProfileButton:SetScript("OnClick", function()
         for frameName, frm in pairs(_G) do
-            if type(frameName) == "string" and 
+            if type(frameName) == "string" and
                (frameName:match("^FleshWoundAddNoteDialog_") or frameName:match("^FleshWoundEditNoteDialog_"))
                and frm.IsShown and frm:IsShown() then
                 frm:Hide()
             end
         end
-        addonTable.ProfileManager:OpenProfileManager()
+        if addonTable.ProfileManager then
+            addonTable.ProfileManager:OpenProfileManager()
+        end
     end)
 end
 
---- Creates clickable body regions on the main frame.
 function GUI:CreateBodyRegions()
     local frame = self.frame
     frame.BodyRegions = {}
@@ -319,9 +368,6 @@ function GUI:CreateBodyRegions()
     end
 end
 
---- Creates a single clickable body region button.
--- @param frame Frame The parent frame.
--- @param region table The region parameters.
 function GUI:CreateBodyRegion(frame, region)
     local btn = CreateFrame("Button", nil, frame)
     local Dialogs = addonTable.Dialogs
@@ -365,18 +411,18 @@ function GUI:CreateBodyRegion(frame, region)
     frame.BodyRegions[region.id] = btn
 end
 
---- Updates the visual representation of each body region.
 function GUI:UpdateRegionColors()
     local frame = self.frame
     if not (frame and frame.BodyRegions) then return end
+    local data = self:GetActiveWoundData()
     local statusPriority = CONSTANTS.STATUS_PRIORITY
     for regionID, btn in pairs(frame.BodyRegions) do
         local highestID = addonTable.Utils.GetHighestSeverityID(regionID)
         local sev = SeveritiesByID[highestID] or { color = {0, 0, 0, 0} }
         local r, g, b, a = sev.color[1], sev.color[2], sev.color[3], sev.color[4]
         btn.overlay:SetColorTexture(r, g, b, a)
-        local woundData = addonTable.woundData or {}
-        local notes = woundData[regionID]
+
+        local notes = data[regionID]
         local count = notes and #notes or 0
         if count > 0 then
             btn.countText:SetText(count)
@@ -384,6 +430,7 @@ function GUI:UpdateRegionColors()
         else
             btn.countText:Hide()
         end
+
         local foundStatuses = {}
         if notes then
             for _, note in ipairs(notes) do
@@ -394,6 +441,7 @@ function GUI:UpdateRegionColors()
                 end
             end
         end
+
         local sortedStatuses = {}
         for stID in pairs(foundStatuses) do
             table.insert(sortedStatuses, stID)

@@ -10,30 +10,25 @@ local LDB = LibStub("LibDataBroker-1.1")
 local Icon = LibStub("LibDBIcon-1.0")
 local Utils = addonTable.Utils
 
---- Initializes the game menu integration by creating the minimap icon and adding FleshWound to the Game Menu.
 function GameMenu:Initialize()
     self:CreateMinimapIcon()
     self:AddToGameMenu()
 end
 
---- Toggles the visibility of the main FleshWound UI frame.
---- If the frame is not initialized, an error message is displayed.
+--- Always open/close your local profile UI.
 function GameMenu:ToggleMainFrame()
     local GUI = addonTable.GUI
     if not GUI or not GUI.frame then
         Utils.FW_Print("FleshWound main frame is not initialized.", true)
         return
     end
-
     if GUI.frame:IsShown() then
         GUI.frame:Hide()
     else
-        GUI.frame:Show()
+        GUI:DisplayLocalProfile()
     end
 end
 
---- Creates the minimap icon for FleshWound using LibDataBroker and LibDBIcon.
---- Sets up the icon's click behavior and tooltip display.
 function GameMenu:CreateMinimapIcon()
     local ldb = LDB:NewDataObject("FleshWound", {
         type = "launcher",
@@ -54,20 +49,16 @@ function GameMenu:CreateMinimapIcon()
     Icon:Register("FleshWound", ldb, FleshWoundData)
 end
 
---- Adds a FleshWound button to the main Game Menu (ESC screen).
---- Configures the button to toggle the main UI and to provide an extra option to request a target's profile.
 function GameMenu:AddToGameMenu()
     local btn = CreateFrame("Button", "GameMenuButtonFleshWound", GameMenuFrame, "GameMenuButtonTemplate")
     btn:SetText("FleshWound")
     btn:SetNormalFontObject("GameFontNormal")
     btn:SetHighlightFontObject("GameFontHighlight")
-
     btn:SetScript("OnClick", function()
         HideUIPanel(GameMenuFrame)
         self:ToggleMainFrame()
     end)
 
-    -- Adjust existing buttons when GameMenuFrame is shown
     GameMenuFrame:HookScript("OnShow", function()
         btn:ClearAllPoints()
         if GameMenuButtonAddOns and GameMenuButtonAddOns:IsShown() then
@@ -92,7 +83,6 @@ function GameMenu:AddToGameMenu()
     text:ClearAllPoints()
     text:SetPoint("LEFT", iconTexture, "RIGHT", 4, 0)
 
-    -- An extra button to request a profile from your current target
     local requestButton = CreateFrame("Button", nil, GameMenuFrame, "UIPanelButtonTemplate")
     requestButton:SetText("Request Profile")
     requestButton:SetSize(120, 24)
@@ -107,8 +97,6 @@ function GameMenu:AddToGameMenu()
     end)
 end
 
---- Repositions existing game menu buttons to ensure that the FleshWound button does not overlap with them.
---- @param btn Frame: The FleshWound button used as a reference for repositioning.
 function GameMenu:AdjustGameMenuButtons(btn)
     local prevButton = btn
     local buttons = {
@@ -122,7 +110,6 @@ function GameMenu:AdjustGameMenuButtons(btn)
         GameMenuButtonMacros,
         GameMenuButtonAddOns,
     }
-
     for _, button in ipairs(buttons) do
         if button and button:IsShown() and button ~= btn then
             button:ClearAllPoints()
@@ -132,7 +119,6 @@ function GameMenu:AdjustGameMenuButtons(btn)
     end
 end
 
--- Register for ADDON_LOADED to call Initialize
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:SetScript("OnEvent", function(self, event, addon)

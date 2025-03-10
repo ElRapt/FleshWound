@@ -20,7 +20,7 @@ local CONSTANTS = {
             edgeSize = 32,
             insets = { left = 8, right = 8, top = 8, bottom = 8 }
         },
-        TITLE = "FleshWound - v.0.2.2",
+        TITLE = "FleshWound - v" .. version,
         CLOSE_BUTTON_WIDTH = 80,
         CLOSE_BUTTON_HEIGHT = 22,
         DEFAULT_POINT = "CENTER",

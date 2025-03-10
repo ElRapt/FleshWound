@@ -417,7 +417,7 @@ function GUI:UpdateRegionColors()
     local data = self:GetActiveWoundData()
     local statusPriority = CONSTANTS.STATUS_PRIORITY
     for regionID, btn in pairs(frame.BodyRegions) do
-        local highestID = addonTable.Utils.GetHighestSeverityID(regionID)
+        local highestID = addonTable.Utils.GetHighestSeverityID(regionID, data)
         local sev = SeveritiesByID[highestID] or { color = {0, 0, 0, 0} }
         local r, g, b, a = sev.color[1], sev.color[2], sev.color[3], sev.color[4]
         btn.overlay:SetColorTexture(r, g, b, a)
@@ -449,6 +449,7 @@ function GUI:UpdateRegionColors()
         table.sort(sortedStatuses, function(a, b)
             return (statusPriority[a] or 999) < (statusPriority[b] or 999)
         end)
+
         for i = 1, 3 do
             local iconTexture = btn.statusIcons[i]
             local stID = sortedStatuses[i]

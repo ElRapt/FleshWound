@@ -5,8 +5,6 @@ Comm.PREFIX = "FleshWoundComm"
 Comm.PING_TIMEOUT = 5
 local AceSerializer = LibStub("AceSerializer-3.0")
 local CHANNEL_NAME = "FleshWoundComm"
-local knownAddonUsers = {}   -- Tracks players known to have the addon
-local pendingPings = {}      -- Records ping start times for players
 local channelJoinedOnce = false
 
 --------------------------------------------------------------------------------
@@ -19,17 +17,21 @@ local channelJoinedOnce = false
 -- @param targetPlayer string The name of the target player.
 function Comm:RequestProfile(targetPlayer)
     if not targetPlayer or targetPlayer == "" then return end
-    if knownAddonUsers[targetPlayer] then
+    local registry = addonTable.Registry
+    if registry and registry:IsUserOnline(targetPlayer) then
         C_ChatInfo.SendAddonMessage(self.PREFIX, "REQUEST_PROFILE", "WHISPER", targetPlayer)
     else
-        self:PingPlayer(targetPlayer)
-        C_Timer.After(self.PING_TIMEOUT + 1, function()
-            if knownAddonUsers[targetPlayer] then
+        if registry then
+            registry:SendQuery()
+        end
+        C_Timer.After(self.PING_TIMEOUT, function()
+            if registry and registry:IsUserOnline(targetPlayer) then
                 C_ChatInfo.SendAddonMessage(self.PREFIX, "REQUEST_PROFILE", "WHISPER", targetPlayer)
             end
         end)
     end
 end
+
 
 --- Sends the profile data for a given profile name to a target player.
 -- Retrieves the profile from FleshWoundData, serializes it, and sends it.
@@ -64,39 +66,6 @@ function Comm:DeserializeProfile(serialized)
     return profileData
 end
 
---------------------------------------------------------------------------------
--- Ping/Pong Functions
---------------------------------------------------------------------------------
-
---- Pings a target player to determine if they have the addon.
--- Records the ping time and sends a "PING" message.
--- @param targetPlayer string The name of the target player.
-function Comm:PingPlayer(targetPlayer)
-    if not targetPlayer or targetPlayer == "" then return end
-    pendingPings[targetPlayer] = time()
-    C_ChatInfo.SendAddonMessage(self.PREFIX, "PING", "WHISPER", targetPlayer)
-    C_Timer.After(self.PING_TIMEOUT, function()
-        if pendingPings[targetPlayer] and (time() - pendingPings[targetPlayer]) >= self.PING_TIMEOUT then
-            pendingPings[targetPlayer] = nil
-            knownAddonUsers[targetPlayer] = nil
-        end
-    end)
-end
-
---- Sends a "PONG" message in response to a ping.
--- @param targetPlayer string The name of the target player.
-function Comm:SendPong(targetPlayer)
-    C_ChatInfo.SendAddonMessage(self.PREFIX, "PONG", "WHISPER", targetPlayer)
-end
-
---- Handles receipt of a "PONG" message.
--- Clears any pending ping for the sender and marks them as a known addon user.
--- @param sender string The name of the sender.
-function Comm:HandlePong(sender)
-    pendingPings[sender] = nil
-    knownAddonUsers[sender] = true
-end
-
 --- Retrieves the table of known addon users.
 -- @return table A table mapping player names to true.
 function Comm:GetKnownAddonUsers()
@@ -116,23 +85,18 @@ end
 -- @param sender string The name of the sender.
 function Comm:OnChatMsgAddon(prefixMsg, msg, channel, sender)
     if prefixMsg ~= self.PREFIX then return end
-    if msg == "PING" then
-        self:SendPong(sender)
-    elseif msg == "PONG" then
-        self:HandlePong(sender)
-    elseif msg == "REQUEST_PROFILE" then
-        knownAddonUsers[sender] = true
+    if msg == "REQUEST_PROFILE" then
         local currentProfile = addonTable.FleshWoundData.currentProfile
         self:SendProfileData(sender, currentProfile)
     else
         local cmd, profileName, data = strsplit(":", msg, 3)
         if cmd == "PROFILE_DATA" then
-            knownAddonUsers[sender] = true
             local profileData = self:DeserializeProfile(data)
             addonTable:OpenReceivedProfile(profileName, profileData)
         end
     end
 end
+
 
 --------------------------------------------------------------------------------
 -- Channel Management

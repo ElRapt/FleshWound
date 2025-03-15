@@ -1,14 +1,10 @@
 local addonName, addonTable = ...
 local Comm = {}
 addonTable.Comm = Comm
-
--- Constants
 Comm.PREFIX = "FleshWoundComm"
 Comm.PING_TIMEOUT = 5
 local AceSerializer = LibStub("AceSerializer-3.0")
 local CHANNEL_NAME = "FleshWoundComm"
-
--- Internal state tables
 local knownAddonUsers = {}   -- Tracks players known to have the addon
 local pendingPings = {}      -- Records ping start times for players
 local channelJoinedOnce = false
@@ -44,7 +40,7 @@ function Comm:SendProfileData(targetPlayer, profileName)
     local data = addonTable.FleshWoundData.profiles[profileName]
     if not data then return end
     local serialized = self:SerializeProfile(data)
-    C_ChatInfo.SendAddonMessage(self.PREFIX, "PROFILE_DATA:" .. profileName .. ":" .. serialized, "WHISPER", targetPlayer)
+    C_ChatInfo.SendAddonMessage(self.PREFIX, "PROFILE_DATA:"..profileName..":"..serialized, "WHISPER", targetPlayer)
 end
 
 --- Serializes a profile's wound data.
@@ -107,6 +103,7 @@ function Comm:GetKnownAddonUsers()
     return knownAddonUsers
 end
 
+
 --------------------------------------------------------------------------------
 -- Addon Message Handling
 --------------------------------------------------------------------------------
@@ -119,19 +116,18 @@ end
 -- @param sender string The name of the sender.
 function Comm:OnChatMsgAddon(prefixMsg, msg, channel, sender)
     if prefixMsg ~= self.PREFIX then return end
-    local player = Ambiguate(sender, "short")
     if msg == "PING" then
-        self:SendPong(player)
+        self:SendPong(sender)
     elseif msg == "PONG" then
-        self:HandlePong(player)
+        self:HandlePong(sender)
     elseif msg == "REQUEST_PROFILE" then
-        knownAddonUsers[player] = true
+        knownAddonUsers[sender] = true
         local currentProfile = addonTable.FleshWoundData.currentProfile
-        self:SendProfileData(player, currentProfile)
+        self:SendProfileData(sender, currentProfile)
     else
         local cmd, profileName, data = strsplit(":", msg, 3)
         if cmd == "PROFILE_DATA" then
-            knownAddonUsers[player] = true
+            knownAddonUsers[sender] = true
             local profileData = self:DeserializeProfile(data)
             addonTable:OpenReceivedProfile(profileName, profileData)
         end
@@ -159,6 +155,7 @@ function Comm:GetChannel()
         return nil
     end
 end
+
 
 --- Called when the channel is successfully joined.
 -- Initializes the Registry module on the first successful join.
@@ -224,6 +221,7 @@ channelNoticeFrame:SetScript("OnEvent", function(self, event, ...)
         end
     end
 end)
+
 
 -- Create a frame to handle CHAT_MSG_ADDON events.
 local eventFrame = CreateFrame("Frame")

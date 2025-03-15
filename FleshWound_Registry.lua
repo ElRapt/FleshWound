@@ -49,6 +49,16 @@ function Registry:SendQuery(target)
     end
 end
 
+--- Checks if a user is online.
+---@param playerName string The name of the player to check.
+---@return boolean True if the player is online, false otherwise.
+function Registry:IsUserOnline(playerName)
+    if not playerName then return false end
+    local key = Utils.ToLower(playerName)
+    return self.users[key] ~= nil
+end
+
+
 --- Handles incoming addon messages.
 -- Processes both QUERY and HELLO messages from other users.
 -- @param prefix string The addon message prefix.

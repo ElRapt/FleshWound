@@ -1,9 +1,11 @@
 local addonName, addonTable = ...
 local L = addonTable.L
 local knownAddonUsers = addonTable.Comm:GetKnownAddonUsers()
+local Utils = addonTable.Utils
 
 local CONSTANTS = {
     FRAME_SIZE = { WIDTH = 220, HEIGHT = 80 },
+    QUERY_RETRY_DURATION = 10,
     FRAME_POSITION = { ANCHOR = "BOTTOMRIGHT", X_OFFSET = -50, Y_OFFSET = 200 },
     PING_TIMEOUT = 5,
     BACKDROP = {
@@ -60,6 +62,26 @@ local function RestorePopupPosition()
         )
     end
 end
+
+--- Helper function to attempt to show the popup frame for a target.
+--- @param targetName string: The name of the target player.
+--- @param totalTimeout number: The total time to wait for the target to respond.
+--- @return void
+local function AttemptToShowPopup(targetName, totalTimeout)
+    local elapsed = 0
+    local interval = 1  -- check every second
+    local ticker = C_Timer.NewTicker(interval, function()
+        elapsed = elapsed + interval
+        addonTable.Registry:SendQuery()
+        if addonTable.Registry:IsUserOnline(targetName) then
+            ShowPopupForTarget(targetName)
+            ticker:Cancel()
+        elseif elapsed >= totalTimeout then
+            ticker:Cancel()
+        end
+    end)
+end
+
 
 --- Helper function to hide the popup frame.
 local function HidePopup()
@@ -142,29 +164,15 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         if UnitExists(unit) and UnitIsPlayer(unit) and UnitIsFriend("player", unit) then
             local name, realm = UnitName(unit)
             if realm and realm ~= "" then
-                name = name.."-"..realm
+                name = name .. "-" .. realm
             end
-            knownAddonUsers = addonTable.Comm:GetKnownAddonUsers()
-            if knownAddonUsers[name] then
+            if addonTable.Registry:IsUserOnline(name) then
                 ShowPopupForTarget(name)
             else
                 pendingTarget = name
-                addonTable.Comm:PingPlayer(name)
+                AttemptToShowPopup(name, CONSTANTS.QUERY_RETRY_DURATION)                
             end
-        end
-    elseif event == "CHAT_MSG_ADDON" then
-        local prefixMsg, msg, channel, sender = ...
-        local player = Ambiguate(sender, "short")
-        if prefixMsg ~= "FleshWoundComm" then
-            return
-        end
-        if msg == "PONG" then
-            knownAddonUsers[player] = true
-            if player == pendingTarget and UnitName("target") == player then
-                ShowPopupForTarget(player)
-            end
-        elseif msg == "REQUEST_PROFILE" or msg:match("^PROFILE_DATA:") then
-            knownAddonUsers[player] = true
         end
     end
 end)
+

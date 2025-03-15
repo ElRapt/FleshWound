@@ -70,17 +70,23 @@ end
 local function AttemptToShowPopup(targetName, totalTimeout)
     local elapsed = 0
     local interval = 1  -- check every second
-    local ticker = C_Timer.NewTicker(interval, function()
+    local ticker  
+    ticker = C_Timer.NewTicker(interval, function()
         elapsed = elapsed + interval
         addonTable.Registry:SendQuery()
         if addonTable.Registry:IsUserOnline(targetName) then
             ShowPopupForTarget(targetName)
-            ticker:Cancel()
+            if ticker then
+                ticker:Cancel()
+            end
         elseif elapsed >= totalTimeout then
-            ticker:Cancel()
+            if ticker then
+                ticker:Cancel()
+            end
         end
     end)
 end
+
 
 
 --- Helper function to hide the popup frame.

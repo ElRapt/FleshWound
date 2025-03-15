@@ -7,6 +7,21 @@ addonTable.ProfileManager = ProfileManager
 local CONSTANTS = GUI.CONSTANTS
 local L = addonTable.L
 
+StaticPopupDialogs["FW_DELETE_PROFILE_CONFIRM"] = {
+    text = L.DELETE_PROFILE_CONFIRM or "Are you sure you want to delete the profile '%s'?",
+    button1 = "Yes",
+    button2 = "No",
+    OnAccept = function(self, data)
+        addonTable.Data:DeleteProfile(data)
+        addonTable.ProfileManager:OpenProfileManager()
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+
 --- Opens the profile manager dialog.
 function ProfileManager:OpenProfileManager()
     addonTable.Dialogs:CloseAllDialogs()

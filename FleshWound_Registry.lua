@@ -4,7 +4,7 @@ local L = addonTable.L or {}
 local Registry = {}
 addonTable.Registry = Registry
 
-Registry.PREFIX = "FleshWoundRegistry"
+Registry.PREFIX = "FW"
 Registry.EVENT_HELLO = "HELLO"
 Registry.EVENT_QUERY = "QUERY"
 Registry.users = {}
@@ -39,15 +39,21 @@ end
 -- @param target string (optional) The target player for the query.
 function Registry:SendQuery(target)
     local msg = self.EVENT_QUERY
-    if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then
-        local channel = addonTable.Comm and addonTable.Comm:GetChannel()
-        if channel then
-            C_ChatInfo.SendAddonMessage(self.PREFIX, msg, "CHANNEL", channel, "ALERT")
-        end
+    if target and target ~= "" then
+        -- Send a targeted query as a whisper
+        C_ChatInfo.SendAddonMessage(self.PREFIX, msg, "WHISPER", target, "ALERT")
     else
-        C_ChatInfo.SendAddonMessage(self.PREFIX, msg, "YELL", nil, "ALERT")
+        if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then
+            local channel = addonTable.Comm and addonTable.Comm:GetChannel()
+            if channel then
+                C_ChatInfo.SendAddonMessage(self.PREFIX, msg, "CHANNEL", channel, "ALERT")
+            end
+        else
+            C_ChatInfo.SendAddonMessage(self.PREFIX, msg, "YELL", nil, "ALERT")
+        end
     end
 end
+
 
 --- Checks if a user is online.
 ---@param playerName string The name of the player to check.
@@ -66,22 +72,30 @@ end
 -- @param channel string The channel over which the message was received.
 -- @param sender string The sender's name.
 function Registry:OnChatMsgAddon(prefix, msg, channel, sender)
-    if prefix ~= self.PREFIX then return end
+    if prefix ~= self.PREFIX then
+        return
+    end
+
     local player = Utils.NormalizePlayerName(sender)
-    if not player then return end
+    if not player then
+        return
+    end
+
     local event, payload = strsplit(":", msg, 2)
-    
+
     if event == self.EVENT_QUERY then
         self:SendHello(player)
     elseif event == self.EVENT_HELLO then
         local remoteVersion = payload or "0.0.0"
         self.users[Utils.ToLower(player)] = { version = remoteVersion, lastSeen = time() }
+
         local localVersion = self:GetLocalVersion()
-        if not self.newVersionNotified and Utils.VersionCompare(localVersion, remoteVersion) < 0 then
+        local cmpResult = Utils.VersionCompare(localVersion, remoteVersion)
+        if not self.newVersionNotified and cmpResult < 0 then
             self.newVersionNotified = true
             Utils.FW_Print(string.format(L.NEW_VERSION_AVAILABLE, remoteVersion, localVersion), true)
         end
-        self:DisplayUserCount()
+        -- self:DisplayUserCount()
     end
 end
 

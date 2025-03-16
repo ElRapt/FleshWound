@@ -1,6 +1,5 @@
 local addonName, addonTable = ...
 local L = addonTable.L
-local knownAddonUsers = addonTable.Comm:GetKnownAddonUsers()
 local Utils = addonTable.Utils
 
 local CONSTANTS = {
@@ -28,7 +27,6 @@ local CONSTANTS = {
 local pendingTarget
 local popupFrame
 local targetName
-
 
 --- A function to save the position of the popup frame.
 local function SavePopupPosition()
@@ -60,39 +58,6 @@ local function RestorePopupPosition()
             CONSTANTS.FRAME_POSITION.X_OFFSET,
             CONSTANTS.FRAME_POSITION.Y_OFFSET
         )
-    end
-end
-
---- Helper function to attempt to show the popup frame for a target.
---- @param targetName string: The name of the target player.
---- @param totalTimeout number: The total time to wait for the target to respond.
---- @return void
-local function AttemptToShowPopup(targetName, totalTimeout)
-    local elapsed = 0
-    local interval = 1  -- check every second
-    local ticker  
-    ticker = C_Timer.NewTicker(interval, function()
-        elapsed = elapsed + interval
-        addonTable.Registry:SendQuery()
-        if addonTable.Registry:IsUserOnline(targetName) then
-            ShowPopupForTarget(targetName)
-            if ticker then
-                ticker:Cancel()
-            end
-        elseif elapsed >= totalTimeout then
-            if ticker then
-                ticker:Cancel()
-            end
-        end
-    end)
-end
-
-
-
---- Helper function to hide the popup frame.
-local function HidePopup()
-    if popupFrame then
-        popupFrame:Hide()
     end
 end
 
@@ -157,6 +122,37 @@ local function ShowPopupForTarget(name)
     popupFrame:Show()
 end
 
+--- Helper function to attempt to show the popup frame for a target.
+--- @param targetName string: The name of the target player.
+--- @param totalTimeout number: The total time to wait for the target to respond.
+--- @return void
+local function AttemptToShowPopup(targetName, totalTimeout)
+    local elapsed = 0
+    local interval = 1  -- check every second
+    local ticker  
+    ticker = C_Timer.NewTicker(interval, function()
+        elapsed = elapsed + interval
+        addonTable.Registry:SendQuery(targetName)
+        
+        if addonTable.Registry:IsUserOnline(targetName) then
+            ShowPopupForTarget(targetName)
+            if ticker then
+                ticker:Cancel()
+            end
+        elseif elapsed >= totalTimeout then
+            if ticker then
+                ticker:Cancel()
+            end
+        end
+    end)
+end
+
+--- Helper function to hide the popup frame.
+local function HidePopup()
+    if popupFrame then
+        popupFrame:Hide()
+    end
+end
 
 --- Event frame to catch PLAYER_TARGET_CHANGED and CHAT_MSG_ADDON events.
 local eventFrame = CreateFrame("Frame")
@@ -176,9 +172,8 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
                 ShowPopupForTarget(name)
             else
                 pendingTarget = name
-                AttemptToShowPopup(name, CONSTANTS.QUERY_RETRY_DURATION)                
+                AttemptToShowPopup(name, CONSTANTS.QUERY_RETRY_DURATION)
             end
         end
     end
 end)
-

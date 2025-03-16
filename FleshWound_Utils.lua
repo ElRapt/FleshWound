@@ -90,9 +90,17 @@
     --- Normalizes a player's name using Ambiguate in "short" mode.
 -- @param name string The player's name.
 -- @return string|nil The normalized name or nil if no name provided.
-    function Utils.NormalizePlayerName(name)
-        return name and Ambiguate(name, "short") or nil
+function Utils.NormalizePlayerName(name)
+    if not name then return nil end
+    local normalized = Ambiguate(name, "short")
+    -- If you require realm information, check and append it.
+    local fullName, realm = UnitName(name)
+    if realm and realm ~= "" and not string.find(normalized, "-") then
+        normalized = normalized .. "-" .. realm
     end
+    return normalized
+end
+
     
     --- Converts a given name to lowercase.
 -- @param name string The player's name.

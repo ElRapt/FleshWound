@@ -1,7 +1,7 @@
 local addonName, addonTable = ...
 local Comm = {}
 addonTable.Comm = Comm
-Comm.PREFIX = "FleshWoundComm"
+Comm.PREFIX = "FW"
 Comm.PING_TIMEOUT = 5
 local AceSerializer = LibStub("AceSerializer-3.0")
 local CHANNEL_NAME = "FleshWoundComm"
@@ -12,8 +12,8 @@ local channelJoinedOnce = false
 --------------------------------------------------------------------------------
 
 --- Requests a profile from the specified target player.
--- If the player is known to have the addon, immediately sends a profile request.
--- Otherwise, pings the player and retries after the ping timeout.
+-- If the target player is online, sends a "REQUEST_PROFILE" message.
+-- If the target player is not detected as online, sends a query and retries after a timeout.
 -- @param targetPlayer string The name of the target player.
 function Comm:RequestProfile(targetPlayer)
     if not targetPlayer or targetPlayer == "" then return end
@@ -64,12 +64,6 @@ function Comm:DeserializeProfile(serialized)
         profileData.woundData = woundData
     end
     return profileData
-end
-
---- Retrieves the table of known addon users.
--- @return table A table mapping player names to true.
-function Comm:GetKnownAddonUsers()
-    return knownAddonUsers
 end
 
 

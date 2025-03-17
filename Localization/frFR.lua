@@ -93,6 +93,17 @@ Vous pouvez également rencontrer des erreurs, merci de les signaler sur Discord
 Vos commentaires sont précieux et aideront à façonner l'avenir de FleshWound. Merci pour votre soutien !
 ]]
 
+L.DISCLAIMER = [[
+FleshWound est un outil de jeu de rôle conçu pour vous permettre d’entrer n’importe quelle description ou texte de votre choix, y compris des descriptions détaillées ou graphiques de blessures et des sujets sombres.
+
+En utilisant cet add-on, vous reconnaissez que tout le contenu que vous créez ou consultez relève de votre seule responsabilité et doit respecter en permanence les Conditions d’Utilisation de Blizzard Entertainment.
+
+Les développeurs de FleshWound déclinent expressément toute responsabilité quant au contenu que vous saisissez ou consultez via l’add-on.
+
+Utilisez cet outil de manière responsable et assurez-vous que votre contenu de jeu de rôle respecte toutes les directives et politiques applicables.
+]]
+
+L.I_AGREE = "J'accepte"
 
 L.NEW_VERSION_AVAILABLE = "Une nouvelle version de FleshWound est disponible : %s (vous avez %s)."
 L.USERS_ONLINE_OTHER = "Il y a %d autres utilisateurs de FleshWound en ligne."

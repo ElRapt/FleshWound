@@ -13,7 +13,7 @@ local CONSTANTS = {
         GENERIC_DIALOG_WIDTH = 550,
         GENERIC_DIALOG_HEIGHT = 500,
         NOTE_DIALOG_WIDTH = 400,
-        NOTE_DIALOG_HEIGHT = 370,
+        NOTE_DIALOG_HEIGHT = 450,
         PROFILE_MANAGER_WIDTH = 500,
         PROFILE_MANAGER_HEIGHT = 500,
         CREATE_PROFILE_WIDTH = 300,
@@ -360,6 +360,13 @@ function GUI:CreateBodyRegion(frame, region)
     btn:SetHighlightTexture(CONSTANTS.IMAGES.ICON_MOUSE_HIGHLIGHT)
     btn.regionID = region.id
     btn:SetScript("OnClick", function()
+        for frameName, frm in pairs(_G) do
+            if type(frameName) == "string" and
+               (frameName:match("^FleshWoundAddNoteDialog_") or frameName:match("^FleshWoundEditNoteDialog_"))
+               and frm.IsShown and frm:IsShown() then
+                frm:Hide()
+            end
+        end
         Dialogs:OpenRegionDialog(btn.regionID, false)
     end)
     local regionMarker = btn:CreateTexture(nil, "OVERLAY")

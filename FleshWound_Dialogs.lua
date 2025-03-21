@@ -58,12 +58,14 @@ function Dialogs:CreateSeverityDropdown(parent)
     UIDropDownMenu_SetWidth(severityDropdown, 150)
 
     severityDropdown.initialize = function(dropdown, level)
+        UIDropDownMenu_SetText(dropdown, GUI.Severities[parent.selectedSeverityID or 1].displayName)
         for _, sev in ipairs(GUI.Severities) do
             local info = UIDropDownMenu_CreateInfo()
             info.text = sev.displayName
             info.arg1 = sev.id
             info.func = function(_, chosenID)
                 UIDropDownMenu_SetSelectedValue(dropdown, chosenID)
+                UIDropDownMenu_SetText(dropdown, sev.displayName)
                 parent.selectedSeverityID = chosenID
             end
             info.checked = (sev.id == (parent.selectedSeverityID or 1))
@@ -146,39 +148,23 @@ function Dialogs:CreateStatusSelection(parent)
 end
 
 function Dialogs:CreateEditBoxWithCounter(parent, maxChars)
-    local scrollFrame = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
-    local topAnchor = parent.StatusLabel or parent.StatusSelection
-    if topAnchor then
-        scrollFrame:SetPoint("TOPLEFT", topAnchor, "BOTTOMLEFT", 0, -20)
-    else
-        scrollFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", 15, -120)
-    end
-    scrollFrame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -35, 80)
-
-    local editBox = CreateFrame("EditBox", nil, scrollFrame, "BackdropTemplate")
+    local editBox = CreateFrame("EditBox", nil, parent, "BackdropTemplate")
     editBox:SetMultiLine(true)
+    editBox:SetSize(360, 80)
+    editBox:SetPoint("TOPLEFT", parent, "TOPLEFT", 20, -300)
     editBox:SetFontObject("ChatFontNormal")
     editBox:SetMaxLetters(maxChars)
     editBox:SetAutoFocus(true)
-    editBox:SetWidth(scrollFrame:GetWidth())
     editBox:SetTextInsets(10, 10, 10, 10)
     editBox:SetBackdrop(CONSTANTS.BACKDROPS.EDIT_BOX)
     editBox:SetBackdropColor(0, 0, 0, 0.5)
     editBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
 
-    scrollFrame:SetScrollChild(editBox)
-
     local charCountLabel = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    charCountLabel:SetPoint("TOPLEFT", scrollFrame, "BOTTOMLEFT", 0, 50)
+    charCountLabel:SetPoint("TOPLEFT", editBox, "BOTTOMLEFT", 0, -5)
     charCountLabel:SetText(string.format(L.CHAR_COUNT or "Character Count: %d/%d", 0, maxChars))
 
-    editBox:HookScript("OnTextChanged", function(self)
-        local text = self:GetText()
-        local length = strlenutf8(text)
-        charCountLabel:SetText(string.format(L.CHAR_COUNT or "Character Count: %d/%d", length, maxChars))
-    end)
-
-    return scrollFrame, editBox, charCountLabel
+    return editBox, charCountLabel
 end
 
 function Dialogs:CreateSaveCancelButtons(parent)
@@ -423,7 +409,7 @@ function Dialogs:OpenNoteDialog(regionID, noteIndex)
 
     dialog.SeverityLabel, dialog.SeverityDropdown = self:CreateSeverityDropdown(dialog)
     dialog.StatusSelection = self:CreateStatusSelection(dialog)
-    dialog.ScrollFrame, dialog.EditBox, dialog.CharCountLabel = self:CreateEditBoxWithCounter(dialog, CONSTANTS.LIMITS.MAX_NOTE_LENGTH)
+    dialog.EditBox, dialog.CharCountLabel = self:CreateEditBoxWithCounter(dialog, CONSTANTS.LIMITS.MAX_NOTE_LENGTH)
     dialog.SaveButton, dialog.CancelButton = self:CreateSaveCancelButtons(dialog)
     _G[frameName] = dialog
 
@@ -438,7 +424,6 @@ function Dialogs:PopulateNoteDialog(dialog, noteIndex)
     local isEdit = (noteIndex ~= nil)
     dialog.noteIndex = noteIndex
     dialog.selectedSeverityID = 2
-
     if isEdit and notes and notes[noteIndex] then
         local note = notes[noteIndex]
         local severityID = note.severityID or 2
@@ -449,8 +434,8 @@ function Dialogs:PopulateNoteDialog(dialog, noteIndex)
             dialog.StatusSelection:SetStatusIDs({})
         end
         dialog.EditBox:SetText(note.text or "")
-        local initialLen = strlenutf8(note.text or "")
-        dialog.CharCountLabel:SetText(string.format(L.CHAR_COUNT or "Character Count: %d/%d", initialLen, CONSTANTS.LIMITS.MAX_NOTE_LENGTH))
+        local length = strlenutf8(note.text or "")
+        dialog.CharCountLabel:SetText(string.format(L.CHAR_COUNT or "Character Count: %d/%d", length, CONSTANTS.LIMITS.MAX_NOTE_LENGTH))
     else
         dialog.SeverityDropdown:SetSeverityID(2)
         dialog.StatusSelection:SetStatusIDs({})
@@ -462,7 +447,6 @@ function Dialogs:PopulateNoteDialog(dialog, noteIndex)
         local text = addonTable.Utils.SanitizeInput(dialog.EditBox:GetText() or "")
         local length = strlenutf8(text)
         dialog.CharCountLabel:SetText(string.format(L.CHAR_COUNT or "Character Count: %d/%d", length, CONSTANTS.LIMITS.MAX_NOTE_LENGTH))
-
         if text == "" then
             dialog.SaveButton:Disable()
             if dialog.DuplicateWarning then
@@ -470,21 +454,19 @@ function Dialogs:PopulateNoteDialog(dialog, noteIndex)
             end
             return
         end
-
         local isDuplicate = false
         for idx, existingNote in ipairs(data[dialog.regionID] or {}) do
-            local sameNoteIndex = (isEdit and (idx == noteIndex))
-            if (not sameNoteIndex) and (existingNote.text == text) then
+            local sameIndex = (isEdit and (idx == noteIndex))
+            if (not sameIndex) and (existingNote.text == text) then
                 isDuplicate = true
                 break
             end
         end
-
         if isDuplicate then
             dialog.SaveButton:Disable()
             if not dialog.DuplicateWarning then
                 dialog.DuplicateWarning = dialog:CreateFontString(nil, "OVERLAY", "GameFontRedSmall")
-                dialog.DuplicateWarning:SetPoint("TOPLEFT", dialog.EditBox, "BOTTOMLEFT", 0, -5)
+                dialog.DuplicateWarning:SetPoint("TOPLEFT", dialog.EditBox, "BOTTOMLEFT", 0, -20)
                 dialog.DuplicateWarning:SetText(L.NOTE_DUPLICATE or "Duplicate note.")
             end
             dialog.DuplicateWarning:Show()
@@ -495,8 +477,6 @@ function Dialogs:PopulateNoteDialog(dialog, noteIndex)
             end
         end
     end
-
-    dialog.EditBox:SetScript("OnTextChanged", UpdateSaveButtonState)
 
     local function ConfirmAndSaveNote()
         local text = addonTable.Utils.SanitizeInput(dialog.EditBox:GetText() or "")
@@ -509,7 +489,6 @@ function Dialogs:PopulateNoteDialog(dialog, noteIndex)
         for stID in pairs(dialog.StatusSelection.selectedStatusIDs) do
             table.insert(chosenStatuses, stID)
         end
-
         data[dialog.regionID] = data[dialog.regionID] or {}
         if isEdit and notes and notes[noteIndex] then
             notes[noteIndex].text = text
@@ -518,13 +497,13 @@ function Dialogs:PopulateNoteDialog(dialog, noteIndex)
         else
             table.insert(data[dialog.regionID], { text = text, severityID = severityID, statusIDs = chosenStatuses })
         end
-
         GUI:UpdateRegionColors()
         dialog.EditBox:SetText("")
         dialog:Hide()
         self:OpenRegionDialog(dialog.regionID, true)
     end
 
+    dialog.EditBox:SetScript("OnTextChanged", UpdateSaveButtonState)
     dialog.EditBox:SetScript("OnEnterPressed", function(editBoxSelf)
         if IsShiftKeyDown() then
             editBoxSelf:Insert("\n")
@@ -534,14 +513,12 @@ function Dialogs:PopulateNoteDialog(dialog, noteIndex)
             end
         end
     end)
-
     dialog.SaveButton:SetScript("OnClick", ConfirmAndSaveNote)
     dialog.CancelButton:SetScript("OnClick", function()
         dialog.EditBox:SetText("")
         dialog:Hide()
         self:OpenRegionDialog(dialog.regionID, true)
     end)
-
     UpdateSaveButtonState()
     dialog.EditBox:SetFocus()
 end

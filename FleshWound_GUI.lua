@@ -299,23 +299,6 @@ function GUI:CloseAllDialogs()
     end
 end
 
-function GUI:SaveWindowPosition(frameName, frame)
-    addonTable.FleshWoundData.positions = addonTable.FleshWoundData.positions or {}
-    local pos = addonTable.FleshWoundData.positions
-    local point, _, relativePoint, xOfs, yOfs = frame:GetPoint()
-    pos[frameName] = { point = point, relativePoint = relativePoint, xOfs = xOfs, yOfs = yOfs }
-end
-
-function GUI:RestoreWindowPosition(frameName, frame)
-    local pos = addonTable.FleshWoundData.positions and addonTable.FleshWoundData.positions[frameName]
-    if pos then
-        frame:ClearAllPoints()
-        frame:SetPoint(pos.point, UIParent, pos.relativePoint, pos.xOfs, pos.yOfs)
-    else
-        frame:SetPoint("CENTER")
-    end
-end
-
 function GUI:CreateMainFrame()
     local frame = CreateFrame("Frame", "FleshWoundFrame", UIParent, "BackdropTemplate")
     self.frame = frame
@@ -376,7 +359,7 @@ function GUI:CreateBodyRegion(frame, region)
     btn:SetHighlightTexture(CONSTANTS.IMAGES.ICON_MOUSE_HIGHLIGHT)
     btn.regionID = region.id
     btn:SetScript("OnClick", function()
-        Dialogs:OpenWoundDialog(btn.regionID)
+        Dialogs:OpenRegionDialog(btn.regionID)
     end)
     local regionMarker = btn:CreateTexture(nil, "OVERLAY")
     regionMarker:SetSize(10, 10)

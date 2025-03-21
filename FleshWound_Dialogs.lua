@@ -214,7 +214,7 @@ function Dialogs:CreateSingleLineEditBoxWithCounter(parent, maxChars)
     return editBox, charCountLabel
 end
 
-function Dialogs:OpenWoundDialog(regionID, skipCloseDialogs)
+function Dialogs:OpenRegionDialog(regionID, skipCloseDialogs)
     if _G["FleshWoundProfileManager"] and _G["FleshWoundProfileManager"]:IsShown() then
         _G["FleshWoundProfileManager"]:Hide()
     end
@@ -259,6 +259,8 @@ function Dialogs:OpenWoundDialog(regionID, skipCloseDialogs)
     dialog:Show()
 end
 
+--- Populates the wound dialog with notes for the given region.
+---@param dialog table The dialog frame
 function Dialogs:PopulateWoundDialog(dialog)
     local data = getActiveWoundData()
     local notes = data[dialog.regionID]
@@ -372,7 +374,7 @@ function Dialogs:CreateNoteEntry(parent, note, index, regionID)
             local data = getActiveWoundData()
             if data[entry.regionID] then
                 table.remove(data[entry.regionID], index)
-                self:OpenWoundDialog(entry.regionID)
+                self:OpenRegionDialog(entry.regionID)
                 GUI:UpdateRegionColors()
             end
         end)
@@ -515,7 +517,7 @@ function Dialogs:PopulateNoteDialog(dialog, noteIndex)
         GUI:UpdateRegionColors()
         dialog.EditBox:SetText("")
         dialog:Hide()
-        self:OpenWoundDialog(dialog.regionID, true)
+        self:OpenRegionDialog(dialog.regionID, true)
     end
 
     dialog.EditBox:SetScript("OnEnterPressed", function(editBoxSelf)
@@ -532,7 +534,7 @@ function Dialogs:PopulateNoteDialog(dialog, noteIndex)
     dialog.CancelButton:SetScript("OnClick", function()
         dialog.EditBox:SetText("")
         dialog:Hide()
-        self:OpenWoundDialog(dialog.regionID, true)
+        self:OpenRegionDialog(dialog.regionID, true)
     end)
 
     UpdateSaveButtonState()

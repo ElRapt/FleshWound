@@ -214,6 +214,9 @@ function Dialogs:CreateSingleLineEditBoxWithCounter(parent, maxChars)
     return editBox, charCountLabel
 end
 
+--- Opens the dialog for a body region.
+---@param regionID number The ID of the region to display
+---@param skipCloseDialogs boolean If true, do not close other dialogs
 function Dialogs:OpenRegionDialog(regionID, skipCloseDialogs)
     if _G["FleshWoundProfileManager"] and _G["FleshWoundProfileManager"]:IsShown() then
         _G["FleshWoundProfileManager"]:Hide()
@@ -230,17 +233,19 @@ function Dialogs:OpenRegionDialog(regionID, skipCloseDialogs)
         end
     end
     local displayName = regionData and regionData.localName or ("Unknown Region " .. tostring(regionID))
-    local dialogName = "FleshWoundDialog_" .. regionID
+    local dialogName = "FleshWoundDialog_" .. tostring(regionID)
+    
     local dialogTitle = string.format(L.WOUND_DETAILS or "Wound Details: %s", displayName)
-
+    
     local dialog = self:CreateDialog(dialogName, dialogTitle, CONSTANTS.SIZES.GENERIC_DIALOG_WIDTH, CONSTANTS.SIZES.GENERIC_DIALOG_HEIGHT)
+    dialog.dialogPositionKey = "FleshWoundDialogGlobal"
     dialog.regionID = regionID
     dialog:SetScript("OnDragStop", function(f)
         f:StopMovingOrSizing()
         GUI:SaveWindowPosition(dialogName, f)
     end)
 
-    GUI:RestoreWindowPosition(dialogName, dialog)
+    GUI:RestoreWindowPosition(dialog.dialogPositionKey, dialog)
 
     dialog.ScrollFrame, dialog.ScrollChild = GUI:CreateScrollFrame(dialog, 15, -60, -35, 60)
     dialog.NoteEntries = {}
@@ -374,7 +379,7 @@ function Dialogs:CreateNoteEntry(parent, note, index, regionID)
             local data = getActiveWoundData()
             if data[entry.regionID] then
                 table.remove(data[entry.regionID], index)
-                self:OpenRegionDialog(entry.regionID)
+                self:OpenRegionDialog(entry.regionID, false)
                 GUI:UpdateRegionColors()
             end
         end)

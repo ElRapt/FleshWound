@@ -151,9 +151,10 @@ GUI.StatusesByID = StatusesByID
 -- @param frame Frame The frame whose position is to be saved.
 function GUI:SaveWindowPosition(frameName, frame)
     addonTable.FleshWoundData.positions = addonTable.FleshWoundData.positions or {}
+    local key = frame.dialogPositionKey or frameName  -- Use global key if available
     local pos = addonTable.FleshWoundData.positions
     local point, _, relativePoint, xOfs, yOfs = frame:GetPoint()
-    pos[frameName] = { point = point, relativePoint = relativePoint, xOfs = xOfs, yOfs = yOfs }
+    pos[key] = { point = point, relativePoint = relativePoint, xOfs = xOfs, yOfs = yOfs }
 end
 
 --- Restores the position of a given frame.
@@ -359,7 +360,7 @@ function GUI:CreateBodyRegion(frame, region)
     btn:SetHighlightTexture(CONSTANTS.IMAGES.ICON_MOUSE_HIGHLIGHT)
     btn.regionID = region.id
     btn:SetScript("OnClick", function()
-        Dialogs:OpenRegionDialog(btn.regionID)
+        Dialogs:OpenRegionDialog(btn.regionID, false)
     end)
     local regionMarker = btn:CreateTexture(nil, "OVERLAY")
     regionMarker:SetSize(10, 10)

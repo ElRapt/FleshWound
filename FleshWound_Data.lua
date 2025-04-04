@@ -8,7 +8,6 @@ local L = addonTable.L
 local Data = {}
 addonTable.Data = Data
 
-
 --- Switches the current profile to the specified profileName.
 --- If the profile does not exist, it is created.
 --- Updates character profile mapping and refreshes GUI elements accordingly.
@@ -20,13 +19,16 @@ function Data:SwitchProfile(profileName)
     local charKey = playerName .. "-" .. realmName
 
     if not data.profiles[profileName] then
-        data.profiles[profileName] = { woundData = {} }
+        -- Create a new profile with both woundData and history tables.
+        data.profiles[profileName] = { woundData = {}, history = {} }
     end
 
     data.currentProfile = profileName
     data.charProfiles[charKey] = profileName  -- Persist the new assignment
     addonTable.woundData = data.profiles[profileName].woundData
     self.woundData = addonTable.woundData
+    -- Also expose the history table for the current profile:
+    addonTable.historyData = data.profiles[profileName].history
 
     if addonTable.GUI then
         addonTable.GUI:UpdateRegionColors()
@@ -38,13 +40,13 @@ function Data:SwitchProfile(profileName)
     end
 end
 
-
 --- Creates a new profile with the given profileName if it does not already exist.
 --- Prints a message indicating whether the profile was created or already exists.
 --- @param profileName string: The desired profile name.
 function Data:CreateProfile(profileName)
     if not self.FleshWoundData.profiles[profileName] then
-        self.FleshWoundData.profiles[profileName] = { woundData = {} }
+        -- Initialize both woundData and history for each new profile.
+        self.FleshWoundData.profiles[profileName] = { woundData = {}, history = {} }
         Utils.FW_Print(string.format(L.CREATE_PROFILE, "|cffff0000" .. profileName .. "|r"), false)
     else
         Utils.FW_Print(string.format(L.PROFILE_EXISTS_MSG, "|cffff0000" .. profileName .. "|r"), true)
@@ -131,8 +133,49 @@ function Data:Initialize()
 
     self:SwitchProfile(assignedProfile)
     Utils.FW_Print(string.format(L.DATA_INITIALIZED, "|cffff0000" .. assignedProfile .. "|r"), false)
-
-
 end
 
+--------------------------------------------------------------------------------
+-- Helper Function: AddHistoryEntry
+-- Adds a treated wound entry to the history table for the specified region.
+-- Removes the oldest entry if the history for the region already has 15 entries.
+-- @param regionID number: The region identifier.
+-- @param treatmentDetails table: Contains:
+--   treatment (string) - How the wound was cured.
+--   appearance (string) - How the wound looks now.
+--   healer (string, optional) - Name of the healer (nil if not provided).
+--   severityID (number) - Severity of the wound before treatment.
+--   statusIDs (table) - Table of status IDs active before treatment.
+--   originalText (string) - Original wound description.
+--------------------------------------------------------------------------------
+function Data:AddHistoryEntry(regionID, treatmentDetails)
+    -- Ensure the current profile's history table exists.
+    local currentProfile = self.FleshWoundData.profiles[self.FleshWoundData.currentProfile]
+    currentProfile.history = currentProfile.history or {}
+    currentProfile.history[regionID] = currentProfile.history[regionID] or {}
 
+    local historyList = currentProfile.history[regionID]
+
+    -- Create the new history entry.
+    local entry = {
+        timestamp   = time(),  -- store the actual treatment time; GUI will compute "since healed"
+        treatment   = treatmentDetails.treatment,
+        appearance  = treatmentDetails.appearance,
+        healer      = treatmentDetails.healer,   -- may be nil
+        severityID  = treatmentDetails.severityID,
+        statusIDs   = treatmentDetails.statusIDs,  -- should be a table
+        originalText= treatmentDetails.originalText,
+    }
+
+    -- Enforce the cap: if there are already 15 entries, remove the oldest one.
+    if #historyList >= 15 then
+        table.remove(historyList, 1)
+    end
+
+    table.insert(historyList, entry)
+
+    -- Log to chat
+    Utils.FW_Print(string.format("Treated wound on region %s: %s", tostring(regionID), treatmentDetails.treatment), false)
+end
+
+return Data

@@ -244,6 +244,14 @@ function Dialogs:OpenRegionDialog(regionID, skipCloseDialogs)
             self:OpenNoteDialog(regionID)
         end)
     end
+    
+    dialog.HistoryButton = GUI:CreateButton(dialog, "", 32, 32, "BOTTOMRIGHT", dialog, -15, 15)
+    dialog.HistoryButton:SetNormalTexture("Interface\\Icons\\Spell_Nature_TimeStop")
+    dialog.HistoryButton:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight")
+    dialog.HistoryButton:SetScript("OnClick", function()
+        Dialogs:OpenHistoryDialog(regionID)
+    end)
+
 
     _G[dialogName] = dialog
     self:PopulateWoundDialog(dialog)
@@ -523,10 +531,92 @@ function Dialogs:PopulateNoteDialog(dialog, noteIndex)
     dialog.EditBox:SetFocus()
 end
 
-function Dialogs:CloseAllDialogs(dialogType)
+function Dialogs:OpenHistoryDialog(regionID)
+    -- Close any open dialogs (both note and history) globally
+    self:CloseAllDialogs()
+
+    local regionData
+    for _, rData in ipairs(CONSTANTS.REGIONS) do
+        if rData.id == regionID then
+            regionData = rData
+            break
+        end
+    end
+    local regionName = regionData and regionData.localName or ("Region " .. tostring(regionID))
+    
+    -- Use the same fixed anchor as region dialogs
+    local anchorKey = "FleshWoundDialogGlobal"
+    local globalName = "FleshWoundHistoryDialog_" .. tostring(regionID)
+    local dialogTitle = "History: " .. regionName
+
+    local dialog = self:CreateDialog(globalName, dialogTitle, CONSTANTS.SIZES.NOTE_DIALOG_WIDTH, CONSTANTS.SIZES.NOTE_DIALOG_HEIGHT)
+    dialog.dialogPositionKey = anchorKey
+    dialog.regionID = regionID
+
+    addonTable.Utils.MakeFrameDraggable(dialog, function(f) GUI:SaveWindowPosition(anchorKey, f) end)
+    GUI:RestoreWindowPosition(anchorKey, dialog)
+
+    dialog:EnableKeyboard(true)
+    dialog:SetPropagateKeyboardInput(true)
+    dialog:SetScript("OnKeyDown", function(self, key)
+        if key == "ESCAPE" then
+            self:Hide()
+        end
+    end)
+
+    dialog.ScrollFrame, dialog.ScrollChild = GUI:CreateScrollFrame(dialog, 15, -60, -35, 60)
+
+    local historyData = addonTable.historyData and addonTable.historyData[regionID] or {}
+    local yOffset = -10
+
+    if #historyData > 0 then
+        for i, entry in ipairs(historyData) do
+            local sinceHealed = time() - entry.timestamp
+            local entryText = string.format("Entry %d:\nTreatment: %s\nHealer: %s\nAppearance: %s\nHealed for: %d sec",
+                i, entry.treatment, entry.healer or "None", entry.appearance, sinceHealed)
+            
+            local historyEntry = dialog.ScrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            historyEntry:SetPoint("TOPLEFT", 10, yOffset)
+            historyEntry:SetWidth(dialog.ScrollChild:GetWidth() - 20)
+            historyEntry:SetJustifyH("LEFT")
+            historyEntry:SetText(entryText)
+            
+            yOffset = yOffset - (historyEntry:GetStringHeight() + 15)
+        end
+        dialog.ScrollChild:SetHeight(-yOffset)
+    else
+        local noHistoryText = dialog.ScrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        noHistoryText:SetPoint("TOPLEFT", 10, -10)
+        noHistoryText:SetWidth(dialog.ScrollChild:GetWidth() - 20)
+        noHistoryText:SetJustifyH("CENTER")
+        noHistoryText:SetText("No History")
+        dialog.ScrollChild:SetHeight(30)
+    end
+
+    dialog:Show()
+end
+
+
+
+function Dialogs:CloseAllDialogs(param)
     local dialogsToClose = {}
-    if dialogType == "BodyPartDialogs" then
-        dialogsToClose = { "FleshWoundDialog_" }
+
+    if type(param) == "table" then
+        dialogsToClose = param
+    elseif type(param) == "string" then
+        if param == "BodyPartDialogs" then
+            dialogsToClose = { "FleshWoundDialog_", "FleshWoundHistoryDialog_" }
+        else
+            dialogsToClose = {
+                "FleshWoundDialog_",
+                "FleshWoundAddNoteDialog_",
+                "FleshWoundEditNoteDialog_",
+                "FleshWoundProfileManager",
+                "FleshWoundCreateProfileDialog",
+                "FleshWoundRenameProfileDialog",
+                "FleshWoundHistoryDialog_"
+            }
+        end
     else
         dialogsToClose = {
             "FleshWoundDialog_",
@@ -535,8 +625,10 @@ function Dialogs:CloseAllDialogs(dialogType)
             "FleshWoundProfileManager",
             "FleshWoundCreateProfileDialog",
             "FleshWoundRenameProfileDialog",
+            "FleshWoundHistoryDialog_"
         }
     end
+
     for _, framePrefix in ipairs(dialogsToClose) do
         for frameName, frameObj in pairs(_G) do
             if type(frameName) == "string" and frameName:match("^" .. framePrefix)
@@ -546,5 +638,7 @@ function Dialogs:CloseAllDialogs(dialogType)
         end
     end
 end
+
+
 
 return Dialogs

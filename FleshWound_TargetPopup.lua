@@ -28,6 +28,14 @@ local pendingTarget
 local popupFrame
 local targetName
 
+--- Helper function to hide the popup frame.
+local function HidePopup()
+    if popupFrame then
+        popupFrame:Hide()
+    end
+end
+
+
 --- A function to save the position of the popup frame.
 local function SavePopupPosition()
     if not FleshWoundData then FleshWoundData = {} end
@@ -147,12 +155,6 @@ local function AttemptToShowPopup(targetName, totalTimeout)
     end)
 end
 
---- Helper function to hide the popup frame.
-local function HidePopup()
-    if popupFrame then
-        popupFrame:Hide()
-    end
-end
 
 --- Event frame to catch PLAYER_TARGET_CHANGED and CHAT_MSG_ADDON events.
 local eventFrame = CreateFrame("Frame")

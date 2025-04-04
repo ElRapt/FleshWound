@@ -49,9 +49,13 @@ end
 -- @param profileData table The profile data table.
 -- @return string The serialized wound data.
 function Comm:SerializeProfile(profileData)
-    local woundData = profileData.woundData or {}
-    return AceSerializer:Serialize(woundData)
+    local dataToSend = {
+         woundData = profileData.woundData or {},
+         history   = profileData.history or {}
+    }
+    return AceSerializer:Serialize(dataToSend)
 end
+
 
 --- Deserializes profile data from a serialized string.
 -- @param serialized string The serialized wound data.

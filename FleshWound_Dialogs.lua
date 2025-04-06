@@ -531,28 +531,126 @@ function Dialogs:PopulateNoteDialog(dialog, noteIndex)
     dialog.EditBox:SetFocus()
 end
 
--- Create a history card for a given history entry.
--- Each card displays the treatment (left) and the time since healing (right).
--- On hover, a tooltip shows the healer and appearance.
+--------------------------------------------------------------------------------
+-- History Dialog Logic for FleshWound
+--------------------------------------------------------------------------------
+
+-- Opens the History Dialog for a given region.
+-- Uses the same fixed anchor as the Note Dialogs (e.g. "FleshWoundDialogGlobal")
+-- and assigns a unique global name ("FleshWoundHistoryDialog_<regionID>").
+-- In remote mode, the Edit/Delete buttons will not be shown.
+function Dialogs:OpenHistoryDialog(regionID)
+    -- Close any open dialogs (both note and history) globally.
+    self:CloseAllDialogs("all")
+
+    -- Determine region information.
+    local regionData
+    for _, rData in ipairs(CONSTANTS.REGIONS) do
+        if rData.id == regionID then
+            regionData = rData
+            break
+        end
+    end
+    local regionName = regionData and regionData.localName or ("Region " .. tostring(regionID))
+    
+    -- Use a fixed anchor so that all history dialogs share the same position.
+    local anchorKey = "FleshWoundDialogGlobal"
+    -- Create a unique global name for the history dialog.
+    local globalName = "FleshWoundHistoryDialog_" .. tostring(regionID)
+    local dialogTitle = "History: " .. regionName
+
+    -- Create the History Dialog.
+    local dialog = self:CreateDialog(globalName, dialogTitle, CONSTANTS.SIZES.NOTE_DIALOG_WIDTH, CONSTANTS.SIZES.NOTE_DIALOG_HEIGHT)
+    dialog.dialogPositionKey = anchorKey
+    dialog.regionID = regionID
+
+    addonTable.Utils.MakeFrameDraggable(dialog, function(f) GUI:SaveWindowPosition(anchorKey, f) end)
+    GUI:RestoreWindowPosition(anchorKey, dialog)
+
+    -- Enable ESC key to close the dialog.
+    dialog:EnableKeyboard(true)
+    dialog:SetPropagateKeyboardInput(true)
+    dialog:SetScript("OnKeyDown", function(self, key)
+        if key == "ESCAPE" then
+            self:Hide()
+        end
+    end)
+
+    -- Create the scroll frame for history entries.
+    dialog.ScrollFrame, dialog.ScrollChild = GUI:CreateScrollFrame(dialog, 15, -60, -35, 60)
+
+    -- Populate the dialog with history entries.
+    self:PopulateHistoryDialog(dialog)
+
+    dialog:Show()
+end
+
+-- Populates the History Dialog's scroll frame.
+-- This function mimics the NoteDialog logic by using a dedicated table (dialog.HistoryEntries)
+-- to track and clear out previous entries, then repopulating with the current history data.
+function Dialogs:PopulateHistoryDialog(dialog)
+    if not dialog or not dialog.ScrollChild then
+        return
+    end
+
+    -- Clear out any existing history entries.
+    if dialog.HistoryEntries then
+        for _, entry in ipairs(dialog.HistoryEntries) do
+            entry:Hide()
+            entry:SetParent(nil)
+        end
+    end
+    dialog.HistoryEntries = {}  -- reset the table
+
+    local historyData = addonTable.historyData and addonTable.historyData[dialog.regionID] or {}
+    local yOffset = -10
+
+    if #historyData > 0 then
+        -- Loop in reverse order (most recent on top).
+        for i = #historyData, 1, -1 do
+            local entry = historyData[i]
+            local card = self:CreateHistoryCard(dialog.ScrollChild, entry, i, dialog.regionID)
+            card:SetPoint("TOPLEFT", 10, yOffset)
+            table.insert(dialog.HistoryEntries, card)
+            yOffset = yOffset - (card:GetHeight() + 10)
+        end
+        dialog.ScrollChild:SetHeight(-yOffset)
+    else
+        local noHistoryText = dialog.ScrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        noHistoryText:SetPoint("TOPLEFT", 10, -10)
+        noHistoryText:SetWidth(dialog.ScrollChild:GetWidth() - 20)
+        noHistoryText:SetJustifyH("CENTER")
+        noHistoryText:SetText("No healing history to track.")
+        table.insert(dialog.HistoryEntries, noHistoryText)
+        dialog.ScrollChild:SetHeight(30)
+    end
+end
+
+-- Creates a history card for a single history entry.
+-- The card displays the treatment on the left and the time since healing on the right.
+-- When hovered, a tooltip shows additional details (healer and appearance).
 -- In local mode, Edit and Delete buttons are added.
 function Dialogs:CreateHistoryCard(parent, entry, index, regionID)
     local card = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    card:SetSize(parent:GetWidth() - 20, 60)
+    card:SetSize(parent:GetWidth() - 20, 60)  -- Adjust height as needed
     card:SetBackdrop(CONSTANTS.BACKDROPS.TOOLTIP_FRAME)
     card:SetBackdropColor(0.1, 0.1, 0.1, 0.8)
     card:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
 
+    -- Treatment text (left side)
     local treatmentText = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     treatmentText:SetPoint("LEFT", card, "LEFT", 10, 0)
     treatmentText:SetJustifyH("LEFT")
     treatmentText:SetText(entry.treatment or "")
 
+    -- Time since healing (right side)
     local sinceHealed = time() - entry.timestamp
     local timeText = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     timeText:SetPoint("RIGHT", card, "RIGHT", -10, 0)
     timeText:SetJustifyH("RIGHT")
     timeText:SetText(string.format("%d sec", sinceHealed))
 
+    -- Tooltip on hover showing additional details.
     card:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine("Healer: " .. (entry.healer or "None"))
@@ -563,6 +661,7 @@ function Dialogs:CreateHistoryCard(parent, entry, index, regionID)
         GameTooltip:Hide()
     end)
 
+    -- In local mode, add Edit and Delete buttons.
     if not GUI.displayingRemote then
         local editButton = GUI:CreateButton(card, "Edit", 50, 20, "BOTTOMLEFT", card, 10, 5)
         editButton:SetScript("OnClick", function()
@@ -573,7 +672,7 @@ function Dialogs:CreateHistoryCard(parent, entry, index, regionID)
             local history = addonTable.historyData and addonTable.historyData[regionID]
             if history then
                 table.remove(history, index)
-                -- Instead of closing and reopening, refresh the current dialog seamlessly.
+                -- Refresh the current dialog without closing it.
                 local dlg = _G["FleshWoundHistoryDialog_" .. tostring(regionID)]
                 Dialogs:PopulateHistoryDialog(dlg)
             end
@@ -583,7 +682,7 @@ function Dialogs:CreateHistoryCard(parent, entry, index, regionID)
     return card
 end
 
--- Opens a simple edit dialog (using StaticPopup) to modify the appearance field.
+-- Opens a simple edit dialog (using StaticPopup) to modify the Appearance field of a history entry.
 function Dialogs:EditHistoryEntry(regionID, index)
     local history = addonTable.historyData and addonTable.historyData[regionID]
     if not history or not history[index] then
@@ -605,101 +704,13 @@ function Dialogs:EditHistoryEntry(regionID, index)
         OnAccept = function(self)
             local newText = self.editBox:GetText()
             entry.appearance = newText
-            Dialogs:OpenHistoryDialog(regionID)  -- Refresh dialog
+            -- Refresh the history dialog to reflect the change.
+            Dialogs:OpenHistoryDialog(regionID)
         end,
     }
     StaticPopup_Show("FW_EDIT_HISTORY")
 end
 
-function Dialogs:OpenHistoryDialog(regionID)
-    -- Close all open dialogs (notes and history) globally.
-    self:CloseAllDialogs()
-
-    local regionData
-    for _, rData in ipairs(CONSTANTS.REGIONS) do
-        if rData.id == regionID then
-            regionData = rData
-            break
-        end
-    end
-    local regionName = regionData and regionData.localName or ("Region " .. tostring(regionID))
-    
-    -- Use a fixed anchor for all region dialogs.
-    local anchorKey = "FleshWoundDialogGlobal"
-    -- Give the history dialog a unique global name.
-    local globalName = "FleshWoundHistoryDialog_" .. tostring(regionID)
-    local dialogTitle = "History: " .. regionName
-
-    -- Create the history dialog with its unique identifier.
-    local dialog = self:CreateDialog(globalName, dialogTitle, CONSTANTS.SIZES.NOTE_DIALOG_WIDTH, CONSTANTS.SIZES.NOTE_DIALOG_HEIGHT)
-    dialog.dialogPositionKey = anchorKey
-    dialog.regionID = regionID
-
-    addonTable.Utils.MakeFrameDraggable(dialog, function(f) GUI:SaveWindowPosition(anchorKey, f) end)
-    GUI:RestoreWindowPosition(anchorKey, dialog)
-
-    dialog:EnableKeyboard(true)
-    dialog:SetPropagateKeyboardInput(true)
-    dialog:SetScript("OnKeyDown", function(self, key)
-        if key == "ESCAPE" then
-            self:Hide()
-        end
-    end)
-
-    dialog.ScrollFrame, dialog.ScrollChild = GUI:CreateScrollFrame(dialog, 15, -60, -35, 60)
-
-    local historyData = addonTable.historyData and addonTable.historyData[regionID] or {}
-    local yOffset = -10
-
-    -- Display entries in reverse order (most recent at the top).
-    for i = #historyData, 1, -1 do
-        local entry = historyData[i]
-        local sinceHealed = time() - entry.timestamp
-        local entryText = string.format("Entry %d:\nTreatment: %s\nHealed for: %d sec", 
-            i, entry.treatment, sinceHealed)
-        
-        local card = self:CreateHistoryCard(dialog.ScrollChild, entry, i, regionID)
-        card:SetPoint("TOPLEFT", 10, yOffset)
-        yOffset = yOffset - (card:GetHeight() + 10)
-    end
-    dialog.ScrollChild:SetHeight(-yOffset)
-    dialog.ScrollFrame:SetVerticalScroll(0)  -- Start at the top
-
-    dialog:Show()
-end
-
--- Refreshes the contents of the currently open history dialog without closing it.
-function Dialogs:PopulateHistoryDialog(dialog)
-    if not dialog or not dialog.ScrollChild then
-        return
-    end
-    -- Clear existing children from the scroll child.
-    for _, child in ipairs({ dialog.ScrollChild:GetChildren() }) do
-        child:Hide()
-        child:SetParent(nil)
-    end
-
-    local historyData = addonTable.historyData and addonTable.historyData[dialog.regionID] or {}
-    local yOffset = -10
-
-    if #historyData > 0 then
-        -- Loop in reverse order: most recent on top.
-        for i = #historyData, 1, -1 do
-            local entry = historyData[i]
-            local card = self:CreateHistoryCard(dialog.ScrollChild, entry, i, dialog.regionID)
-            card:SetPoint("TOPLEFT", 10, yOffset)
-            yOffset = yOffset - (card:GetHeight() + 10)
-        end
-        dialog.ScrollChild:SetHeight(-yOffset)
-    else
-        local noHistoryText = dialog.ScrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        noHistoryText:SetPoint("TOPLEFT", 10, -10)
-        noHistoryText:SetWidth(dialog.ScrollChild:GetWidth() - 20)
-        noHistoryText:SetJustifyH("CENTER")
-        noHistoryText:SetText("No healing history to track.")
-        dialog.ScrollChild:SetHeight(30)
-    end
-end
 
 
 function Dialogs:CloseAllDialogs(param)

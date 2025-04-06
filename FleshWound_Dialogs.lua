@@ -208,7 +208,7 @@ function Dialogs:OpenRegionDialog(regionID, skipCloseDialogs)
         _G["FleshWoundProfileManager"]:Hide()
     end
     if not skipCloseDialogs then
-        self:CloseAllDialogs("BodyPartDialogs")
+        self:CloseAllDialogs()
     end
 
     local regionData
@@ -391,8 +391,7 @@ function Dialogs:OpenNoteDialog(regionID, noteIndex)
         UIErrorsFrame:AddMessage(L.CANNOT_OPEN_PM_WHILE_NOTE or "Cannot open Profile Manager while note dialog is open.", 1.0, 0.0, 0.0, 5)
         return
     end
-    self:CloseAllDialogs("BodyPartDialogs")
-    self:CloseAllDialogs("HistoryDialog")
+    self:CloseAllDialogs()
 
     local isEdit = (noteIndex ~= nil)
     local baseName = isEdit and "FleshWoundEditNoteDialog" or "FleshWoundAddNoteDialog"
@@ -538,38 +537,32 @@ end
 -- In local mode, Edit and Delete buttons are added.
 function Dialogs:CreateHistoryCard(parent, entry, index, regionID)
     local card = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    card:SetSize(parent:GetWidth() - 20, 60)  -- Adjust height as needed
+    card:SetSize(parent:GetWidth() - 20, 60)
     card:SetBackdrop(CONSTANTS.BACKDROPS.TOOLTIP_FRAME)
     card:SetBackdropColor(0.1, 0.1, 0.1, 0.8)
     card:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
 
-    -- Treatment text (left side)
     local treatmentText = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     treatmentText:SetPoint("LEFT", card, "LEFT", 10, 0)
     treatmentText:SetJustifyH("LEFT")
     treatmentText:SetText(entry.treatment or "")
 
-    -- Time since heal (right side)
     local sinceHealed = time() - entry.timestamp
     local timeText = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     timeText:SetPoint("RIGHT", card, "RIGHT", -10, 0)
     timeText:SetJustifyH("RIGHT")
     timeText:SetText(string.format("%d sec", sinceHealed))
 
-    -- Tooltip on hover showing additional details
     card:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        local healer = entry.healer or "None"
-        local appearance = entry.appearance or ""
-        GameTooltip:AddLine("Healer: " .. healer)
-        GameTooltip:AddLine("Appearance: " .. appearance)
+        GameTooltip:AddLine("Healer: " .. (entry.healer or "None"))
+        GameTooltip:AddLine("Appearance: " .. (entry.appearance or ""))
         GameTooltip:Show()
     end)
     card:SetScript("OnLeave", function(self)
         GameTooltip:Hide()
     end)
 
-    -- If local, add Edit and Delete buttons to modify the Appearance field or remove the entry.
     if not GUI.displayingRemote then
         local editButton = GUI:CreateButton(card, "Edit", 50, 20, "BOTTOMLEFT", card, 10, 5)
         editButton:SetScript("OnClick", function()
@@ -580,7 +573,9 @@ function Dialogs:CreateHistoryCard(parent, entry, index, regionID)
             local history = addonTable.historyData and addonTable.historyData[regionID]
             if history then
                 table.remove(history, index)
-                Dialogs:OpenHistoryDialog(regionID)  -- Refresh dialog
+                -- Instead of closing and reopening, refresh the current dialog seamlessly.
+                local dlg = _G["FleshWoundHistoryDialog_" .. tostring(regionID)]
+                Dialogs:PopulateHistoryDialog(dlg)
             end
         end)
     end
@@ -673,11 +668,53 @@ function Dialogs:OpenHistoryDialog(regionID)
     dialog:Show()
 end
 
+-- Refreshes the contents of the currently open history dialog without closing it.
+function Dialogs:PopulateHistoryDialog(dialog)
+    if not dialog or not dialog.ScrollChild then
+        return
+    end
+    -- Clear existing children from the scroll child.
+    for _, child in ipairs({ dialog.ScrollChild:GetChildren() }) do
+        child:Hide()
+        child:SetParent(nil)
+    end
+
+    local historyData = addonTable.historyData and addonTable.historyData[dialog.regionID] or {}
+    local yOffset = -10
+
+    if #historyData > 0 then
+        -- Loop in reverse order: most recent on top.
+        for i = #historyData, 1, -1 do
+            local entry = historyData[i]
+            local card = self:CreateHistoryCard(dialog.ScrollChild, entry, i, dialog.regionID)
+            card:SetPoint("TOPLEFT", 10, yOffset)
+            yOffset = yOffset - (card:GetHeight() + 10)
+        end
+        dialog.ScrollChild:SetHeight(-yOffset)
+    else
+        local noHistoryText = dialog.ScrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        noHistoryText:SetPoint("TOPLEFT", 10, -10)
+        noHistoryText:SetWidth(dialog.ScrollChild:GetWidth() - 20)
+        noHistoryText:SetJustifyH("CENTER")
+        noHistoryText:SetText("No healing history to track.")
+        dialog.ScrollChild:SetHeight(30)
+    end
+end
+
 
 function Dialogs:CloseAllDialogs(param)
     local dialogsToClose = {}
-
-    if type(param) == "table" then
+    if param == "all" then
+        dialogsToClose = {
+            "FleshWoundDialog_",
+            "FleshWoundAddNoteDialog_",
+            "FleshWoundEditNoteDialog_",
+            "FleshWoundProfileManager",
+            "FleshWoundCreateProfileDialog",
+            "FleshWoundRenameProfileDialog",
+            "FleshWoundHistoryDialog_"
+        }
+    elseif type(param) == "table" then
         dialogsToClose = param
     elseif type(param) == "string" then
         if param == "BodyPartDialogs" then
@@ -714,5 +751,6 @@ function Dialogs:CloseAllDialogs(param)
         end
     end
 end
+
 
 return Dialogs

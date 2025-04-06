@@ -392,6 +392,7 @@ function Dialogs:OpenNoteDialog(regionID, noteIndex)
         return
     end
     self:CloseAllDialogs("BodyPartDialogs")
+    self:CloseAllDialogs("HistoryDialog")
 
     local isEdit = (noteIndex ~= nil)
     local baseName = isEdit and "FleshWoundEditNoteDialog" or "FleshWoundAddNoteDialog"

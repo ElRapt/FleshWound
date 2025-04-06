@@ -532,18 +532,17 @@ function Dialogs:PopulateNoteDialog(dialog, noteIndex)
 end
 
 --------------------------------------------------------------------------------
--- History Dialog Logic for FleshWound
+-- History Dialog Logic (modeled on NoteDialog)
 --------------------------------------------------------------------------------
 
 -- Opens the History Dialog for a given region.
--- Uses the same fixed anchor as the Note Dialogs (e.g. "FleshWoundDialogGlobal")
--- and assigns a unique global name ("FleshWoundHistoryDialog_<regionID>").
--- In remote mode, the Edit/Delete buttons will not be shown.
+-- Uses a fixed anchor ("FleshWoundDialogGlobal") so that History dialogs appear
+-- at the same position as the Note dialogs. It assigns a unique global name
+-- ("FleshWoundHistoryDialog_<regionID>") so that it can be refreshed and closed.
 function Dialogs:OpenHistoryDialog(regionID)
-    -- Close any open dialogs (both note and history) globally.
+    -- Close all open dialogs (notes and history)
     self:CloseAllDialogs("all")
-
-    -- Determine region information.
+    
     local regionData
     for _, rData in ipairs(CONSTANTS.REGIONS) do
         if rData.id == regionID then
@@ -553,13 +552,10 @@ function Dialogs:OpenHistoryDialog(regionID)
     end
     local regionName = regionData and regionData.localName or ("Region " .. tostring(regionID))
     
-    -- Use a fixed anchor so that all history dialogs share the same position.
-    local anchorKey = "FleshWoundDialogGlobal"
-    -- Create a unique global name for the history dialog.
+    local anchorKey = "FleshWoundDialogGlobal"  -- Shared anchor
     local globalName = "FleshWoundHistoryDialog_" .. tostring(regionID)
     local dialogTitle = "History: " .. regionName
 
-    -- Create the History Dialog.
     local dialog = self:CreateDialog(globalName, dialogTitle, CONSTANTS.SIZES.NOTE_DIALOG_WIDTH, CONSTANTS.SIZES.NOTE_DIALOG_HEIGHT)
     dialog.dialogPositionKey = anchorKey
     dialog.regionID = regionID
@@ -567,7 +563,6 @@ function Dialogs:OpenHistoryDialog(regionID)
     addonTable.Utils.MakeFrameDraggable(dialog, function(f) GUI:SaveWindowPosition(anchorKey, f) end)
     GUI:RestoreWindowPosition(anchorKey, dialog)
 
-    -- Enable ESC key to close the dialog.
     dialog:EnableKeyboard(true)
     dialog:SetPropagateKeyboardInput(true)
     dialog:SetScript("OnKeyDown", function(self, key)
@@ -576,18 +571,16 @@ function Dialogs:OpenHistoryDialog(regionID)
         end
     end)
 
-    -- Create the scroll frame for history entries.
     dialog.ScrollFrame, dialog.ScrollChild = GUI:CreateScrollFrame(dialog, 15, -60, -35, 60)
 
-    -- Populate the dialog with history entries.
+    -- Populate the dialog contents.
     self:PopulateHistoryDialog(dialog)
 
     dialog:Show()
 end
 
 -- Populates the History Dialog's scroll frame.
--- This function mimics the NoteDialog logic by using a dedicated table (dialog.HistoryEntries)
--- to track and clear out previous entries, then repopulating with the current history data.
+-- This version mimics the NoteDialog logic by completely rebuilding the list.
 function Dialogs:PopulateHistoryDialog(dialog)
     if not dialog or not dialog.ScrollChild then
         return
@@ -626,31 +619,28 @@ function Dialogs:PopulateHistoryDialog(dialog)
     end
 end
 
--- Creates a history card for a single history entry.
--- The card displays the treatment on the left and the time since healing on the right.
--- When hovered, a tooltip shows additional details (healer and appearance).
--- In local mode, Edit and Delete buttons are added.
+-- Creates a history card for a given history entry.
+-- Displays treatment (left) and time since healing (right).
+-- On hover, shows a tooltip with healer and appearance.
+-- In local mode, adds Edit and Delete buttons.
 function Dialogs:CreateHistoryCard(parent, entry, index, regionID)
     local card = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    card:SetSize(parent:GetWidth() - 20, 60)  -- Adjust height as needed
+    card:SetSize(parent:GetWidth() - 20, 60)
     card:SetBackdrop(CONSTANTS.BACKDROPS.TOOLTIP_FRAME)
     card:SetBackdropColor(0.1, 0.1, 0.1, 0.8)
     card:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
 
-    -- Treatment text (left side)
     local treatmentText = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     treatmentText:SetPoint("LEFT", card, "LEFT", 10, 0)
     treatmentText:SetJustifyH("LEFT")
     treatmentText:SetText(entry.treatment or "")
 
-    -- Time since healing (right side)
     local sinceHealed = time() - entry.timestamp
     local timeText = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     timeText:SetPoint("RIGHT", card, "RIGHT", -10, 0)
     timeText:SetJustifyH("RIGHT")
     timeText:SetText(string.format("%d sec", sinceHealed))
 
-    -- Tooltip on hover showing additional details.
     card:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine("Healer: " .. (entry.healer or "None"))
@@ -661,7 +651,6 @@ function Dialogs:CreateHistoryCard(parent, entry, index, regionID)
         GameTooltip:Hide()
     end)
 
-    -- In local mode, add Edit and Delete buttons.
     if not GUI.displayingRemote then
         local editButton = GUI:CreateButton(card, "Edit", 50, 20, "BOTTOMLEFT", card, 10, 5)
         editButton:SetScript("OnClick", function()
@@ -672,17 +661,21 @@ function Dialogs:CreateHistoryCard(parent, entry, index, regionID)
             local history = addonTable.historyData and addonTable.historyData[regionID]
             if history then
                 table.remove(history, index)
-                -- Refresh the current dialog without closing it.
                 local dlg = _G["FleshWoundHistoryDialog_" .. tostring(regionID)]
-                Dialogs:PopulateHistoryDialog(dlg)
+                if dlg then
+                    Dialogs:PopulateHistoryDialog(dlg)
+                else
+                    Dialogs:OpenHistoryDialog(regionID)
+                end
             end
         end)
+        
     end
 
     return card
 end
 
--- Opens a simple edit dialog (using StaticPopup) to modify the Appearance field of a history entry.
+-- Opens a StaticPopup edit dialog to modify the Appearance field of a history entry.
 function Dialogs:EditHistoryEntry(regionID, index)
     local history = addonTable.historyData and addonTable.historyData[regionID]
     if not history or not history[index] then
@@ -704,12 +697,14 @@ function Dialogs:EditHistoryEntry(regionID, index)
         OnAccept = function(self)
             local newText = self.editBox:GetText()
             entry.appearance = newText
-            -- Refresh the history dialog to reflect the change.
+            -- Refresh the history dialog to show the updated appearance.
+            self:Hide()  -- Hide the StaticPopup
             Dialogs:OpenHistoryDialog(regionID)
         end,
     }
     StaticPopup_Show("FW_EDIT_HISTORY")
 end
+
 
 
 

@@ -44,7 +44,7 @@
 ## Installation
 
 1. **Download the addon**
-    - [Download the latest release](#) or [download from CurseForge](#).
+    - [Download from CurseForge](https://www.curseforge.com/wow/addons/fleshwound).
     
 2. **Extract the addon files**
     - Extract the `FleshWound` folder into your `World of Warcraft/Interface/AddOns/` directory.
@@ -60,12 +60,20 @@
 1. **Open the FleshWound UI**
     - Access the FleshWound UI from the minimap button (bandage), or use the `/fw` command.
 
+    ![FleshWound UI](https://github.com/user-attachments/assets/194c306e-327f-4c0f-8543-6dd6c6c89f45)
+
+
 2. **Add a wound**
     - Click on any body region to open the details panel.
+  
+     ![Region panel](https://github.com/user-attachments/assets/2c1dc9a5-0ecb-40d8-a0eb-6b314ef00a76)
+
     - Click on "Add Note" to create a new wound entry.
     - Enter a description, select a severity level, then click "Save".
 
 3. **Manage multiple profiles**
     - Click on the grimoire icon to switch between different profiles for different characters or status of a same character. You decide!
     - Switch between different whenever you want, the data is saved and persistent.
-    
+
+    - ![Profile Manager](https://github.com/user-attachments/assets/807a4562-96d5-42fb-bc2c-47d100c25706)
+

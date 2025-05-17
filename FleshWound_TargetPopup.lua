@@ -61,6 +61,15 @@ local function RestorePopupPosition()
     end
 end
 
+
+--- Helper function to hide the popup frame.
+local function HidePopup()
+    if popupFrame then
+        popupFrame:Hide()
+    end
+end
+
+
 --- The function to show the popup frame for a target.
 --- @param name string: The name of the target player.
 local function ShowPopupForTarget(name)
@@ -122,6 +131,8 @@ local function ShowPopupForTarget(name)
     popupFrame:Show()
 end
 
+
+
 --- Helper function to attempt to show the popup frame for a target.
 --- @param targetName string: The name of the target player.
 --- @param totalTimeout number: The total time to wait for the target to respond.
@@ -145,13 +156,6 @@ local function AttemptToShowPopup(targetName, totalTimeout)
             end
         end
     end)
-end
-
---- Helper function to hide the popup frame.
-local function HidePopup()
-    if popupFrame then
-        popupFrame:Hide()
-    end
 end
 
 --- Event frame to catch PLAYER_TARGET_CHANGED and CHAT_MSG_ADDON events.

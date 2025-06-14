@@ -13,6 +13,8 @@ Registry.fetchingUsers = false
 Registry.usersFetched = false
 Registry.fetchTimer = nil
 Registry.CHANNEL_NAME = "FleshWoundComm"
+-- Users not seen for this many seconds will be purged from the registry.
+Registry.USER_EXPIRATION = 3600 -- 1 hour
 
 --- Retrieves the local addon's version.
 -- @return string The local version string.
@@ -119,6 +121,8 @@ end
 --- Initiates fetching of the user list from the designated channel.
 -- Calls ListChannelByName to trigger the CHAT_MSG_CHANNEL_LIST event and retries until successful.
 function Registry:FetchUsers()
+    -- Purge entries that haven't been seen in a while before we refresh.
+    self:CleanupUsers(self.USER_EXPIRATION)
     if self.usersFetched and not self.fetchingUsers then return end
     self.fetchingUsers = true
     if addonTable.Comm and addonTable.Comm:GetChannel() then
@@ -134,6 +138,18 @@ function Registry:FetchUsers()
                 Registry.fetchTimer = nil
             end
         end)
+    end
+end
+
+--- Removes users that haven't been seen within the given age.
+-- Cleans up the registry so stale entries don't linger indefinitely.
+-- @param maxAge number Age in seconds after which a user should expire.
+function Registry:CleanupUsers(maxAge)
+    local now = time()
+    for key, data in pairs(self.users) do
+        if data.lastSeen and (now - data.lastSeen) > maxAge then
+            self.users[key] = nil
+        end
     end
 end
 
@@ -174,6 +190,8 @@ channelListFrame:SetScript("OnEvent", function(_, event, ...)
     end
 
     Registry:DisplayUserCount()
+    -- Clean up outdated users after refreshing the list.
+    Registry:CleanupUsers(Registry.USER_EXPIRATION)
 end)
 
 --- Filters CHAT_MSG_CHANNEL_LIST events.
@@ -199,6 +217,10 @@ function Registry:Initialize()
     self:FetchUsers()
     C_Timer.NewTicker(300, function()
         self:SendHello()
+    end)
+    -- Periodically remove stale registry entries.
+    C_Timer.NewTicker(600, function()
+        self:CleanupUsers(self.USER_EXPIRATION)
     end)
 end
 

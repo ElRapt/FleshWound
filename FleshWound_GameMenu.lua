@@ -10,12 +10,13 @@ local LDB = LibStub("LibDataBroker-1.1")
 local Icon = LibStub("LibDBIcon-1.0")
 local Utils = addonTable.Utils
 
+--- Initializes the game menu integration and minimap icon.
 function GameMenu:Initialize()
     self:CreateMinimapIcon()
     self:AddToGameMenu()
 end
 
---- Always open/close your local profile UI.
+--- Toggles the visibility of the main FleshWound frame.
 function GameMenu:ToggleMainFrame()
     local GUI = addonTable.GUI
     if not GUI or not GUI.frame then
@@ -29,6 +30,7 @@ function GameMenu:ToggleMainFrame()
     end
 end
 
+--- Creates the LibDataBroker minimap icon.
 function GameMenu:CreateMinimapIcon()
     local ldb = LDB:NewDataObject("FleshWound", {
         type = "launcher",
@@ -49,6 +51,7 @@ function GameMenu:CreateMinimapIcon()
     Icon:Register("FleshWound", ldb, FleshWoundData)
 end
 
+--- Adds the FleshWound button to the game's main menu.
 function GameMenu:AddToGameMenu()
     local btn = CreateFrame("Button", "GameMenuButtonFleshWound", GameMenuFrame, "GameMenuButtonTemplate")
     btn:SetText("FleshWound")
@@ -97,6 +100,8 @@ function GameMenu:AddToGameMenu()
     end)
 end
 
+--- Repositions default GameMenu buttons after inserting ours.
+-- @param btn Frame: The button that was added.
 function GameMenu:AdjustGameMenuButtons(btn)
     local prevButton = btn
     local buttons = {

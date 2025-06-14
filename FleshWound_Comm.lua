@@ -15,7 +15,7 @@ local channelJoinedOnce = false
 --- Requests a profile from the specified target player.
 -- If the target player is online, sends a "REQUEST_PROFILE" message.
 -- If the target player is not detected as online, sends a query and retries after a timeout.
--- @param targetPlayer string The name of the target player.
+-- @param targetPlayer string: The name of the target player.
 function Comm:RequestProfile(targetPlayer)
     if not targetPlayer or targetPlayer == "" then return end
     local registry = addonTable.Registry
@@ -36,8 +36,8 @@ end
 
 --- Sends the profile data for a given profile name to a target player.
 -- Retrieves the profile from FleshWoundData, serializes it, and sends it.
--- @param targetPlayer string The name of the target player.
--- @param profileName string The name of the profile to send.
+-- @param targetPlayer string: The name of the target player.
+-- @param profileName string: The name of the profile to send.
 function Comm:SendProfileData(targetPlayer, profileName)
     if not targetPlayer or not profileName then return end
     local data = addonTable.FleshWoundData.profiles[profileName]
@@ -72,7 +72,7 @@ function Comm:SendProfileData(targetPlayer, profileName)
 end
 
 --- Serializes a profile's wound data.
--- @param profileData table The profile data table.
+-- @param profileData table: The profile data table.
 -- @return string The serialized wound data.
 function Comm:SerializeProfile(profileData)
     local woundData = profileData.woundData or {}
@@ -80,7 +80,7 @@ function Comm:SerializeProfile(profileData)
 end
 
 --- Deserializes profile data from a serialized string.
--- @param serialized string The serialized wound data.
+-- @param serialized string: The serialized wound data.
 -- @return table A table containing a field 'woundData' with the deserialized data.
 function Comm:DeserializeProfile(cmd, profileName, payload, sender)
     self.partialMessages = self.partialMessages or {}
@@ -150,10 +150,10 @@ end
 --------------------------------------------------------------------------------
 
 --- Processes incoming addon messages for "REQUEST_PROFILE" and "PROFILE_DATA" commands.
--- @param prefixMsg string The message prefix.
--- @param msg string The content of the message.
--- @param channel string The channel over which the message was received.
--- @param sender string The name of the sender.
+-- @param prefixMsg string: The message prefix.
+-- @param msg string: The content of the message.
+-- @param channel string: The channel over which the message was received.
+-- @param sender string: The name of the sender.
 function Comm:OnChatMsgAddon(prefixMsg, msg, channel, sender)
     if prefixMsg ~= self.PREFIX then return end
     if msg == "REQUEST_PROFILE" then
@@ -211,7 +211,7 @@ end
 
 --- Called when joining the channel fails.
 -- Retries joining the channel after a 10-second delay.
--- @param reason string The reason for the failure.
+-- @param reason string: The reason for the failure.
 function Comm:OnChannelFailed(reason)
     C_Timer.After(10, function() self:JoinChannel() end)
 end

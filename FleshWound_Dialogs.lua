@@ -42,6 +42,12 @@ local function getActiveWoundData()
     return addonTable.woundData or {}
 end
 
+--- Creates a basic dialog frame with a title and close button.
+-- @param name string: Global frame name.
+-- @param titleText string: Dialog title.
+-- @param width number: Frame width.
+-- @param height number: Frame height.
+-- @return Frame: The created dialog frame.
 function Dialogs:CreateDialog(name, titleText, width, height)
     if type(width) ~= "number" or type(height) ~= "number" then
         error(string.format("Invalid dialog size: width=%s, height=%s", tostring(width), tostring(height)))
@@ -77,6 +83,9 @@ function Dialogs:CreateDialog(name, titleText, width, height)
     return dialog
 end
 
+--- Creates the severity dropdown used by note dialogs.
+-- @param parent Frame: Parent frame.
+-- @return FontString, Frame: Label and dropdown frame.
 function Dialogs:CreateSeverityDropdown(parent)
     local severityLabel = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     severityLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", 15, -60)
@@ -110,6 +119,9 @@ function Dialogs:CreateSeverityDropdown(parent)
     return severityLabel, severityDropdown
 end
 
+--- Creates a list of status checkboxes for a dialog.
+-- @param parent Frame: Parent frame.
+-- @return Frame: The container holding status checkboxes.
 function Dialogs:CreateStatusSelection(parent)
     local frame = CreateFrame("Frame", nil, parent)
     local numStatuses = #GUI.Statuses
@@ -176,6 +188,10 @@ function Dialogs:CreateStatusSelection(parent)
     return frame
 end
 
+--- Creates a multiline edit box with a character counter.
+-- @param parent Frame: Parent frame.
+-- @param maxChars number: Maximum allowed characters.
+-- @return EditBox, FontString: The edit box and its counter label.
 function Dialogs:CreateEditBoxWithCounter(parent, maxChars)
     local editBox = CreateFrame("EditBox", nil, parent, "BackdropTemplate")
     editBox:SetMultiLine(true)
@@ -196,6 +212,9 @@ function Dialogs:CreateEditBoxWithCounter(parent, maxChars)
     return editBox, charCountLabel
 end
 
+--- Creates standard Save and Cancel buttons for a dialog.
+-- @param parent Frame: Parent frame.
+-- @return Button, Button: The save and cancel buttons.
 function Dialogs:CreateSaveCancelButtons(parent)
     local saveButton = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     saveButton:SetSize(80, 24)
@@ -210,6 +229,10 @@ function Dialogs:CreateSaveCancelButtons(parent)
     return saveButton, cancelButton
 end
 
+--- Creates a single-line input box with a character counter.
+-- @param parent Frame: Parent frame.
+-- @param maxChars number: Maximum allowed characters.
+-- @return EditBox, FontString: The edit box and counter label.
 function Dialogs:CreateSingleLineEditBoxWithCounter(parent, maxChars)
     local editBox = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
     editBox:SetAutoFocus(true)
@@ -314,6 +337,12 @@ function Dialogs:PopulateWoundDialog(dialog)
     end
 end
 
+--- Creates a single note entry within a wound dialog.
+-- @param parent Frame: Parent frame.
+-- @param note table: Note data table.
+-- @param index number: Index of the note within the region list.
+-- @param regionID number: Body region identifier.
+-- @return Frame: The created entry frame.
 function Dialogs:CreateNoteEntry(parent, note, index, regionID)
     local entry = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     entry:SetWidth(parent:GetWidth() - 20)
@@ -404,6 +433,9 @@ function Dialogs:CreateNoteEntry(parent, note, index, regionID)
     return entry
 end
 
+--- Opens the Add/Edit Note dialog for a body region.
+-- @param regionID number: Body region identifier.
+-- @param noteIndex number|nil: Existing note index if editing.
 function Dialogs:OpenNoteDialog(regionID, noteIndex)
     if not regionID then
         addonTable.Utils.FW_Print("Error: regionID is nil in OpenNoteDialog", true)
@@ -449,6 +481,9 @@ function Dialogs:OpenNoteDialog(regionID, noteIndex)
     dialog.EditBox:SetFocus()
 end
 
+--- Fills the note dialog with data for editing or initializes for creation.
+-- @param dialog Frame: The note dialog frame.
+-- @param noteIndex number|nil: Existing note index if editing.
 function Dialogs:PopulateNoteDialog(dialog, noteIndex)
     local data = getActiveWoundData()
     local notes = data[dialog.regionID]
@@ -554,6 +589,8 @@ function Dialogs:PopulateNoteDialog(dialog, noteIndex)
     dialog.EditBox:SetFocus()
 end
 
+--- Hides all open FleshWound dialogs optionally filtered by type.
+-- @param dialogType string|nil: If "BodyPartDialogs", only region dialogs are closed.
 function Dialogs:CloseAllDialogs(dialogType)
     local prefixes = {}
     if dialogType == "BodyPartDialogs" then

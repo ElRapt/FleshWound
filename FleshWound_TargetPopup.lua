@@ -33,7 +33,7 @@ local pendingTarget
 local popupFrame
 local targetName
 
---- A function to save the position of the popup frame.
+--- Saves the current position of the popup frame.
 local function SavePopupPosition()
     if not FleshWoundData then FleshWoundData = {} end
     FleshWoundData.popupPos = FleshWoundData.popupPos or {}
@@ -44,7 +44,7 @@ local function SavePopupPosition()
     FleshWoundData.popupPos.yOfs = yOfs
 end
 
---- A function to restore the position of the popup frame.
+--- Restores the popup frame position from saved data.
 local function RestorePopupPosition()
     if FleshWoundData and FleshWoundData.popupPos then
         popupFrame:ClearAllPoints()
@@ -67,7 +67,7 @@ local function RestorePopupPosition()
 end
 
 
---- Helper function to hide the popup frame.
+--- Hides the popup frame if it exists.
 local function HidePopup()
     if popupFrame then
         popupFrame:Hide()
@@ -75,8 +75,8 @@ local function HidePopup()
 end
 
 
---- The function to show the popup frame for a target.
---- @param name string: The name of the target player.
+--- Displays the popup for the given target player.
+-- @param name string: The target player's name.
 local function ShowPopupForTarget(name)
     if not popupFrame then
         popupFrame = CreateFrame("Frame", "FleshWoundTargetPopup", UIParent, "BackdropTemplate")
@@ -138,10 +138,10 @@ end
 
 
 
---- Helper function to attempt to show the popup frame for a target.
---- @param targetName string: The name of the target player.
---- @param totalTimeout number: The total time to wait for the target to respond.
---- @return void
+--- Attempts to display the popup after querying the target.
+-- @param targetName string: The target player's name.
+-- @param totalTimeout number: How long to wait for a response.
+-- @return void
 local function AttemptToShowPopup(targetName, totalTimeout)
     local elapsed = 0
     local interval = 1  -- check every second
@@ -165,7 +165,7 @@ local function AttemptToShowPopup(targetName, totalTimeout)
     end)
 end
 
---- Event frame to catch PLAYER_TARGET_CHANGED and CHAT_MSG_ADDON events.
+--- Handles events related to target changes and addon messages.
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
 eventFrame:RegisterEvent("CHAT_MSG_ADDON")

@@ -53,7 +53,7 @@ function ProfileManager:OpenProfileManager()
 end
 
 --- Populates the profile manager with available profiles.
--- @param dialog Frame The profile manager dialog.
+-- @param dialog Frame: The profile manager dialog.
 function ProfileManager:PopulateProfileManager(dialog)
     local profiles = addonTable.FleshWoundData.profiles or {}
     local currentProfile = addonTable.FleshWoundData.currentProfile
@@ -77,10 +77,10 @@ function ProfileManager:PopulateProfileManager(dialog)
 end
 
 --- Creates an entry for a profile in the profile manager.
--- @param parent Frame The parent frame.
--- @param profileName string The profile name.
--- @param currentProfile string The active profile.
--- @return Frame The created entry frame.
+-- @param parent Frame: The parent frame.
+-- @param profileName string: The profile name.
+-- @param currentProfile string: The active profile.
+-- @return Frame: The created entry frame.
 function ProfileManager:CreateProfileEntry(parent, profileName, currentProfile)
     local entry = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     entry:SetWidth(parent:GetWidth() - 20)
@@ -183,7 +183,7 @@ function ProfileManager:OpenCreateProfileDialog()
 end
 
 --- Opens the dialog to rename an existing profile.
--- @param oldProfileName string The current profile name.
+-- @param oldProfileName string: The current profile name.
 function ProfileManager:OpenRenameProfileDialog(oldProfileName)
     local frameName = "FleshWoundRenameProfileDialog"
     local dialogTitle = L.RENAME_PROFILE or "Rename Profile"

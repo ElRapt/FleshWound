@@ -252,6 +252,8 @@ function GUI:DisplayLocalProfile()
     end
 end
 
+--- Retrieves wound data for the currently displayed profile.
+-- @return table: The wound data table.
 function GUI:GetActiveWoundData()
     if self.displayingRemote and self.activeRemoteProfileName then
         local remoteData = addonTable.remoteProfiles[self.activeRemoteProfileName]
@@ -261,6 +263,7 @@ function GUI:GetActiveWoundData()
     return addonTable.woundData or {}
 end
 
+--- Updates the banner showing which profile is active.
 function GUI:UpdateProfileBanner()
     if not (self.frame and self.tempProfileBannerFrame and self.tempProfileBanner) then
         return
@@ -274,6 +277,7 @@ function GUI:UpdateProfileBanner()
     self.tempProfileBannerFrame:Show()
 end
 
+--- Creates the temporary banner used when viewing profiles.
 function GUI:CreateTemporaryProfileBanner()
     if not self.frame then return end
     local bannerFrame = CreateFrame("Frame", nil, self.frame, "BackdropTemplate")
@@ -290,7 +294,7 @@ function GUI:CreateTemporaryProfileBanner()
     self.tempProfileBanner = bannerText
 end
 
---- Closes all relevant dialogs when switching modes
+--- Closes all dialogs and hides the main frame
 function GUI:CloseAllDialogs()
     if addonTable.Dialogs then
         addonTable.Dialogs:CloseAllDialogs()
@@ -300,6 +304,7 @@ function GUI:CloseAllDialogs()
     end
 end
 
+--- Creates the main UI frame for the addon.
 function GUI:CreateMainFrame()
     local frame = CreateFrame("Frame", "FleshWoundFrame", UIParent, "BackdropTemplate")
     self.frame = frame
@@ -344,6 +349,7 @@ function GUI:CreateMainFrame()
     end)
 end
 
+--- Creates clickable regions on the body image.
 function GUI:CreateBodyRegions()
     local frame = self.frame
     frame.BodyRegions = {}
@@ -352,6 +358,9 @@ function GUI:CreateBodyRegions()
     end
 end
 
+--- Builds an interactive region button on the body image.
+-- @param frame Frame: The parent frame.
+-- @param region table: Table describing the region.
 function GUI:CreateBodyRegion(frame, region)
     local btn = CreateFrame("Button", nil, frame)
     local Dialogs = addonTable.Dialogs
@@ -402,6 +411,7 @@ function GUI:CreateBodyRegion(frame, region)
     frame.BodyRegions[region.id] = btn
 end
 
+--- Refreshes region overlays and status icons based on wound data.
 function GUI:UpdateRegionColors()
     local frame = self.frame
     if not (frame and frame.BodyRegions) then return end

@@ -44,6 +44,8 @@ local EventHandler = {}
 addonTable.EventHandler = EventHandler
 
 
+--- Displays the initial welcome frame on first run.
+-- The frame is only shown once per character.
 local function ShowWelcomeFrame()
     if FleshWoundData and FleshWoundData[CONSTANTS.WELCOME_ALREADY_SHOWN_KEY] then
         return
@@ -82,6 +84,8 @@ local function ShowWelcomeFrame()
 end
 
 
+--- Shows the disclaimer frame if it hasn't been acknowledged.
+-- Once agreed, the disclaimer will not appear again.
 local function ShowDisclaimerFrame()
     if FleshWoundData and FleshWoundData[CONSTANTS.DISCLAIMER_ALREADY_SHOWN_KEY] then
         return
@@ -132,6 +136,8 @@ local function ShowDisclaimerFrame()
 end
 
 
+--- Handles the ADDON_LOADED event and initializes modules.
+-- @param loadedName string: The name of the loaded addon.
 function EventHandler:OnAddonLoaded(loadedName)
     if loadedName == addonName then
         if not FleshWoundData then
@@ -161,9 +167,10 @@ function EventHandler:OnAddonLoaded(loadedName)
     end
 end
 
---- Opens a received remote profile for display in read-only mode.
---- @param profileName string The remote profile name
---- @param profileData table The remote profile data
+--- Opens a remote profile received from another player.
+-- The profile is displayed in read-only mode.
+-- @param profileName string: The remote profile name.
+-- @param profileData table: The remote profile data.
 function addonTable:OpenReceivedProfile(profileName, profileData)
     if not addonTable.GUI then return end
     addonTable.remoteProfiles[profileName] = profileData.woundData or {}

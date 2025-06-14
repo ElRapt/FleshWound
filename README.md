@@ -37,6 +37,7 @@
 - **Wound Sharing**
     - Share your character's injuries with other players.
     - View other players' injuries for more informed and immersive roleplay scenarios.
+    - Communication relies on a query/hello system and does not use ping/pong messages.
 
 - **Localization**
     - Available in English and French. More languages to come!

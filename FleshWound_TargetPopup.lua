@@ -6,7 +6,6 @@ local CONSTANTS = {
     FRAME_SIZE = { WIDTH = 220, HEIGHT = 80 },
     QUERY_RETRY_DURATION = 10,
     FRAME_POSITION = { ANCHOR = "BOTTOMRIGHT", X_OFFSET = -50, Y_OFFSET = 200 },
-    PING_TIMEOUT = 5,
     BACKDROP = {
         GOLD_BG = "Interface\\DialogFrame\\UI-DialogBox-Gold-Background",
         GOLD_BORDER = "Interface\\DialogFrame\\UI-DialogBox-Gold-Border",

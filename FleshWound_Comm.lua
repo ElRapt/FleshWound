@@ -2,7 +2,7 @@ local addonName, addonTable = ...
 local Comm = {}
 addonTable.Comm = Comm
 Comm.PREFIX = "FW"
-Comm.PING_TIMEOUT = 5
+Comm.REQUEST_TIMEOUT = 5
 local AceSerializer = LibStub("AceSerializer-3.0")
 local LibDeflate = LibStub("LibDeflate", true)
 local CHANNEL_NAME = "FleshWoundComm"
@@ -25,7 +25,7 @@ function Comm:RequestProfile(targetPlayer)
         if registry then
             registry:SendQuery()
         end
-        C_Timer.After(self.PING_TIMEOUT, function()
+        C_Timer.After(self.REQUEST_TIMEOUT, function()
             if registry and registry:IsUserOnline(targetPlayer) then
                 ChatThrottleLib:SendAddonMessage("NORMAL", self.PREFIX, "REQUEST_PROFILE", "WHISPER", targetPlayer)
             end
@@ -149,8 +149,7 @@ end
 -- Addon Message Handling
 --------------------------------------------------------------------------------
 
---- Processes incoming addon messages.
--- Handles "PING", "PONG", "REQUEST_PROFILE", and "PROFILE_DATA" commands.
+--- Processes incoming addon messages for "REQUEST_PROFILE" and "PROFILE_DATA" commands.
 -- @param prefixMsg string The message prefix.
 -- @param msg string The content of the message.
 -- @param channel string The channel over which the message was received.

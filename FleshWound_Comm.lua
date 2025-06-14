@@ -4,6 +4,7 @@ addonTable.Comm = Comm
 Comm.PREFIX = "FW"
 Comm.PING_TIMEOUT = 5
 local AceSerializer = LibStub("AceSerializer-3.0")
+local LibDeflate = LibStub("LibDeflate", true)
 local CHANNEL_NAME = "FleshWoundComm"
 local channelJoinedOnce = false
 
@@ -41,8 +42,33 @@ function Comm:SendProfileData(targetPlayer, profileName)
     if not targetPlayer or not profileName then return end
     local data = addonTable.FleshWoundData.profiles[profileName]
     if not data then return end
+
     local serialized = self:SerializeProfile(data)
-    ChatThrottleLib:SendAddonMessage("NORMAL", self.PREFIX, "PROFILE_DATA:"..profileName..":"..serialized, "WHISPER", targetPlayer)
+    local encoded = serialized
+    local compressed = false
+
+    if #serialized > 255 and LibDeflate then
+        encoded = LibDeflate:CompressDeflate(serialized)
+        encoded = LibDeflate:EncodeForWoWAddonChannel(encoded)
+        compressed = true
+    end
+
+    local cmd = compressed and "PROFILE_DATA_COMPRESSED" or "PROFILE_DATA"
+    local message = string.format("%s:%s:%s", cmd, profileName, encoded)
+
+    if #message <= 255 then
+        ChatThrottleLib:SendAddonMessage("NORMAL", self.PREFIX, message, "WHISPER", targetPlayer)
+        return
+    end
+
+    local partCmd = cmd .. "_PART"
+    local chunkSize = 200
+    local totalParts = math.ceil(#encoded / chunkSize)
+    for i = 1, totalParts do
+        local chunk = encoded:sub((i - 1) * chunkSize + 1, i * chunkSize)
+        local partMsg = string.format("%s:%s:%d:%d:%s", partCmd, profileName, totalParts, i, chunk)
+        ChatThrottleLib:SendAddonMessage("NORMAL", self.PREFIX, partMsg, "WHISPER", targetPlayer)
+    end
 end
 
 --- Serializes a profile's wound data.
@@ -56,13 +82,65 @@ end
 --- Deserializes profile data from a serialized string.
 -- @param serialized string The serialized wound data.
 -- @return table A table containing a field 'woundData' with the deserialized data.
-function Comm:DeserializeProfile(serialized)
+function Comm:DeserializeProfile(cmd, profileName, payload, sender)
+    self.partialMessages = self.partialMessages or {}
     local profileData = { woundData = {} }
-    if serialized == "" then return profileData end
-    local success, woundData = AceSerializer:Deserialize(serialized)
-    if success and type(woundData) == "table" then
-        profileData.woundData = woundData
+    local libdeflate = LibStub("LibDeflate", true)
+
+    if cmd == "PROFILE_DATA" or cmd == "PROFILE_DATA_COMPRESSED" then
+        local data = payload or ""
+        if cmd == "PROFILE_DATA_COMPRESSED" and libdeflate then
+            data = libdeflate:DecodeForWoWAddonChannel(data)
+            data = data and libdeflate:DecompressDeflate(data)
+            if not data then
+                addonTable.Utils.FW_Print("Failed to decompress profile from " .. (sender or "unknown"), true)
+                return profileData
+            end
+        end
+        if data ~= "" then
+            local success, woundData = AceSerializer:Deserialize(data)
+            if success and type(woundData) == "table" then
+                profileData.woundData = woundData
+            end
+        end
+        return profileData
+    elseif cmd == "PROFILE_DATA_PART" or cmd == "PROFILE_DATA_COMPRESSED_PART" then
+        local totalParts, index, part = payload.total, payload.index, payload.data
+        if not (totalParts and index and part) then return nil end
+        local key = (sender or "?") .. ":" .. profileName
+        local entry = self.partialMessages[key]
+        if not entry then
+            entry = {total = totalParts, parts = {}, isCompressed = (cmd == "PROFILE_DATA_COMPRESSED_PART"), start = GetTime()}
+            self.partialMessages[key] = entry
+        end
+        if totalParts ~= entry.total then
+            addonTable.Utils.FW_Print("Profile transfer mismatch from " .. (sender or "unknown"), true)
+            self.partialMessages[key] = nil
+            return nil
+        end
+        entry.parts[index] = part
+
+        if GetTime() - entry.start > 30 then
+            addonTable.Utils.FW_Print("Profile transfer from " .. (sender or "unknown") .. " timed out", true)
+            self.partialMessages[key] = nil
+            return nil
+        end
+
+        local received = 0
+        for i = 1, entry.total do
+            if entry.parts[i] then
+                received = received + 1
+            end
+        end
+
+        if received == entry.total then
+            local combined = table.concat(entry.parts)
+            self.partialMessages[key] = nil
+            return self:DeserializeProfile(entry.isCompressed and "PROFILE_DATA_COMPRESSED" or "PROFILE_DATA", profileName, combined, sender)
+        end
+        return nil
     end
+
     return profileData
 end
 
@@ -83,10 +161,16 @@ function Comm:OnChatMsgAddon(prefixMsg, msg, channel, sender)
         local currentProfile = addonTable.FleshWoundData.currentProfile
         self:SendProfileData(sender, currentProfile)
     else
-        local cmd, profileName, data = strsplit(":", msg, 3)
-        if cmd == "PROFILE_DATA" then
-            local profileData = self:DeserializeProfile(data)
+        local cmd, profileName, rest = strsplit(":", msg, 3)
+        if cmd == "PROFILE_DATA" or cmd == "PROFILE_DATA_COMPRESSED" then
+            local profileData = self:DeserializeProfile(cmd, profileName, rest, sender)
             addonTable:OpenReceivedProfile(profileName, profileData)
+        elseif cmd == "PROFILE_DATA_PART" or cmd == "PROFILE_DATA_COMPRESSED_PART" then
+            local total, index, part = strsplit(":", rest, 3)
+            local profileData = self:DeserializeProfile(cmd, profileName, {total = tonumber(total), index = tonumber(index), data = part}, sender)
+            if profileData then
+                addonTable:OpenReceivedProfile(profileName, profileData)
+            end
         end
     end
 end

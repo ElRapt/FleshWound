@@ -23,6 +23,12 @@ local CONSTANTS = {
     DEFAULT_POPUP_POS = { X = -50, Y = 200 },
 }
 
+-- Cache of recent failed lookup attempts.
+-- Maps normalized player names to the timestamp (via time()) of the last
+-- unsuccessful query. Entries are cleared when a HELLO from that player is
+-- received, allowing new queries to be sent immediately.
+local failedLookupCache = {}
+
 local pendingTarget
 local popupFrame
 local targetName
@@ -139,11 +145,11 @@ end
 local function AttemptToShowPopup(targetName, totalTimeout)
     local elapsed = 0
     local interval = 1  -- check every second
-    local ticker  
+    local ticker
     ticker = C_Timer.NewTicker(interval, function()
         elapsed = elapsed + interval
         addonTable.Registry:SendQuery(targetName)
-        
+
         if addonTable.Registry:IsUserOnline(targetName) then
             ShowPopupForTarget(targetName)
             pendingTarget = nil
@@ -154,6 +160,7 @@ local function AttemptToShowPopup(targetName, totalTimeout)
             if ticker then
                 ticker:Cancel()
             end
+            failedLookupCache[Utils.ToLower(targetName)] = time()
         end
     end)
 end
@@ -172,11 +179,30 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
             if realm and realm ~= "" then
                 name = name .. "-" .. realm
             end
-            if addonTable.Registry:IsUserOnline(name) then
-                ShowPopupForTarget(name)
+            local normalized = Utils.NormalizePlayerName(name)
+            local key = Utils.ToLower(normalized)
+            if addonTable.Registry:IsUserOnline(normalized) then
+                ShowPopupForTarget(normalized)
             else
-                pendingTarget = name
-                AttemptToShowPopup(name, CONSTANTS.QUERY_RETRY_DURATION)
+                -- Skip querying if we recently failed to locate this player
+                local lastFail = failedLookupCache[key]
+                if not (lastFail and (time() - lastFail) < CONSTANTS.QUERY_RETRY_DURATION) then
+                    pendingTarget = normalized
+                    AttemptToShowPopup(normalized, CONSTANTS.QUERY_RETRY_DURATION)
+                end
+            end
+        end
+    elseif event == "CHAT_MSG_ADDON" then
+        local prefix, msg, _, sender = ...
+        if prefix == addonTable.Registry.PREFIX then
+            local eventType = strsplit(":", msg)
+            if eventType == addonTable.Registry.EVENT_HELLO then
+                local normalized = Utils.NormalizePlayerName(sender)
+                local key = normalized and Utils.ToLower(normalized)
+                -- Remove any cached failure entry when the player finally responds
+                if key and failedLookupCache[key] then
+                    failedLookupCache[key] = nil
+                end
             end
         end
     elseif event == "CHAT_MSG_ADDON" then

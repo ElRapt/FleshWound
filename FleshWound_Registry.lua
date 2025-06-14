@@ -3,6 +3,7 @@ local Utils = addonTable.Utils
 local L = addonTable.L or {}
 local Registry = {}
 addonTable.Registry = Registry
+local ChatThrottleLib = LibStub("ChatThrottleLib")
 
 Registry.PREFIX = "FW"
 Registry.EVENT_HELLO = "HELLO"
@@ -28,10 +29,10 @@ function Registry:SendHello(target)
     if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then
         local channel = addonTable.Comm and addonTable.Comm:GetChannel()
         if channel then
-            C_ChatInfo.SendAddonMessage(self.PREFIX, msg, "CHANNEL", channel, "ALERT")
+            ChatThrottleLib:SendAddonMessage("ALERT", self.PREFIX, msg, "CHANNEL", channel)
         end
     else
-        C_ChatInfo.SendAddonMessage(self.PREFIX, msg, "YELL", nil, "ALERT")
+        ChatThrottleLib:SendAddonMessage("ALERT", self.PREFIX, msg, "YELL", nil)
     end
 end
 
@@ -41,15 +42,15 @@ function Registry:SendQuery(target)
     local msg = self.EVENT_QUERY
     if target and target ~= "" then
         -- Send a targeted query as a whisper
-        C_ChatInfo.SendAddonMessage(self.PREFIX, msg, "WHISPER", target, "ALERT")
+        ChatThrottleLib:SendAddonMessage("ALERT", self.PREFIX, msg, "WHISPER", target)
     else
         if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then
             local channel = addonTable.Comm and addonTable.Comm:GetChannel()
             if channel then
-                C_ChatInfo.SendAddonMessage(self.PREFIX, msg, "CHANNEL", channel, "ALERT")
+                ChatThrottleLib:SendAddonMessage("ALERT", self.PREFIX, msg, "CHANNEL", channel)
             end
         else
-            C_ChatInfo.SendAddonMessage(self.PREFIX, msg, "YELL", nil, "ALERT")
+            ChatThrottleLib:SendAddonMessage("ALERT", self.PREFIX, msg, "YELL", nil)
         end
     end
 end

@@ -4,6 +4,7 @@ addonTable.Comm = Comm
 Comm.PREFIX = "FW"
 Comm.PING_TIMEOUT = 5
 local AceSerializer = LibStub("AceSerializer-3.0")
+local ChatThrottleLib = LibStub("ChatThrottleLib")
 local CHANNEL_NAME = "FleshWoundComm"
 local channelJoinedOnce = false
 
@@ -19,14 +20,14 @@ function Comm:RequestProfile(targetPlayer)
     if not targetPlayer or targetPlayer == "" then return end
     local registry = addonTable.Registry
     if registry and registry:IsUserOnline(targetPlayer) then
-        C_ChatInfo.SendAddonMessage(self.PREFIX, "REQUEST_PROFILE", "WHISPER", targetPlayer)
+        ChatThrottleLib:SendAddonMessage("NORMAL", self.PREFIX, "REQUEST_PROFILE", "WHISPER", targetPlayer)
     else
         if registry then
             registry:SendQuery()
         end
         C_Timer.After(self.PING_TIMEOUT, function()
             if registry and registry:IsUserOnline(targetPlayer) then
-                C_ChatInfo.SendAddonMessage(self.PREFIX, "REQUEST_PROFILE", "WHISPER", targetPlayer)
+                ChatThrottleLib:SendAddonMessage("NORMAL", self.PREFIX, "REQUEST_PROFILE", "WHISPER", targetPlayer)
             end
         end)
     end
@@ -42,7 +43,7 @@ function Comm:SendProfileData(targetPlayer, profileName)
     local data = addonTable.FleshWoundData.profiles[profileName]
     if not data then return end
     local serialized = self:SerializeProfile(data)
-    C_ChatInfo.SendAddonMessage(self.PREFIX, "PROFILE_DATA:"..profileName..":"..serialized, "WHISPER", targetPlayer)
+    ChatThrottleLib:SendAddonMessage("NORMAL", self.PREFIX, "PROFILE_DATA:"..profileName..":"..serialized, "WHISPER", targetPlayer)
 end
 
 --- Serializes a profile's wound data.

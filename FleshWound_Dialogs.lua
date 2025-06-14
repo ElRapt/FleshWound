@@ -6,6 +6,35 @@ addonTable.Dialogs = Dialogs
 local CONSTANTS = GUI.CONSTANTS
 local L = addonTable.L
 
+Dialogs.openDialogs = {}
+
+--- Registers a dialog so it can be closed later.
+--- @param dialog Frame The dialog frame.
+function Dialogs:RegisterDialog(dialog)
+    if not dialog then return end
+    for _, d in ipairs(self.openDialogs) do
+        if d == dialog then
+            return
+        end
+    end
+    table.insert(self.openDialogs, dialog)
+    if not dialog._fwHideHooked then
+        dialog:HookScript("OnHide", function(f) self:UnregisterDialog(f) end)
+        dialog._fwHideHooked = true
+    end
+end
+
+--- Removes a dialog from the tracking table.
+--- @param dialog Frame The dialog frame.
+function Dialogs:UnregisterDialog(dialog)
+    for i, d in ipairs(self.openDialogs) do
+        if d == dialog then
+            table.remove(self.openDialogs, i)
+            break
+        end
+    end
+end
+
 local function getActiveWoundData()
     if GUI.displayingRemote and GUI.activeRemoteProfileName then
         return addonTable.remoteProfiles[GUI.activeRemoteProfileName] or {}
@@ -246,6 +275,7 @@ function Dialogs:OpenRegionDialog(regionID, skipCloseDialogs)
     end
 
     _G[dialogName] = dialog
+    self:RegisterDialog(dialog)
     self:PopulateWoundDialog(dialog)
     dialog:Show()
 end
@@ -412,6 +442,7 @@ function Dialogs:OpenNoteDialog(regionID, noteIndex)
     dialog.EditBox, dialog.CharCountLabel = self:CreateEditBoxWithCounter(dialog, CONSTANTS.LIMITS.MAX_NOTE_LENGTH)
     dialog.SaveButton, dialog.CancelButton = self:CreateSaveCancelButtons(dialog)
     _G[frameName] = dialog
+    self:RegisterDialog(dialog)
 
     self:PopulateNoteDialog(dialog, noteIndex)
     dialog:Show()
@@ -524,11 +555,11 @@ function Dialogs:PopulateNoteDialog(dialog, noteIndex)
 end
 
 function Dialogs:CloseAllDialogs(dialogType)
-    local dialogsToClose = {}
+    local prefixes = {}
     if dialogType == "BodyPartDialogs" then
-        dialogsToClose = { "FleshWoundDialog_" }
+        prefixes = { "FleshWoundDialog_" }
     else
-        dialogsToClose = {
+        prefixes = {
             "FleshWoundDialog_",
             "FleshWoundAddNoteDialog_",
             "FleshWoundEditNoteDialog_",
@@ -537,11 +568,13 @@ function Dialogs:CloseAllDialogs(dialogType)
             "FleshWoundRenameProfileDialog",
         }
     end
-    for _, framePrefix in ipairs(dialogsToClose) do
-        for frameName, frameObj in pairs(_G) do
-            if type(frameName) == "string" and frameName:match("^" .. framePrefix)
-               and type(frameObj) == "table" and frameObj.Hide then
-                frameObj:Hide()
+    for i = #self.openDialogs, 1, -1 do
+        local frame = self.openDialogs[i]
+        local name = frame and frame.GetName and frame:GetName() or ""
+        for _, prefix in ipairs(prefixes) do
+            if name:match("^" .. prefix) then
+                frame:Hide()
+                break
             end
         end
     end

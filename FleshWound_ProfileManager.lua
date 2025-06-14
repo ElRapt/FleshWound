@@ -47,6 +47,7 @@ function ProfileManager:OpenProfileManager()
         dialog:Hide()
     end)
     _G[frameName] = dialog
+    Dialogs:RegisterDialog(dialog)
     ProfileManager:PopulateProfileManager(dialog)
     dialog:Show()
 end
@@ -152,6 +153,7 @@ function ProfileManager:OpenCreateProfileDialog()
     dialog.SaveButton, dialog.CancelButton = Dialogs:CreateSaveCancelButtons(dialog)
     dialog.SaveButton:SetText(L.CREATE or "Create")
     _G[frameName] = dialog
+    Dialogs:RegisterDialog(dialog)
     local function UpdateCreateButtonState()
         local text = addonTable.Utils.SanitizeInput(dialog.nameEditBox:GetText())
         local profileName = text
@@ -205,6 +207,7 @@ function ProfileManager:OpenRenameProfileDialog(oldProfileName)
         dialog.SaveButton:SetText(L.RENAME or "Rename")
         _G[frameName] = dialog
     end
+    Dialogs:RegisterDialog(dialog)
     GUI:RestoreWindowPosition(frameName, dialog)
     local function UpdateRenameButtonState()
         local text = dialog.nameEditBox:GetText()

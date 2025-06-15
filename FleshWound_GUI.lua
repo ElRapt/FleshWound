@@ -331,12 +331,8 @@ function GUI:CreateMainFrame()
     frame.ProfileButton:SetNormalTexture(CONSTANTS.IMAGES.ICON_BOOK)
     frame.ProfileButton:SetHighlightTexture(CONSTANTS.IMAGES.ICON_HIGHLIGHT_SQUARE)
     frame.ProfileButton:SetScript("OnClick", function()
-        for frameName, frm in pairs(_G) do
-            if type(frameName) == "string" and
-               (frameName:match("^FleshWoundAddNoteDialog_") or frameName:match("^FleshWoundEditNoteDialog_"))
-               and frm.IsShown and frm:IsShown() then
-                frm:Hide()
-            end
+        if addonTable.Dialogs then
+            addonTable.Dialogs:CloseAllDialogs()
         end
         if addonTable.ProfileManager then
             addonTable.ProfileManager:OpenProfileManager()
@@ -360,12 +356,8 @@ function GUI:CreateBodyRegion(frame, region)
     btn:SetHighlightTexture(CONSTANTS.IMAGES.ICON_MOUSE_HIGHLIGHT)
     btn.regionID = region.id
     btn:SetScript("OnClick", function()
-        for frameName, frm in pairs(_G) do
-            if type(frameName) == "string" and
-               (frameName:match("^FleshWoundAddNoteDialog_") or frameName:match("^FleshWoundEditNoteDialog_"))
-               and frm.IsShown and frm:IsShown() then
-                frm:Hide()
-            end
+        if addonTable.Dialogs then
+            addonTable.Dialogs:CloseAllDialogs()
         end
         Dialogs:OpenRegionDialog(btn.regionID, false)
     end)

@@ -203,18 +203,13 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
                 if key and failedLookupCache[key] then
                     failedLookupCache[key] = nil
                 end
-            end
-        end
-    elseif event == "CHAT_MSG_ADDON" then
-        local prefix, msg, channel, sender = ...
-        if pendingTarget and prefix == addonTable.Registry.PREFIX then
-            local evt = strsplit(":", msg)
-            if evt == addonTable.Registry.EVENT_HELLO then
-                local normSender = Utils.NormalizePlayerName(sender)
-                local normPending = Utils.NormalizePlayerName(pendingTarget)
-                if normSender and normPending and Utils.ToLower(normSender) == Utils.ToLower(normPending) then
-                    ShowPopupForTarget(pendingTarget)
-                    pendingTarget = nil
+
+                if pendingTarget then
+                    local normPending = Utils.NormalizePlayerName(pendingTarget)
+                    if normalized and normPending and Utils.ToLower(normalized) == Utils.ToLower(normPending) then
+                        ShowPopupForTarget(pendingTarget)
+                        pendingTarget = nil
+                    end
                 end
             end
         end

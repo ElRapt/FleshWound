@@ -33,7 +33,6 @@ function Data:SwitchProfile(profileName)
         if addonTable.Dialogs then
             addonTable.Dialogs:CloseAllDialogs()
         end
-        addonTable.GUI.currentTemporaryProfile = nil
         addonTable.GUI:UpdateProfileBanner()
     end
 end

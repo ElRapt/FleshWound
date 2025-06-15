@@ -226,6 +226,12 @@ end
 function GUI:DisplayRemoteProfile(profileName)
     self.displayingRemote = true
     self.activeRemoteProfileName = profileName
+    if addonTable.remoteProfiles[profileName] then
+        addonTable.remoteProfiles[profileName].lastAccess = time()
+    end
+    if addonTable.CleanupRemoteProfiles then
+        addonTable:CleanupRemoteProfiles()
+    end
     self:CloseAllDialogs()
     if self.frame then
         self.frame:Show()
@@ -239,8 +245,12 @@ end
 
 --- Explicitly display local data (the user's own profile)
 function GUI:DisplayLocalProfile()
+    local prev = self.activeRemoteProfileName
     self.displayingRemote = false
     self.activeRemoteProfileName = nil
+    if addonTable.ClearRemoteProfile then
+        addonTable:ClearRemoteProfile(prev)
+    end
     self:CloseAllDialogs()
     if self.frame then
         self.frame:Show()
@@ -254,9 +264,10 @@ end
 
 function GUI:GetActiveWoundData()
     if self.displayingRemote and self.activeRemoteProfileName then
-        local remoteData = addonTable.remoteProfiles[self.activeRemoteProfileName]
-        if not remoteData then return {} end
-        return remoteData
+        local entry = addonTable.remoteProfiles[self.activeRemoteProfileName]
+        if not entry then return {} end
+        entry.lastAccess = time()
+        return entry.data or {}
     end
     return addonTable.woundData or {}
 end

@@ -3,6 +3,8 @@
 
 local addonName, addonTable = ...
 addonTable.remoteProfiles = addonTable.remoteProfiles or {}
+local REMOTE_PROFILE_TTL = 600 -- seconds before a remote profile expires
+local REMOTE_PROFILE_CLEAN_INTERVAL = 60 -- seconds between cleanup checks
 local L = addonTable.L
 local Utils = addonTable.Utils
 
@@ -39,6 +41,22 @@ local CONSTANTS = {
     DISCLAIMER_ALREADY_SHOWN_KEY = "hasShownDisclaimer",
     RELOAD_EVENT_NAME = "ADDON_LOADED"
 }
+
+function addonTable:ClearRemoteProfile(profileName)
+    if profileName and self.remoteProfiles then
+        self.remoteProfiles[profileName] = nil
+    end
+end
+
+function addonTable:CleanupRemoteProfiles()
+    local now = time()
+    for name, data in pairs(self.remoteProfiles) do
+        local last = data.lastAccess or 0
+        if now - last > REMOTE_PROFILE_TTL then
+            self.remoteProfiles[name] = nil
+        end
+    end
+end
 
 local EventHandler = {}
 addonTable.EventHandler = EventHandler
@@ -155,6 +173,12 @@ function EventHandler:OnAddonLoaded(loadedName)
             addonTable.Comm:Initialize()
         end
 
+        if not addonTable.remoteProfileCleanupTicker then
+            addonTable.remoteProfileCleanupTicker = C_Timer.NewTicker(REMOTE_PROFILE_CLEAN_INTERVAL, function()
+                addonTable:CleanupRemoteProfiles()
+            end)
+        end
+
         Utils.FW_Print(string.format(L.THANK_YOU, version), false)
         ShowDisclaimerFrame()
         self.eventFrame:UnregisterEvent(CONSTANTS.RELOAD_EVENT_NAME)
@@ -166,7 +190,11 @@ end
 --- @param profileData table The remote profile data
 function addonTable:OpenReceivedProfile(profileName, profileData)
     if not addonTable.GUI then return end
-    addonTable.remoteProfiles[profileName] = profileData.woundData or {}
+    addonTable.remoteProfiles[profileName] = {
+        data = profileData.woundData or {},
+        lastAccess = time(),
+    }
+    self:CleanupRemoteProfiles()
     addonTable.GUI:DisplayRemoteProfile(profileName)
 end
 

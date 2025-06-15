@@ -37,7 +37,12 @@ end
 
 local function getActiveWoundData()
     if GUI.displayingRemote and GUI.activeRemoteProfileName then
-        return addonTable.remoteProfiles[GUI.activeRemoteProfileName] or {}
+        local entry = addonTable.remoteProfiles[GUI.activeRemoteProfileName]
+        if entry then
+            entry.lastAccess = time()
+            return entry.data or {}
+        end
+        return {}
     end
     return addonTable.woundData or {}
 end

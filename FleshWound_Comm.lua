@@ -7,6 +7,10 @@ local AceSerializer = LibStub("AceSerializer-3.0")
 local LibDeflate = LibStub("LibDeflate", true)
 local CHANNEL_NAME = "FleshWoundComm"
 local channelJoinedOnce = false
+local function CommAllowed()
+	-- Midnight restriction: player-to-player addon comms are not reliable in instances.
+	return not IsInInstance()
+end
 
 --------------------------------------------------------------------------------
 -- Profile Request and Handling
@@ -18,6 +22,12 @@ local channelJoinedOnce = false
 -- @param targetPlayer string The name of the target player.
 function Comm:RequestProfile(targetPlayer)
     if not targetPlayer or targetPlayer == "" then return end
+    if not CommAllowed() then
+        addonTable.Utils.FW_Print("Sharing is disabled inside instances.", true)
+        return
+    end
+
+    targetPlayer = addonTable.Utils.NormalizeWhisperTarget(targetPlayer)
     local registry = addonTable.Registry
     if registry and registry:IsUserOnline(targetPlayer) then
         ChatThrottleLib:SendAddonMessage("NORMAL", self.PREFIX, "REQUEST_PROFILE", "WHISPER", targetPlayer)
@@ -40,6 +50,11 @@ end
 -- @param profileName string The name of the profile to send.
 function Comm:SendProfileData(targetPlayer, profileName)
     if not targetPlayer or not profileName then return end
+    if not CommAllowed() then
+        return
+    end
+
+    targetPlayer = addonTable.Utils.NormalizeWhisperTarget(targetPlayer)
     local data = addonTable.FleshWoundData.profiles[profileName]
     if not data then return end
 
@@ -252,6 +267,9 @@ local channelNoticeFrame = CreateFrame("Frame")
 channelNoticeFrame:RegisterEvent("CHAT_MSG_CHANNEL_NOTICE")
 channelNoticeFrame:SetScript("OnEvent", function(self, event, ...)
     local text, _, _, _, _, _, _, _, channelName = ...
+    if not addonTable.Utils.CanUseValue(text) or not addonTable.Utils.CanUseValue(channelName) then
+        return
+    end
     if channelName == CHANNEL_NAME then
         if text == "YOU_JOINED" or text == "YOU_CHANGED" then
             Comm:OnChannelJoined()
@@ -271,6 +289,15 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "CHAT_MSG_ADDON" then
         Comm:OnChatMsgAddon(...)
     end
+end)
+
+local lifecycle = CreateFrame("Frame")
+lifecycle:RegisterEvent("PLAYER_ENTERING_WORLD")
+lifecycle:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+lifecycle:SetScript("OnEvent", function()
+	if not IsInInstance() then
+		Comm:JoinChannel()
+	end
 end)
 
 return Comm

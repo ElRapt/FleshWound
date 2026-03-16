@@ -4,11 +4,53 @@
 
     local addonName, addonTable = ...
     local GetAddOnMetadata = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
-    
+
     local Utils = {}
     addonTable.Utils = Utils
-    
+
     local prefixColor = "|cFF00FF00FleshWound:|r "
+
+    -- Midnight: chat event payloads can become Secret Values in instances.
+    -- Avoid string compares/concat/gsub/gmatch on Secret Values unless accessible.
+    function Utils.CanUseValue(v)
+        if type(issecretvalue) == "function" and issecretvalue(v) then
+            if type(canaccessvalue) == "function" then
+                return canaccessvalue(v)
+            end
+            return false
+        end
+        return true
+    end
+
+    -- Whisper targets sometimes need Name-Realm. Keep author's NormalizePlayerName intact.
+    -- This helper always returns a Name-Realm form when possible.
+    function Utils.NormalizeWhisperTarget(name)
+        if not name or name == "" then return name end
+
+        -- already Name-Realm
+        if string.find(name, "-", 1, true) then
+            return name
+        end
+
+        local realm = nil
+        if type(GetNormalizedRealmName) == "function" then
+            realm = GetNormalizedRealmName()
+        end
+        if not realm or realm == "" then
+            if type(GetRealmName) == "function" then
+                realm = GetRealmName()
+            end
+            if realm then
+                realm = realm:gsub("%s+", "")
+            end
+        end
+
+        if realm and realm ~= "" then
+            return name .. "-" .. realm
+        end
+
+        return name
+    end
 
     --- Returns the version of the addon as a string.
 --- @return string: The version of the addon.

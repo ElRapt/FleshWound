@@ -61,9 +61,34 @@ end
 ---@param playerName string The name of the player to check.
 ---@return boolean True if the player is online, false otherwise.
 function Registry:IsUserOnline(playerName)
-    if not playerName then return false end
-    local key = Utils.ToLower(playerName)
-    return self.users[key] ~= nil
+	if not playerName then return false end
+
+	-- check as provided
+	local key = Utils.ToLower(playerName)
+	if key and self.users[key] ~= nil then return true end
+
+	-- check normalized (may add realm)
+	local norm = Utils.NormalizePlayerName(playerName)
+	if norm then
+		local k2 = Utils.ToLower(norm)
+		if k2 and self.users[k2] ~= nil then return true end
+
+		-- also check short form
+		local short = Ambiguate(norm, "short")
+		if short then
+			local k3 = Utils.ToLower(short)
+			if k3 and self.users[k3] ~= nil then return true end
+		end
+	end
+
+	-- check short form of original
+	local short2 = Ambiguate(playerName, "short")
+	if short2 then
+		local k4 = Utils.ToLower(short2)
+		if k4 and self.users[k4] ~= nil then return true end
+	end
+
+	return false
 end
 
 
@@ -163,7 +188,9 @@ channelListFrame:SetScript("OnEvent", function(_, event, ...)
     
     local players = select(playersIndex, ...)
     local channelName = select(channelIndex, ...)
-    
+    if not Utils.CanUseValue(players) or not Utils.CanUseValue(channelName) then
+        return
+    end
     if channelName ~= Registry.CHANNEL_NAME then
         return
     end
